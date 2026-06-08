@@ -1,6 +1,6 @@
 {
   "name": "dowze",
-  "version": "2.19.0",
+  "version": "2.20.0",
   "private": true,
   "description": "Dowze — système d'éducation 2.0 en bien commun. Monorepo (web + api + packages).",
   "type": "module",
