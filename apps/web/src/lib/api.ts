@@ -13,6 +13,12 @@ async function post<T>(path: string, body: unknown): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+async function get<T>(path: string): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`);
+  if (!res.ok) throw new Error(`API ${res.status} — ${await res.text()}`);
+  return res.json() as Promise<T>;
+}
+
 export interface CreateRequestInput {
   operation: BridgeOperation;
   requestId: string;
@@ -32,4 +38,33 @@ export interface ImportResponseInput {
 
 export function importBridgeResponse(input: ImportResponseInput): Promise<unknown> {
   return post('/bridge/responses', input);
+}
+
+export interface MasteryRow {
+  skillId: string;
+  pMastery: number;
+  attempts: number;
+  correct: number;
+}
+
+export function getProgression(profileId: string): Promise<MasteryRow[]> {
+  return get(`/progression/${profileId}`);
+}
+
+export interface PlanningEntryRow {
+  id: string;
+  dateIso: string;
+  kind: string;
+  skillId: string | null;
+  durationMin: number;
+  status: string;
+}
+
+export interface PlanningResult {
+  entries: PlanningEntryRow[];
+  unscheduled: unknown[];
+}
+
+export function generatePlanning(profileId: string, weekStartIso: string): Promise<PlanningResult> {
+  return post('/planning/generate', { profileId, weekStartIso });
 }

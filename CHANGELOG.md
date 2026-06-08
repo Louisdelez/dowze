@@ -2,6 +2,20 @@
 
 Ce fichier trace l'évolution du document de conception **et de l'implémentation**.
 
+## [2.26.0] — 2026-06-08
+
+### Ajouté — Progression (BKT) & planning (SM-2) de bout en bout
+Première tranche de **profondeur fonctionnelle** sur les couches déjà posées :
+- **`@dowze/core`** : `frontier` — `learnableSkills` / `nextPrescribedSkill` (la **prescription** : ce que
+  l'élève peut apprendre maintenant, déterministe). Tests ajoutés (core : 46 tests).
+- **`@dowze/api`** : modules **progression** (`GET /progression/:id`, `POST /progression/observe` → mise à
+  jour BKT), **spaced-repetition** (`POST /reviews` → SM-2), **planning** (`POST /planning/generate` →
+  révisions dues + prochaine compétence, agencées dans les créneaux). Schéma Drizzle complété (sm2_cards,
+  availability_slots, planning_entries). Helper de planning **pur** testé (api : 14 tests).
+- **`@dowze/web`** : écrans **/progression** (barres de maîtrise) et **/planning** (génération de la semaine),
+  reliés à l'API avec états vides/erreurs gracieux.
+- **Vérifié** : build/typecheck/lint verts ; **67 tests** ; `npm audit` 0 vulnérabilité.
+
 ## [2.25.0] — 2026-06-08
 
 ### Ajouté — Intégration continue (CI) & documentation développeur

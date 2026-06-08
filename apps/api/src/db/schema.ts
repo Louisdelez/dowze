@@ -3,6 +3,7 @@ import {
   uuid,
   text,
   integer,
+  smallint,
   boolean,
   doublePrecision,
   timestamp,
@@ -69,3 +70,36 @@ export const masteryStates = pgTable(
   },
   (t) => ({ pk: primaryKey({ columns: [t.profileId, t.skillId] }) }),
 );
+
+export const sm2Cards = pgTable(
+  'sm2_cards',
+  {
+    profileId: uuid('profile_id').notNull(),
+    skillId: uuid('skill_id').notNull(),
+    repetitions: integer('repetitions').notNull().default(0),
+    easeFactor: doublePrecision('ease_factor').notNull().default(2.5),
+    intervalDays: integer('interval_days').notNull().default(0),
+    dueDate: timestamp('due_date', { withTimezone: true }),
+    lastReviewed: timestamp('last_reviewed', { withTimezone: true }),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.profileId, t.skillId] }) }),
+);
+
+export const availabilitySlots = pgTable('availability_slots', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  profileId: uuid('profile_id').notNull(),
+  dayOfWeek: smallint('day_of_week').notNull(),
+  startMinute: smallint('start_minute').notNull(),
+  durationMin: smallint('duration_min').notNull(),
+});
+
+export const planningEntries = pgTable('planning_entries', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  profileId: uuid('profile_id').notNull(),
+  date: timestamp('date', { withTimezone: true }).notNull(),
+  kind: text('kind').notNull(),
+  skillId: uuid('skill_id'),
+  expeditionId: uuid('expedition_id'),
+  durationMin: smallint('duration_min').notNull(),
+  status: text('status').notNull().default('prevu'),
+});
