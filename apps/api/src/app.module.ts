@@ -4,6 +4,7 @@ import { DrizzleModule } from './db/drizzle.module';
 import { AuthModule } from './auth/auth.module';
 import { AccountsModule } from './accounts/accounts.module';
 import { DiagnosticModule } from './diagnostic/diagnostic.module';
+import { ExpeditionsModule } from './expeditions/expeditions.module';
 import { SkillGraphModule } from './skill-graph/skill-graph.module';
 import { BridgeModule } from './bridge/bridge.module';
 import { ProgressionModule } from './progression/progression.module';
@@ -22,6 +23,7 @@ import { HealthModule } from './health/health.module';
     AuthModule,
     AccountsModule,
     DiagnosticModule,
+    ExpeditionsModule,
     SkillGraphModule,
     BridgeModule,
     ProgressionModule,
