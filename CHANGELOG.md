@@ -2,6 +2,17 @@
 
 Ce fichier trace l'évolution du document de conception **et de l'implémentation**.
 
+## [2.31.0] — 2026-06-08
+
+### Ajouté — Onboarding & diagnostic
+- **`@dowze/core`** : `computePlacement` (PUR) — à partir des compétences **démontrées**, déduit les acquis
+  (clôture des prérequis) et la **première compétence prescrite**. Tests (core : 49).
+- **`@dowze/api`** : module **diagnostic** (`POST /diagnostic`, gardé) — calcule le placement et enregistre
+  les compétences maîtrisées (BKT à 1).
+- **`@dowze/web`** : écran **/demarrer** (« je m'inscris, je fais quoi ? ») — diagnostic à partir des
+  compétences fondamentales, placement + première étape. `profileId` pré-rempli depuis la session.
+- **Vérifié** : build/typecheck/lint verts ; **83 tests** ; `npm audit` 0 vulnérabilité.
+
 ## [2.30.0] — 2026-06-08
 
 ### Ajouté — Auth & comptes (Supabase Auth bout-en-bout)
