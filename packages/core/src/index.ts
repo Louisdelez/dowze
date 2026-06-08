@@ -8,6 +8,6 @@
  */
 import { SCHEMAS_VERSION } from '@dowze/schemas';
 
-export const CORE_VERSION = '2.18.0' as const;
+export const CORE_VERSION = '2.19.0' as const;
 
 export { SCHEMAS_VERSION };

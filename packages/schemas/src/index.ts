@@ -1,9 +1,20 @@
 /**
- * @dowze/schemas — point d'entrée.
- *
- * Source de vérité unique des types du domaine Dowze (compétences, graphe,
- * progression, planning, validation, pont `.json`, communauté, parental, modération).
- * Les schémas réels arrivent au jalon 2.19.0 ; ce fichier établit le package.
+ * @dowze/schemas — source de vérité unique des types du domaine Dowze.
+ * Schémas Zod partagés par le frontend, le backend et la validation du pont `.json`.
  */
 
-export const SCHEMAS_VERSION = '2.18.0' as const;
+export const SCHEMAS_VERSION = '2.19.0' as const;
+
+export * from './common';
+export * from './skill';
+export * from './cursus';
+export * from './profile';
+export * from './progression';
+export * from './spaced-repetition';
+export * from './planning';
+export * from './content';
+export * from './validation';
+export * from './bridge';
+export * from './account';
+export * from './community';
+export * from './moderation';
