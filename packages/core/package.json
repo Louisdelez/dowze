@@ -1,0 +1,33 @@
+{
+  "name": "@dowze/core",
+  "version": "2.18.0",
+  "private": true,
+  "description": "Logique de domaine pure de Dowze (clôture du graphe, SM-2, BKT, planning, pont .json). Sans I/O, entièrement testée.",
+  "type": "commonjs",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "@dowze/schemas": "*",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "rimraf": "^6.0.1",
+    "typescript": "^5.7.3",
+    "vitest": "^4.1.8"
+  }
+}
