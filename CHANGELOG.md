@@ -2,6 +2,16 @@
 
 Ce fichier trace l'évolution du document de conception **et de l'implémentation**.
 
+## [2.33.0] — 2026-06-08
+
+### Ajouté — Carnet de bord & continuité (fin de la Phase 3)
+- **`@dowze/api`** : module **carnet** — `buildResumePrompt` (PUR, testé) reconstruit le **contexte** à
+  donner à l'IA (sans mémoire) ; `POST /carnet` (note), `GET /carnet/:profileId` (journal),
+  `GET /carnet/:profileId/prompt` (**prompt de reprise** : acquis + prochaine compétence + dernière note,
+  méthode socratique). Table Drizzle `carnet_entries`. Routes gardées (api : 30 tests).
+- **`@dowze/web`** : écran **/carnet** (journal + génération du prompt de reprise à coller dans l'IA).
+- **Vérifié** : build/typecheck/lint verts ; **90 tests** ; `npm audit` 0 vulnérabilité.
+
 ## [2.32.0] — 2026-06-08
 
 ### Ajouté — Expéditions (cycle Étincelle→…→Trace)

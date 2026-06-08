@@ -213,3 +213,19 @@ export function advanceExpedition(
 ): Promise<{ id: string; phase: string; status: string }> {
   return post(`/expeditions/${id}/advance`, {});
 }
+
+export interface CarnetEntryRow {
+  id: string;
+  note: string;
+  skillId: string | null;
+  createdAt: string;
+}
+export function listCarnet(profileId: string): Promise<CarnetEntryRow[]> {
+  return get(`/carnet/${profileId}`);
+}
+export function addCarnetEntry(profileId: string, note: string): Promise<CarnetEntryRow> {
+  return post('/carnet', { profileId, note });
+}
+export function getResumePrompt(profileId: string): Promise<{ prompt: string }> {
+  return get(`/carnet/${profileId}/prompt`);
+}

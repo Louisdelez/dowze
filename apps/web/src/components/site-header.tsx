@@ -7,6 +7,7 @@ const NAV = [
   { href: '/progression', label: 'Progression' },
   { href: '/planning', label: 'Planning' },
   { href: '/expeditions', label: 'Expéditions' },
+  { href: '/carnet', label: 'Carnet' },
   { href: '/validation', label: 'Validation' },
   { href: '/communaute', label: 'Communauté' },
   { href: '/parent', label: 'Espace parent' },
