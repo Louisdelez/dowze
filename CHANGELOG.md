@@ -2,6 +2,21 @@
 
 Ce fichier trace l'évolution du document de conception **et de l'implémentation**.
 
+## [2.21.0] — 2026-06-08
+
+### Ajouté — `supabase/` : schéma Postgres complet (migrations + seed + RLS)
+La base de données versionnée en SQL, prête pour `supabase start` (local d'abord) :
+- **7 migrations** : extensions & comptes/profils/parental · graphe de compétences (FK = zéro prérequis
+  pendant) + `skill_closure()` (CTE récursive, colonne CYCLE anti-boucle) · apprentissage (BKT, SM-2,
+  créneaux, planning, présence) · cursus & validation (expéditions, grilles, validations, file de revue
+  par les pairs) · communauté (classes, canaux, messages, binômes) · modération & alertes parentales ·
+  **RLS** (défense en profondeur, policies par propriété de profil).
+- **`seed.sql`** : le **socle de racines** (12 compétences fondamentales) + compétences dérivées + une
+  grille d'exemple.
+- **`config.toml`** + **README** (procédure locale).
+- ⚠️ Validé par **relecture** (Docker indisponible dans l'environnement de build) — prêt à exécuter via
+  `supabase start && supabase db reset` côté machine de dev.
+
 ## [2.20.0] — 2026-06-08
 
 ### Ajouté — `@dowze/core` : la logique de domaine pure (le cœur), entièrement testée
