@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from './config/config.module';
 import { DrizzleModule } from './db/drizzle.module';
 import { AuthModule } from './auth/auth.module';
+import { CacheModule } from './cache/cache.module';
+import { JobsModule } from './jobs/jobs.module';
 import { AccountsModule } from './accounts/accounts.module';
 import { DiagnosticModule } from './diagnostic/diagnostic.module';
 import { ExpeditionsModule } from './expeditions/expeditions.module';
@@ -22,6 +24,8 @@ import { HealthModule } from './health/health.module';
     ConfigModule,
     DrizzleModule,
     AuthModule,
+    CacheModule,
+    JobsModule,
     AccountsModule,
     DiagnosticModule,
     ExpeditionsModule,
