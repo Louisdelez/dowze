@@ -6,6 +6,7 @@ import { BridgeModule } from './bridge/bridge.module';
 import { ProgressionModule } from './progression/progression.module';
 import { SpacedRepetitionModule } from './spaced-repetition/spaced-repetition.module';
 import { PlanningModule } from './planning/planning.module';
+import { ValidationModule } from './validation/validation.module';
 import { HealthModule } from './health/health.module';
 
 @Module({
@@ -17,6 +18,7 @@ import { HealthModule } from './health/health.module';
     ProgressionModule,
     SpacedRepetitionModule,
     PlanningModule,
+    ValidationModule,
     HealthModule,
   ],
 })
