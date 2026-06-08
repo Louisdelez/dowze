@@ -2,6 +2,21 @@
 
 Ce fichier trace l'évolution du document de conception **et de l'implémentation**.
 
+## [2.22.0] — 2026-06-08
+
+### Ajouté — `@dowze/api` : le backend NestJS (l'intra-core)
+Monolithe modulaire NestJS sur Postgres Supabase (Drizzle), **sans appel LLM serveur** :
+- **Modules** : `config` (env Zod), `db` (Drizzle/postgres-js, connexion paresseuse), `skill-graph`
+  (lecture du graphe + **validation de la loi de clôture** + clôture transitive via `@dowze/core`),
+  `bridge` (génération du `.json` aller : prompt + JSON Schema dérivé + exemple ; validation stricte du
+  retour), `auth` (garde JWT Supabase), `health`.
+- **Endpoints** : `/health`, `/skills`, `/skills/validate`, `/skills/:id/closure`, `POST /bridge/requests`,
+  `POST /bridge/responses`.
+- **Vérifié** : `build` (tsc) + `typecheck` + `lint` verts ; **8 tests** API (57 au total).
+- **Sécurité** : montée à **NestJS 11** + **drizzle-orm ≥ 0.45.2** → **`npm audit` : 0 vulnérabilité**
+  (correction d'une injection SQL HIGH dans Drizzle et d'un avis NestJS).
+- ⚠️ Exécuter le serveur nécessite Postgres (Supabase local) ; le build/les tests des parties pures non.
+
 ## [2.21.0] — 2026-06-08
 
 ### Ajouté — `supabase/` : schéma Postgres complet (migrations + seed + RLS)
