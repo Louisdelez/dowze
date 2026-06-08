@@ -1,0 +1,11 @@
+# Sorties de build
+**/dist/**
+**/.next/**
+**/.turbo/**
+**/coverage/**
+**/node_modules/**
+
+# La documentation est mise en forme à la main — ne pas reformater
+docs/**
+*.md
+*.html

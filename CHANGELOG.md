@@ -1,6 +1,19 @@
 # Journal des versions — Dowze
 
-Ce fichier trace l'évolution du document de conception.
+Ce fichier trace l'évolution du document de conception **et de l'implémentation**.
+
+## [2.18.0] — 2026-06-08
+
+### Ajouté — DÉBUT DE L'IMPLÉMENTATION : fondation du monorepo
+Première brique de code : le dépôt devient un **monorepo** prêt à accueillir l'application. Nouveau dossier
+[`docs/11-IMPLEMENTATION`](docs/11-IMPLEMENTATION/00-plan.md) avec le **plan complet de A à Z** (jalons,
+contrainte d'environnement, Definition of Done).
+- **Outillage** : **npm workspaces + Turborepo**, **TypeScript strict** (`tsconfig.base.json`), **ESLint**
+  (flat config) + **Prettier**, `.editorconfig`, `.nvmrc`, `.env.example`.
+- **Packages** : `@dowze/schemas` (schémas Zod partagés — squelette) et `@dowze/core` (logique de domaine
+  pure — squelette + **Vitest**).
+- **Structure** : `apps/` (web, api — à venir), `packages/` (schemas, core), `supabase/` (à venir).
+- **Vérifié** : `build`, `typecheck`, `lint`, `test` tous **verts** via Turbo ; **`npm audit` : 0 vulnérabilité**.
 
 ## [2.17] — 2026-06-08
 
