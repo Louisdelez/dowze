@@ -2,6 +2,18 @@
 
 Ce fichier trace l'évolution du document de conception **et de l'implémentation**.
 
+## [2.38.0] — 2026-06-08
+
+### Ajouté — Déploiement & durcissement
+- **Docker** : `apps/api/Dockerfile` (multi-stage, build filtré `@dowze/api` + prune prod, runtime
+  `node:22-alpine`) ; **`docker-compose.yml`** (Postgres + Redis + API + **worker**) ; `.dockerignore`.
+- **Vercel** : `apps/web/vercel.json` (install + build filtré `@dowze/web`).
+- **Durcissement API** : **helmet** (en-têtes de sécurité) + **rate limiting** (`@nestjs/throttler`,
+  100 req/min, garde globale).
+- **Guide** : [`docs/11-IMPLEMENTATION/02-deploiement.md`](docs/11-IMPLEMENTATION/02-deploiement.md)
+  (Supabase EU, checklist de prod).
+- **Vérifié** : build/typecheck/lint verts ; **99 tests** ; `npm audit` 0 vulnérabilité.
+
 ## [2.37.0] — 2026-06-08
 
 ### Ajouté — Jobs & observabilité
