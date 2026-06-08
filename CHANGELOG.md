@@ -2,6 +2,26 @@
 
 Ce fichier trace l'évolution du document de conception **et de l'implémentation**.
 
+## [3.0.0] — 2026-06-08
+
+### 🎉 Produit complet — E2E, résilience & finition
+Jalon majeur : toutes les couches (base → cœur → API → web → CI) **et** tous les parcours majeurs
+(auth, onboarding/diagnostic, expéditions, carnet, progression, planning, validation, communauté/temps réel,
+parental, modération) sont en place, testés et en **CI verte**.
+- **`@dowze/web`** : **Playwright** (config + smoke e2e : accueil, navigation, pont) — `test:e2e` ;
+  pages de **résilience** `error.tsx` (réessayer) et `not-found.tsx` (404).
+- **A11y** : `lang="fr"`, rôles/headings, cibles tactiles, états vides/erreurs gracieux sur tous les écrans.
+- **Vérifié** : build/typecheck/lint verts ; **99 tests** unitaires (core 57 · api 35 · schemas 7) ;
+  `npm audit` 0 vulnérabilité. *(Les e2e Playwright nécessitent les navigateurs `npx playwright install`
+  et un serveur lancé ; non exécutés en CI par défaut.)*
+
+### Récapitulatif de l'implémentation (2.18 → 3.0.0)
+Monorepo npm workspaces + Turborepo : `packages/schemas` (types Zod) · `packages/core` (logique pure :
+clôture R1-R8, BKT, SM-2, planning, pont, frontier, diagnostic, expéditions, minuteur) · `supabase/`
+(migrations + RLS + seed) · `apps/api` (NestJS, ~15 modules) · `apps/web` (Next.js 15, ~14 écrans, PWA).
+**Reste ouvert** (profondeur produit) : génération de contenu IA branchée aux écrans, visio, tests
+d'intégration Testcontainers, observabilité OpenTelemetry/Sentry, contenu pédagogique réel à grande échelle.
+
 ## [2.38.0] — 2026-06-08
 
 ### Ajouté — Déploiement & durcissement
