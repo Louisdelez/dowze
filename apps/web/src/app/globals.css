@@ -1,0 +1,28 @@
+@import 'tailwindcss';
+
+/* Design system épuré, calme, façon Notion (warm minimalism). */
+@theme {
+  --color-background: #ffffff;
+  --color-foreground: #1f2328;
+  --color-muted: #f6f8fa;
+  --color-muted-foreground: #57606a;
+  --color-border: #e2e4e8;
+  --color-accent: #2f6f4f; /* vert calme, 1 seule couleur d'accent */
+  --color-accent-foreground: #ffffff;
+
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --radius: 0.75rem;
+}
+
+html {
+  color-scheme: light;
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.6;
+}
