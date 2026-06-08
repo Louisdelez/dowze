@@ -6,7 +6,7 @@
  * pont `.json`. Tout est testé en isolation, sans base de données.
  */
 
-export const CORE_VERSION = '2.32.0' as const;
+export const CORE_VERSION = '2.34.0' as const;
 export { SCHEMAS_VERSION } from '@dowze/schemas';
 
 // Cursus
@@ -24,6 +24,7 @@ export * from './sm2/sm2';
 
 // Planning
 export * from './planning/planning';
+export * from './planning/timer';
 
 // Pont .json
 export * from './bridge/prototype-guard';

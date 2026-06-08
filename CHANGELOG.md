@@ -2,6 +2,15 @@
 
 Ce fichier trace l'évolution du document de conception **et de l'implémentation**.
 
+## [2.34.0] — 2026-06-08
+
+### Ajouté — Minuteur & sonnerie (début Phase 4)
+- **`@dowze/core`** : `planning/timer` (PUR) — `segmentAt` (focus/pause + temps restant) et `isBoundary`
+  (instant de bascule → sonnerie). Tests (core : 57).
+- **`@dowze/web`** : composant **Minuteur** (disque visuel SVG, compte à rebours, **sonnerie douce** via
+  Web Audio à résonance décroissante, pause/réinit/mute) sur l'écran **/planning**. Sain, anti-dark-pattern.
+- **Vérifié** : build/typecheck/lint verts ; **94 tests** ; `npm audit` 0 vulnérabilité.
+
 ## [2.33.0] — 2026-06-08
 
 ### Ajouté — Carnet de bord & continuité (fin de la Phase 3)
