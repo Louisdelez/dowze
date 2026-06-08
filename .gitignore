@@ -21,6 +21,11 @@ build/
 .turbo/
 *.tsbuildinfo
 
+# Service worker généré (Serwist)
+apps/web/public/sw.js
+apps/web/public/sw.js.map
+apps/web/public/swe-worker-*.js
+
 # Variables d'environnement (NE JAMAIS committer de secrets)
 .env
 .env.*

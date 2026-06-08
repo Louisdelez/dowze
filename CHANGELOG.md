@@ -2,6 +2,15 @@
 
 Ce fichier trace l'évolution du document de conception **et de l'implémentation**.
 
+## [2.36.0] — 2026-06-08
+
+### Ajouté — PWA & hors-ligne (Serwist)
+- **`@dowze/web`** : **Serwist** (service worker `src/app/sw.ts`, généré au build vers `public/sw.js`),
+  **manifest** (`app/manifest.ts` → `/manifest.webmanifest`), méta `appleWebApp`. App **installable** et
+  **utilisable hors-ligne** (réviser sans connexion) ; les appels IA (pont `.json`) restent réseau.
+- SW désactivé en dev, actif en build de prod. `public/sw.js` ignoré par git (généré).
+- **Vérifié** : `next build` (génère le SW) + typecheck + lint verts ; **94 tests** ; 0 vulnérabilité.
+
 ## [2.35.0] — 2026-06-08
 
 ### Ajouté — Temps réel (Supabase Realtime)
