@@ -1,0 +1,64 @@
+# ─────────────────────────────────────────────────────────────
+#  Dowze — .gitignore
+#  Le dépôt est aujourd'hui une documentation de conception.
+#  Ces règles anticipent l'application web (Next.js + Supabase).
+# ─────────────────────────────────────────────────────────────
+
+# Dépendances
+node_modules/
+.pnp/
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/releases
+!.yarn/plugins
+
+# Build / sortie
+.next/
+out/
+dist/
+build/
+.turbo/
+*.tsbuildinfo
+
+# Variables d'environnement (NE JAMAIS committer de secrets)
+.env
+.env.*
+!.env.example
+
+# Supabase (local)
+.branches/
+.temp/
+supabase/.temp/
+supabase/.branches/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Tests / couverture
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+
+# Système d'exploitation
+.DS_Store
+Thumbs.db
+desktop.ini
+ehthumbs.db
+
+# Éditeurs
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.swp
+*~
+
+# Divers
+*.tmp
+.cache/

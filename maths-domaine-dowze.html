@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dowze · Carte du domaine « Maths & raisonnement »</title>
+<style>
+  :root{--bg:#f4f6fb;--ink:#1e293b;--muted:#64748b;--line:#e2e8f0;--card:#fff;
+    --t-nb:#7c3aed;--t-prop:#2563eb;--t-alg:#db2777;--t-geo:#0891b2;--t-stat:#16a34a;--t-log:#ea580c;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;padding:24px 16px 60px}
+  .wrap{max-width:1340px;margin:0 auto}
+
+  header.top{display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:10px}
+  .brand{display:flex;align-items:center;gap:14px}
+  .logo{width:48px;height:48px;border-radius:13px;background:linear-gradient(135deg,#7c3aed,#2563eb);
+    color:#fff;font-weight:800;font-size:22px;display:grid;place-items:center;box-shadow:0 6px 18px rgba(124,58,237,.35)}
+  h1{font-size:21px;margin:0}
+  .crumb{color:var(--muted);font-size:13px;margin-top:3px}
+  .btn{cursor:pointer;border:none;background:#1e293b;color:#fff;padding:9px 14px;border-radius:10px;font-size:13px;font-weight:600}
+
+  .stats{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 12px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:7px 12px;font-size:13px}
+  .stat b{font-size:15px}
+
+  .note{background:#f5f3ff;border:1px solid #c4b5fd;border-radius:12px;padding:11px 15px;margin:0 0 14px;
+    font-size:13px;color:#5b21b6;display:flex;gap:9px;align-items:flex-start}
+
+  .legend{display:flex;flex-wrap:wrap;gap:8px 14px;margin:0 0 14px;font-size:12.5px;color:#334155}
+  .lg{display:inline-flex;align-items:center;gap:6px}
+  .st{width:16px;height:16px;border-radius:50%;display:inline-grid;place-items:center;font-size:10px;color:#fff}
+  .st.done{background:#16a34a}.st.doing{background:#d97706}.st.todo{background:#cbd5e1;color:#64748b}
+  .star{color:#f59e0b}
+
+  /* Matrice */
+  .matrix{display:grid;grid-template-columns:150px 1fr 1fr 1fr;gap:10px;align-items:stretch}
+  .lvlhead{background:#0f172a;color:#fff;border-radius:12px;padding:10px;text-align:center}
+  .lvlhead h3{margin:0;font-size:15px}
+  .lvlhead span{display:block;font-size:11px;color:#cbd5e1;margin-top:2px}
+  .corner{display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:11px;font-style:italic}
+
+  .rowlabel{border-radius:12px;padding:10px;color:#fff;display:flex;align-items:center;font-weight:700;font-size:13px;line-height:1.2}
+  .cell{background:#f8fafc;border:1px dashed #e2e8f0;border-radius:12px;padding:8px;display:flex;flex-direction:column;gap:7px}
+  .arrowcol{position:relative}
+
+  .card{position:relative;background:var(--card);border:1px solid var(--line);border-left:5px solid #999;
+    border-radius:10px;padding:8px 30px 8px 11px;cursor:pointer;transition:.12s}
+  .card:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(15,23,42,.1)}
+  .card .nm{font-size:12.5px;font-weight:600;line-height:1.25}
+  .card .lv{font-size:10px;color:var(--muted);margin-top:2px}
+  .card.socle{border-color:#f59e0b;box-shadow:0 0 0 1.5px #fde68a}
+  .card.todo{opacity:.62}
+  .card .state{position:absolute;top:8px;right:8px;width:18px;height:18px;border-radius:50%;
+    display:grid;place-items:center;font-size:11px;color:#fff;font-weight:700}
+  .card.done .state{background:#16a34a}
+  .card.doing .state{background:#d97706}
+  .card.todo .state{background:#e2e8f0;color:#94a3b8}
+  .card .crown{position:absolute;bottom:6px;right:9px;font-size:11px}
+  .chain{font-size:10px;color:#94a3b8;text-align:center;margin:-3px 0}
+
+  .nb{border-left-color:var(--t-nb)} .prop{border-left-color:var(--t-prop)} .alg{border-left-color:var(--t-alg)}
+  .geo{border-left-color:var(--t-geo)} .stat-c{border-left-color:var(--t-stat)} .log{border-left-color:var(--t-log)}
+
+  /* Fiche */
+  #fiche{margin-top:16px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;
+    box-shadow:0 10px 30px rgba(15,23,42,.06)}
+  #fiche .ft{font-size:11px;letter-spacing:.4px;text-transform:uppercase;color:#94a3b8;font-weight:700}
+  #fiche h2{margin:4px 0 10px;font-size:18px}
+  #fiche .row{display:flex;gap:8px;padding:7px 0;border-top:1px solid var(--line);font-size:13.5px}
+  #fiche .row b{flex:0 0 150px;color:#475569}
+  #fiche .pill{display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;color:#fff}
+
+  footer{margin-top:16px;color:var(--muted);font-size:12px;text-align:center;line-height:1.6}
+  @media print{body{background:#fff;padding:0}.btn{display:none}@page{size:A4 landscape;margin:8mm}}
+  @media(max-width:860px){.matrix{grid-template-columns:1fr}.rowlabel{border-radius:8px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand">
+      <div class="logo">∑</div>
+      <div>
+        <h1>Carte du domaine — Maths &amp; raisonnement</h1>
+        <div class="crumb">Atlas Dowze › Maths &amp; raisonnement &nbsp;·&nbsp; vue de Maya, 16 ans &nbsp;·&nbsp; <i>(les autres domaines suivent la même logique)</i></div>
+      </div>
+    </div>
+    <button class="btn" onclick="window.print()">🖨️ Imprimer</button>
+  </header>
+
+  <div class="stats">
+    <div class="stat">🟢 <b>13</b> maîtrisées</div>
+    <div class="stat">🟠 <b>2</b> en cours</div>
+    <div class="stat">⚪ <b>9</b> à venir</div>
+    <div class="stat">⭐ Socle commun validé à <b>92 %</b></div>
+  </div>
+
+  <div class="note">
+    <span>🧭</span>
+    <span><b>Comment lire :</b> les <b>colonnes = niveaux de maîtrise</b> (≈ l'ancien « niveau ») ·
+    toute la grille = le <b>« programme » du domaine</b> · de gauche à droite, les compétences s'enchaînent par
+    <b>prérequis</b> (≈ les « chapitres ») · les cartes cerclées d'<span class="star">or ⭐</span> sont le
+    <b>socle commun garanti</b>. <b>Clique une compétence</b> pour voir sa fiche.</span>
+  </div>
+
+  <div class="legend">
+    <span class="lg"><span class="st done">✓</span> Maîtrisé</span>
+    <span class="lg"><span class="st doing">◐</span> En cours</span>
+    <span class="lg"><span class="st todo">○</span> À venir</span>
+    <span class="lg"><span class="star">⭐</span> Socle commun</span>
+    &nbsp;|&nbsp;
+    <span class="lg"><span class="st" style="background:var(--t-nb)"></span>Nombres</span>
+    <span class="lg"><span class="st" style="background:var(--t-prop)"></span>Proportions</span>
+    <span class="lg"><span class="st" style="background:var(--t-alg)"></span>Algèbre</span>
+    <span class="lg"><span class="st" style="background:var(--t-geo)"></span>Géométrie</span>
+    <span class="lg"><span class="st" style="background:var(--t-stat)"></span>Statistiques</span>
+    <span class="lg"><span class="st" style="background:var(--t-log)"></span>Logique</span>
+  </div>
+
+  <div class="matrix">
+    <!-- entête -->
+    <div class="corner">sous-domaines ↓ / niveaux →</div>
+    <div class="lvlhead"><h3>① Novice</h3><span>je découvre, j'essaie</span></div>
+    <div class="lvlhead"><h3>② Compagnon</h3><span>je sais faire en autonomie</span></div>
+    <div class="lvlhead"><h3>③ Maître</h3><span>je maîtrise &amp; je peux enseigner</span></div>
+
+    <!-- LIGNE 1 : Nombres & calcul -->
+    <div class="rowlabel" style="background:var(--t-nb)">Nombres &amp; calcul</div>
+    <div class="cell">
+      <div class="card nb socle done" data-nm="Sens du nombre &amp; comptage" data-lv="Novice · Nombres" data-pr="—" data-se="Dénombrer, comparer et ordonner des quantités." data-pe="Jeux et situations concrètes du quotidien." data-et="done"><div class="nm">Sens du nombre &amp; comptage</div><div class="lv">Fondation</div><div class="state">✓</div><div class="crown">⭐</div></div>
+      <div class="chain">↓ puis</div>
+      <div class="card nb socle done" data-nm="Les 4 opérations &amp; calcul mental" data-lv="Novice · Nombres" data-pr="Sens du nombre" data-se="Calculer juste, mentalement et posé, dans la vie courante." data-pe="Quêtes du quotidien : achats, recettes, monnaie." data-et="done"><div class="nm">Les 4 opérations &amp; calcul mental</div><div class="lv">Novice</div><div class="state">✓</div><div class="crown">⭐</div></div>
+    </div>
+    <div class="cell">
+      <div class="card nb socle done" data-nm="Fractions" data-lv="Compagnon · Nombres" data-pr="Les 4 opérations" data-se="Comprendre, comparer et opérer sur des fractions." data-pe="Doubler/diviser une recette, partager équitablement." data-et="done"><div class="nm">Fractions</div><div class="lv">Compagnon</div><div class="state">✓</div><div class="crown">⭐</div></div>
+      <div class="chain">↓ puis</div>
+      <div class="card nb done" data-nm="Décimaux &amp; nombres relatifs" data-lv="Compagnon · Nombres" data-pr="Fractions" data-se="Manipuler décimaux et nombres négatifs en contexte." data-pe="Relevés de mesures, températures, comptes bancaires." data-et="done"><div class="nm">Décimaux &amp; nombres relatifs</div><div class="lv">Compagnon</div><div class="state">✓</div></div>
+    </div>
+    <div class="cell">
+      <div class="card nb todo" data-nm="Puissances &amp; racines" data-lv="Maître · Nombres" data-pr="Décimaux &amp; relatifs" data-se="Utiliser puissances, racines et notation scientifique." data-pe="Calculs scientifiques réels (grandes/petites quantités)." data-et="todo"><div class="nm">Puissances &amp; racines</div><div class="lv">Maître</div><div class="state">○</div></div>
+    </div>
+
+    <!-- LIGNE 2 : Proportionnalité -->
+    <div class="rowlabel" style="background:var(--t-prop)">Proportionnalité</div>
+    <div class="cell">
+      <div class="card prop socle done" data-nm="Notion de proportion" data-lv="Novice · Proportions" data-pr="Fractions" data-se="Reconnaître une situation proportionnelle." data-pe="Recettes, cartes, agrandissements." data-et="done"><div class="nm">Notion de proportion</div><div class="lv">Novice</div><div class="state">✓</div><div class="crown">⭐</div></div>
+    </div>
+    <div class="cell">
+      <div class="card prop socle done" data-nm="Pourcentages" data-lv="Compagnon · Proportions" data-pr="Notion de proportion" data-se="Calculer et interpréter des pourcentages." data-pe="Soldes, taxes, statistiques de presse." data-et="done"><div class="nm">Pourcentages</div><div class="lv">Compagnon</div><div class="state">✓</div><div class="crown">⭐</div></div>
+      <div class="chain">↓ puis</div>
+      <div class="card prop todo" data-nm="Échelles, vitesse, débit" data-lv="Compagnon · Proportions" data-pr="Notion de proportion" data-se="Appliquer la proportionnalité (échelle, vitesse, débit)." data-pe="Lire un plan, calculer un trajet, des conversions." data-et="todo"><div class="nm">Échelles, vitesse, débit</div><div class="lv">Compagnon</div><div class="state">○</div></div>
+    </div>
+    <div class="cell">
+      <div class="card prop todo" data-nm="Taux d'évolution &amp; indices" data-lv="Maître · Proportions" data-pr="Pourcentages" data-se="Calculer évolutions, taux et indices composés." data-pe="Analyser des données économiques réelles." data-et="todo"><div class="nm">Taux d'évolution &amp; indices</div><div class="lv">Maître</div><div class="state">○</div></div>
+    </div>
+
+    <!-- LIGNE 3 : Algèbre -->
+    <div class="rowlabel" style="background:var(--t-alg)">Algèbre</div>
+    <div class="cell">
+      <div class="card alg done" data-nm="Expressions &amp; variables" data-lv="Novice · Algèbre" data-pr="Les 4 opérations" data-se="Lire et écrire une expression avec des lettres." data-pe="Utiliser une formule (aire, coût total)." data-et="done"><div class="nm">Expressions &amp; variables</div><div class="lv">Novice → Compagnon</div><div class="state">✓</div></div>
+    </div>
+    <div class="cell">
+      <div class="card alg doing" data-nm="Équations du 1er degré" data-lv="Compagnon · Algèbre" data-pr="Expressions &amp; variables" data-se="Résoudre une équation à une inconnue." data-pe="Mettre un problème concret en équation et le résoudre." data-et="doing"><div class="nm">Équations du 1er degré</div><div class="lv">Compagnon</div><div class="state">◐</div></div>
+    </div>
+    <div class="cell">
+      <div class="card alg todo" data-nm="Fonctions" data-lv="Maître · Algèbre" data-pr="Équations du 1er degré" data-se="Comprendre et représenter une fonction." data-pe="Modéliser une relation réelle (prix/quantité)." data-et="todo"><div class="nm">Fonctions</div><div class="lv">Maître</div><div class="state">○</div></div>
+      <div class="chain">↓ puis</div>
+      <div class="card alg todo" data-nm="Systèmes &amp; 2nd degré" data-lv="Maître · Algèbre" data-pr="Fonctions" data-se="Résoudre systèmes et équations du 2nd degré." data-pe="Problèmes d'optimisation." data-et="todo"><div class="nm">Systèmes &amp; 2nd degré</div><div class="lv">Maître</div><div class="state">○</div></div>
+    </div>
+
+    <!-- LIGNE 4 : Géométrie & mesure -->
+    <div class="rowlabel" style="background:var(--t-geo)">Géométrie &amp; mesure</div>
+    <div class="cell">
+      <div class="card geo socle done" data-nm="Formes &amp; figures de base" data-lv="Novice · Géométrie" data-pr="—" data-se="Reconnaître et décrire les figures de base." data-pe="Observation, construction, dessin." data-et="done"><div class="nm">Formes &amp; figures de base</div><div class="lv">Novice</div><div class="state">✓</div><div class="crown">⭐</div></div>
+      <div class="chain">↓ puis</div>
+      <div class="card geo socle done" data-nm="Mesurer : longueurs, angles" data-lv="Novice · Géométrie" data-pr="Formes &amp; figures" data-se="Mesurer et tracer avec les bons outils." data-pe="Plans, bricolage, couture." data-et="done"><div class="nm">Mesurer : longueurs, angles</div><div class="lv">Novice</div><div class="state">✓</div><div class="crown">⭐</div></div>
+    </div>
+    <div class="cell">
+      <div class="card geo socle done" data-nm="Périmètre, aire, volume" data-lv="Compagnon · Géométrie" data-pr="Mesurer + 4 opérations" data-se="Calculer périmètres, aires et volumes en contexte." data-pe="Aménager une pièce, calculer une peinture, une contenance." data-et="done"><div class="nm">Périmètre, aire, volume</div><div class="lv">Compagnon</div><div class="state">✓</div><div class="crown">⭐</div></div>
+    </div>
+    <div class="cell">
+      <div class="card geo todo" data-nm="Pythagore &amp; trigonométrie" data-lv="Maître · Géométrie" data-pr="Périmètre/aire + Expressions" data-se="Utiliser Pythagore et les rapports trigonométriques." data-pe="Mesures indirectes : hauteur d'un arbre, distance." data-et="todo"><div class="nm">Pythagore &amp; trigonométrie</div><div class="lv">Maître</div><div class="state">○</div></div>
+    </div>
+
+    <!-- LIGNE 5 : Statistiques & probabilités -->
+    <div class="rowlabel" style="background:var(--t-stat)">Statistiques &amp; probabilités</div>
+    <div class="cell">
+      <div class="card stat-c socle done" data-nm="Lire tableaux &amp; graphiques" data-lv="Novice · Statistiques" data-pr="Les 4 opérations" data-se="Lire et interpréter un tableau ou un graphique." data-pe="Décrypter un graphique de presse." data-et="done"><div class="nm">Lire tableaux &amp; graphiques</div><div class="lv">Novice</div><div class="state">✓</div><div class="crown">⭐</div></div>
+    </div>
+    <div class="cell">
+      <div class="card stat-c socle doing" data-nm="Statistiques descriptives" data-lv="Compagnon · Statistiques" data-pr="Lire graphiques + Décimaux" data-se="Calculer et interpréter moyenne, médiane, étendue." data-pe="Analyser un VRAI jeu de données — sa Quête « qualité de l'air » !" data-et="doing"><div class="nm">Statistiques descriptives</div><div class="lv">Compagnon · en cours</div><div class="state">◐</div><div class="crown">⭐</div></div>
+    </div>
+    <div class="cell">
+      <div class="card stat-c todo" data-nm="Probabilités" data-lv="Maître · Statistiques" data-pr="Pourcentages + Lire graphiques" data-se="Estimer et calculer des probabilités simples." data-pe="Jeux, prévisions, évaluation d'un risque." data-et="todo"><div class="nm">Probabilités</div><div class="lv">Maître</div><div class="state">○</div></div>
+      <div class="chain">↓ puis</div>
+      <div class="card stat-c todo" data-nm="Interpréter des données réelles (inférence)" data-lv="Maître · Statistiques" data-pr="Statistiques descriptives" data-se="Tirer des conclusions prudentes à partir de données réelles." data-pe="Rapport d'enquête argumenté et nuancé." data-et="todo"><div class="nm">Interpréter des données réelles</div><div class="lv">Maître</div><div class="state">○</div></div>
+    </div>
+
+    <!-- LIGNE 6 : Logique & résolution de problèmes -->
+    <div class="rowlabel" style="background:var(--t-log)">Logique &amp; résolution de problèmes</div>
+    <div class="cell">
+      <div class="card log socle done" data-nm="Raisonnement logique" data-lv="Novice · Logique" data-pr="—" data-se="Enchaîner des déductions, repérer une contradiction." data-pe="Énigmes, jeux de logique, petits débats." data-et="done"><div class="nm">Raisonnement logique</div><div class="lv">Novice</div><div class="state">✓</div><div class="crown">⭐</div></div>
+    </div>
+    <div class="cell">
+      <div class="card log socle done" data-nm="Résolution de problèmes" data-lv="Compagnon · Logique" data-pr="Raisonnement + 4 opérations" data-se="Décomposer et résoudre un problème inédit." data-pe="Défis ouverts, projets concrets." data-et="done"><div class="nm">Résolution de problèmes</div><div class="lv">Compagnon</div><div class="state">✓</div><div class="crown">⭐</div></div>
+    </div>
+    <div class="cell">
+      <div class="card log todo" data-nm="Modélisation mathématique" data-lv="Maître · Logique" data-pr="Résolution de problèmes + Équations" data-se="Traduire une situation réelle en modèle mathématique." data-pe="Projet de modélisation (une Quête complète)." data-et="todo"><div class="nm">Modélisation mathématique</div><div class="lv">Maître</div><div class="state">○</div></div>
+    </div>
+  </div>
+
+  <!-- Fiche détail -->
+  <div id="fiche">
+    <div class="ft">Fiche de compétence</div>
+    <h2 id="f-nm">👆 Clique une compétence pour voir sa fiche</h2>
+    <div class="row"><b>Sous-domaine / niveau</b><span id="f-lv">—</span></div>
+    <div class="row"><b>État (Maya)</b><span id="f-et">—</span></div>
+    <div class="row"><b>Prérequis (≈ chapitre avant)</b><span id="f-pr">—</span></div>
+    <div class="row"><b>Seuil de maîtrise</b><span id="f-se">—</span></div>
+    <div class="row"><b>Preuve attendue</b><span id="f-pe">—</span></div>
+    <div class="row"><b>Ressources</b><span>Multi-format : vidéos, articles, simulateur interactif, ou un humain au Foyer/dans la Guilde (l'Atlas pointe vers les meilleures, quel que soit le format).</span></div>
+  </div>
+
+  <footer>
+    Le « programme » est ici une <b>carte vivante</b> maintenue par la Guilde « Maths » et la gouvernance, amorcée sur les
+    référentiels ESCO/O*NET. On progresse par <b>maîtrise</b>, pas par âge — et le <b>socle commun</b> (⭐) est garanti à tous.
+  </footer>
+
+</div>
+
+<script>
+  var last=null;
+  function show(c){
+    document.getElementById('f-nm').innerHTML = c.dataset.nm;
+    document.getElementById('f-lv').innerHTML = c.dataset.lv;
+    document.getElementById('f-pr').innerHTML = c.dataset.pr;
+    document.getElementById('f-se').innerHTML = c.dataset.se;
+    document.getElementById('f-pe').innerHTML = c.dataset.pe;
+    var et=c.dataset.et, txt, col;
+    if(et==='done'){txt='✓ Maîtrisé';col='#16a34a';}
+    else if(et==='doing'){txt='◐ En cours';col='#d97706';}
+    else {txt='○ À venir';col='#94a3b8';}
+    document.getElementById('f-et').innerHTML = '<span class="pill" style="background:'+col+'">'+txt+'</span>';
+    if(last) last.style.outline='';
+    c.style.outline='3px solid #6366f1'; c.style.outlineOffset='1px'; last=c;
+    document.getElementById('fiche').scrollIntoView({behavior:'smooth',block:'nearest'});
+  }
+  document.querySelectorAll('.card').forEach(function(c){ c.addEventListener('click',function(){show(c);}); });
+</script>
+</body>
+</html>

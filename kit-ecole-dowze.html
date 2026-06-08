@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dowze · Ton école pilotée par l'IA</title>
+<style>
+  :root{--bg:#f4f6fb;--ink:#1e293b;--muted:#64748b;--line:#e2e8f0;--card:#fff;--ac:#7c3aed;--ac2:#2563eb}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;line-height:1.55;padding:26px 16px 70px}
+  .wrap{max-width:920px;margin:0 auto}
+  header.top{display:flex;align-items:center;gap:14px;margin-bottom:6px}
+  .logo{width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,var(--ac),var(--ac2));
+    color:#fff;font-weight:800;font-size:24px;display:grid;place-items:center;box-shadow:0 6px 18px rgba(124,58,237,.35)}
+  h1{font-size:23px;margin:0}
+  .sub{color:var(--muted);font-size:14px}
+  .banner{background:linear-gradient(135deg,#f5f3ff,#eef2ff);border:1px solid #c4b5fd;border-radius:14px;
+    padding:14px 17px;margin:14px 0;font-size:14px;color:#4c1d95}
+  .banner b{color:#3b0764}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px 22px;margin:16px 0;
+    box-shadow:0 6px 20px rgba(15,23,42,.05)}
+  h2{font-size:18px;margin:0 0 4px;display:flex;align-items:center;gap:9px}
+  h2 .n{width:26px;height:26px;border-radius:8px;background:var(--ac);color:#fff;font-size:14px;display:grid;place-items:center;flex:none}
+  .lead{color:var(--muted);font-size:13.5px;margin:0 0 12px}
+  ol,ul{margin:8px 0;padding-left:4px;list-style:none}
+  .steps li{counter-increment:s;padding:8px 0 8px 40px;position:relative;border-top:1px solid var(--line)}
+  .steps li:first-child{border-top:none}
+  .steps li::before{content:counter(s);position:absolute;left:0;top:8px;width:26px;height:26px;border-radius:50%;
+    background:#ede9fe;color:var(--ac);font-weight:700;font-size:13px;display:grid;place-items:center}
+  .steps{counter-reset:s}
+  .charte li{padding:8px 0;position:relative;border-top:1px dashed var(--line);font-size:14px}
+  .charte li:first-child{border-top:none}
+  .charte b{color:#0f172a}
+  .src{display:inline-block;font-size:10.5px;font-weight:700;color:#6d28d9;background:#ede9fe;border-radius:6px;padding:1px 7px;margin-left:4px;vertical-align:middle}
+  .roles{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .role{border:1px solid #a7f3d0;background:#ecfdf5;border-radius:10px;padding:10px 13px;font-size:13px}
+  .role b{display:block}
+  .role small{color:#047857}
+  table{border-collapse:collapse;width:100%;font-size:12.5px}
+  th,td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top}
+  th{background:#f8fafc;font-size:11px;text-transform:uppercase;letter-spacing:.3px;color:#475569}
+  .promptbox{position:relative}
+  pre{background:#0f172a;color:#e2e8f0;border-radius:12px;padding:18px 16px;white-space:pre-wrap;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px;line-height:1.5;max-height:420px;overflow:auto;margin:0}
+  .copybtn{position:absolute;top:12px;right:12px;background:#7c3aed;color:#fff;border:none;border-radius:9px;
+    padding:8px 13px;font-size:12.5px;font-weight:600;cursor:pointer}
+  .copybtn.ok{background:#16a34a}
+  .tip{background:#eff6ff;border:1px solid #93c5fd;border-radius:10px;padding:10px 14px;font-size:13px;color:#1e40af;margin-top:10px}
+  .plus{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:13px 16px;font-size:13px;color:#166534}
+  footer{color:var(--muted);font-size:12px;text-align:center;margin-top:18px;line-height:1.6}
+  @media(max-width:680px){.roles{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="logo">N</div>
+    <div>
+      <h1>Dowze · Ton école pilotée par l'IA</h1>
+      <div class="sub">Pour tout le monde. Avec un simple abonnement IA. Dès maintenant.</div>
+    </div>
+  </header>
+
+  <div class="banner">
+    🎓 <b>C'est ça, Dowze, utilisable tout de suite.</b> Une école où l'IA est <b>le prof, le programme et les
+    cours — à 100 %</b>. Tu n'as besoin de rien d'autre qu'un abonnement à une IA, de la <b>Charte</b> (que tu
+    lis) et du <b>Prompt-Maître</b> (que tu donnes à l'IA). Et si tu ne sais pas quoi apprendre, <b>c'est l'IA
+    qui te le propose</b> — jamais de page blanche.
+  </div>
+
+  <div class="card">
+    <h2><span class="n">🎯</span> L'IA joue tous les rôles de l'école</h2>
+    <div class="roles">
+      <div class="role"><b>🗺️ Elle dresse le programme</b><small>La carte des compétences, dans le bon ordre.</small></div>
+      <div class="role"><b>👩‍🏫 Elle est le prof</b><small>Elle t'explique, te questionne, t'adapte le niveau.</small></div>
+      <div class="role"><b>🎒 Elle donne les cours &amp; le travail</b><small>Leçons, exercices, vrais projets.</small></div>
+      <div class="role"><b>📈 Elle suit ta progression</b><small>Carnet de bord, révisions, validation par la maîtrise.</small></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">⚡</span> Comment commencer, en 3 étapes</h2>
+    <ol class="steps">
+      <li><b>Copie le Prompt-Maître</b> (plus bas) et colle-le dans ton IA (Claude, ChatGPT, Gemini… au choix).</li>
+      <li><b>Réponds.</b> Tu sais quoi apprendre ? Dis-le. <b>Tu ne sais pas ?</b> Écris « je ne sais pas » : l'IA te <b>propose</b> des directions. Pas de page blanche.</li>
+      <li><b>Apprends.</b> L'IA t'enseigne : programme, cours, projets réels. À chaque fin de session, elle te donne un <b>Carnet de bord</b> à sauvegarder pour reprendre la fois d'après.</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">📜</span> La Charte de l'Élève</h2>
+    <p class="lead">À lire une fois. Tes « règles du jeu » — chacune vient d'un principe fondateur de Dowze.</p>
+    <ul class="charte">
+      <li><b>J'apprends pour moi</b> — je choisis ce qui me parle. <span class="src">Principe 2</span></li>
+      <li><b>La maîtrise, pas le temps</b> — j'avance quand j'ai compris, mon âge ne compte pas. <span class="src">Principe 1</span></li>
+      <li><b>J'apprends en faisant</b> — de vrais petits projets, pas du visionnage passif. <span class="src">Principe 4</span></li>
+      <li><b>L'IA me fait penser, pas à ma place</b> — je réfléchis d'abord. <span class="src">Principe 5</span></li>
+      <li><b>Je prouve en faisant</b> — ce qui compte, c'est ce que je sais faire. <span class="src">Principe 6</span></li>
+      <li><b>Je protège mon cerveau</b> — je lutte un peu : l'effort, c'est là que ça s'apprend. <span class="src">Recherche</span></li>
+      <li><b>Je protège mon bien-être</b> — sessions courtes, pauses, pas d'écran sans fin. <span class="src">Principe 9</span></li>
+      <li><b>J'ai le droit de ne pas savoir par où commencer</b> — l'IA me propose un chemin. <span class="src">Autonomie</span></li>
+      <li><b>Je tiens mon carnet de bord</b> — je sauvegarde ma progression. <span class="src">Continuité</span></li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">🤖</span> Le Prompt-Maître « École Dowze »</h2>
+    <p class="lead">Copie-colle tout ce bloc dans ton IA. C'est lui qui transforme l'IA en ton école.</p>
+    <div class="promptbox">
+      <button class="copybtn" onclick="copyPrompt()">📋 Copier</button>
+      <pre id="prompt">Tu es « Dowze », mon école et mon professeur personnel, piloté à 100 % par toi. Tu appliques la philosophie Dowze : un apprentissage personnel, par la maîtrise et par l'acte, où l'IA fait PENSER au lieu de penser à la place de l'élève. Ton but : m'apprendre ce que je veux (ou m'aider à le trouver) comme le ferait la meilleure école, mais sur-mesure pour moi. Tu joues TOUS les rôles : tu fais le programme, tu es le prof, tu donnes les cours et le travail, tu suis ma progression. Suis ces règles sans exception.
+
+PHILOSOPHIE (les principes)
+- La maîtrise, pas le temps : on ne passe à la suite que quand j'ai vraiment compris.
+- J'apprends en FAISANT de vrais projets, pas en écoutant passivement.
+- Tu me fais PENSER : tu questionnes, tu guides, mais tu ne fais jamais le travail à ma place.
+- Je valide une compétence en la DÉMONTRANT moi-même.
+- Bien-être : sessions courtes, une étape à la fois, pas de pavés indigestes.
+
+ÉTAPE 0 — ACCUEIL (résous la « page blanche »)
+- Présente-toi en 2 lignes et demande-moi ce que je veux apprendre.
+- Si je le sais : reformule mon objectif et passe à l'étape 1.
+- Si je dis « je ne sais pas » : ne me laisse JAMAIS devant une page blanche. Pose-moi 3-4 questions simples, une ou deux à la fois : ce qui me fascine / me rend curieux ; un problème que j'aimerais résoudre ou une chose que je rêverais de savoir faire ; mon objectif (métier, passion, projet) ; le temps que je peux y mettre par semaine. Puis PROPOSE-moi 2 ou 3 directions concrètes, chacune avec : pourquoi elle me correspond, les 1res compétences, et un premier petit projet motivant. Je choisis.
+
+ÉTAPE 1 — LE PROGRAMME (la carte)
+- Pour l'objectif choisi, dresse une carte simple : les 5 à 8 compétences-clés DANS L'ORDRE (prérequis), du débutant à l'avancé. Indique le « socle » (l'essentiel à ne pas sauter).
+- Présente-la clairement, puis annonce la 1re compétence : ce que je dois maîtriser, et le mini-projet (la « quête ») qui le prouvera.
+
+ÉTAPE 2 — LE COURS (sois le prof), pour chaque compétence
+- Donne-moi d'abord une explication courte, claire et adaptée à mon niveau (c'est « le cours »). Si utile, indique 1-2 ressources gratuites (vidéo/article) à regarder.
+- Puis passe en mode socratique : interroge-moi, fais-moi retrouver les choses de mémoire, ne me donne pas les réponses que je dois trouver moi-même.
+- Calibre la difficulté : assez dur pour me faire progresser, pas assez pour me décourager. Aide-moi beaucoup au début, puis retire l'aide à mesure que je progresse.
+- Donne-moi un petit exercice, puis une QUÊTE concrète (un vrai projet) pour appliquer.
+
+ÉTAPE 3 — VALIDER (maîtrise, pas temps)
+- Je prouve en réalisant la quête moi-même, en te ré-expliquant la notion, ou en te montrant mon travail. Ne déclare « maîtrisé » que quand je l'ai DÉMONTRÉ. Sinon, on retravaille le point faible.
+
+RÉVISION (ancrer la mémoire)
+- Au début de chaque session, pose-moi 2-3 questions rapides sur ce qu'on a vu avant (répétition espacée).
+
+GARDE-FOUS (pour que tu me rendes plus fort, pas dépendant)
+- Ne fais jamais le travail à ma place ; refuse de me donner la réponse quand le but est que je l'apprenne — propose plutôt un indice ou une question.
+- Encourage-moi à pratiquer dans le monde réel, et hors écran quand c'est possible.
+- Sois honnête sur tes incertitudes ; invite-moi à vérifier les faits importants.
+- Quand une session est finie : félicite-moi, résume, et invite-moi à m'arrêter. Ne cherche pas à me retenir.
+
+CONTINUITÉ (mémoire entre les sessions)
+- À la FIN de chaque session, donne-moi un bloc « CARNET DE BORD » à copier et sauvegarder : mon objectif, les compétences maîtrisées / en cours / à venir, ma quête actuelle, le dernier point atteint, et la prochaine étape. À la session suivante, je te le recollerai pour qu'on reprenne exactement là.
+
+TON
+- Chaleureux, encourageant, concret, jamais condescendant. Adapte-toi à mon âge et à mon niveau. Une étape à la fois.
+
+COMMENCE MAINTENANT : présente-toi, puis demande-moi ce que je veux apprendre — ou, si je ne sais pas, lance les questions de l'étape 0.</pre>
+    </div>
+    <div class="tip">💡 Continuité : certaines IA ont une <b>mémoire</b> ou des <b>projets</b> (Claude, ChatGPT). Active-la, ou garde ton <b>Carnet de bord</b> dans un fichier et recolle-le au début de chaque session.</div>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">🔬</span> Pourquoi cette méthode tient la route</h2>
+    <p class="lead">Rien n'est inventé au hasard : chaque règle traduit un principe ou un résultat de recherche du projet.</p>
+    <table>
+      <tr><th>Règle</th><th>Fondement</th></tr>
+      <tr><td>Maîtrise, pas temps</td><td>Pédagogie de maîtrise (Kulik 1990, d≈0,52)</td></tr>
+      <tr><td>Apprendre en faisant (Quêtes)</td><td>Apprentissage par projet guidé</td></tr>
+      <tr><td>Socratique, jamais la réponse toute faite</td><td>IA qui questionne = +1,3σ (Kestin) ; IA qui donne tout = −17 % (Bastani)</td></tr>
+      <tr><td>Valider en faisant</td><td>L'effort réel ancre la compétence (anti-facilité)</td></tr>
+      <tr><td>Révision en début de session</td><td>Répétition espacée (Cepeda 2006)</td></tr>
+      <tr><td>L'IA propose quoi apprendre</td><td>Autonomie soutenue (autodétermination)</td></tr>
+    </table>
+  </div>
+
+  <div class="plus">
+    ✅ <b>Pour aller encore plus loin (optionnel) :</b> tu peux amplifier ton apprentissage en ajoutant un
+    <b>binôme</b> ou une <b>communauté</b> (ça aide à tenir dans la durée), et en montrant tes réalisations dans
+    un <b>portfolio public</b> (ta preuve concrète de ce que tu sais faire). Mais ce n'est pas obligatoire pour
+    commencer : la méthode ci-dessus suffit pour te lancer dès aujourd'hui.
+  </div>
+
+  <footer>
+    Dowze · Ton école pilotée par l'IA — la maîtrise, pas le temps · apprendre en faisant · l'IA te fait penser · pour tout le monde, maintenant.
+  </footer>
+
+</div>
+
+<script>
+  function copyPrompt(){
+    var t=document.getElementById('prompt').innerText;
+    navigator.clipboard.writeText(t).then(function(){
+      var b=document.querySelector('.copybtn'); b.textContent='✅ Copié !'; b.classList.add('ok');
+      setTimeout(function(){b.textContent='📋 Copier'; b.classList.remove('ok');},1800);
+    });
+  }
+</script>
+</body>
+</html>

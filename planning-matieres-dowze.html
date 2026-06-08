@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dowze · Planning par domaines & compétences</title>
+<style>
+  :root{ --bg:#f4f6fb; --ink:#1e293b; --muted:#64748b; --line:#e2e8f0; --card:#fff; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;padding:26px 16px 60px}
+  .wrap{max-width:1320px;margin:0 auto}
+
+  header.top{display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:14px;margin-bottom:12px}
+  .brand{display:flex;align-items:center;gap:14px}
+  .logo{width:48px;height:48px;border-radius:13px;background:linear-gradient(135deg,#3b82f6,#7c3aed);
+    color:#fff;font-weight:800;font-size:22px;display:grid;place-items:center;box-shadow:0 6px 18px rgba(59,130,246,.35)}
+  h1{font-size:21px;margin:0;letter-spacing:.3px}
+  .sub{color:var(--muted);font-size:13.5px;margin-top:3px}
+  .weeknav{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);
+    border-radius:12px;padding:8px 14px;font-size:14px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+  .btn{cursor:pointer;border:none;background:#1e293b;color:#fff;padding:9px 14px;border-radius:10px;font-size:13px;font-weight:600}
+
+  .note{background:#eff6ff;border:1px solid #93c5fd;border-radius:12px;padding:11px 15px;margin:6px 0 14px;
+    font-size:13px;color:#1e40af;display:flex;gap:9px;align-items:flex-start}
+
+  .legend{display:flex;flex-wrap:wrap;gap:7px 10px;margin:0 0 8px}
+  .chip{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:#334155;
+    background:var(--card);border:1px solid var(--line);border-radius:999px;padding:4px 9px}
+  .dot{width:10px;height:10px;border-radius:3px;display:inline-block}
+  .legend2{font-size:11.5px;color:var(--muted);margin:0 0 16px}
+  .legend2 b{color:#334155}
+
+  .grid{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden;
+    box-shadow:0 10px 30px rgba(15,23,42,.06)}
+  table{border-collapse:collapse;width:100%;table-layout:fixed}
+  thead th{background:#0f172a;color:#fff;font-size:13px;font-weight:600;padding:10px 5px;text-align:center;
+    border-right:1px solid rgba(255,255,255,.08)}
+  thead th .d{display:block;font-size:11px;color:#cbd5e1;font-weight:500;margin-top:2px}
+  thead th.timehead{width:66px;background:#1e293b}
+  tbody td{border:1px solid var(--line);vertical-align:top;height:86px;padding:0}
+  td.time{background:#f8fafc;color:var(--muted);font-size:11px;text-align:center;font-weight:600;
+    line-height:1.3;padding:6px 2px;width:66px}
+  td.time small{display:block;font-weight:400;color:#94a3b8;font-size:10px;margin-top:2px}
+
+  .act{display:flex;flex-direction:column;gap:3px;height:100%;padding:6px 8px;
+    background:var(--f);border-left:4px solid var(--b)}
+  .badge{align-self:flex-start;background:var(--b);color:#fff;font-size:8.5px;font-weight:700;
+    letter-spacing:.3px;text-transform:uppercase;padding:2px 6px;border-radius:5px;line-height:1.3}
+  .act strong{font-size:12px;line-height:1.2;color:#0f172a}
+  .act em{font-style:normal;font-size:10.5px;color:#475569;line-height:1.25}
+  .act .mode{margin-top:auto;font-size:9.5px;color:#64748b;font-weight:600}
+
+  /* Domaines (couleur = matière) */
+  td.sci   {--b:#16a34a;--f:#e6f6ec}
+  td.math  {--b:#7c3aed;--f:#f1ebfe}
+  td.lang  {--b:#2563eb;--f:#e7efff}
+  td.langue{--b:#0d9488;--f:#dcf5f1}
+  td.num   {--b:#0891b2;--f:#ddf4fa}
+  td.soc   {--b:#ea580c;--f:#ffe9db}
+  td.art   {--b:#db2777;--f:#fde4ef}
+  td.corps {--b:#e11d48;--f:#fde3ea}
+  td.soi   {--b:#d97706;--f:#fdeccf}
+  td.philo {--b:#4f46e5;--f:#e7e6fd}
+  td.revision{--b:#64748b;--f:#eef2f6}
+  td.preuve{--b:#a16207;--f:#fbf0cf}
+  td.libre {--b:#6366f1;--f:#ebecfe}
+  td.repos {--b:#94a3b8;--f:#f1f5f9}
+
+  td.pause{background:repeating-linear-gradient(45deg,#fafafa,#fafafa 6px,#f1f5f9 6px,#f1f5f9 12px);
+    text-align:center;color:#94a3b8;font-size:11px;font-style:italic}
+
+  footer{margin-top:16px;color:var(--muted);font-size:12px;text-align:center;line-height:1.6}
+
+  @media print{ body{background:#fff;padding:0} .btn{display:none} .grid{box-shadow:none} @page{size:A4 landscape;margin:8mm} }
+  @media(max-width:820px){ thead th .d{display:none} .act em{display:none} tbody td{height:auto} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand">
+      <div class="logo">N</div>
+      <div>
+        <h1>Dowze · Domaines & compétences de la semaine</h1>
+        <div class="sub">Maya, 16 ans · Quête : « Qualité de l'air du quartier » (projet transversal)</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center">
+      <div class="weeknav">◀ &nbsp;<b>Semaine du 8 au 14 juin 2026</b>&nbsp; ▶</div>
+      <button class="btn" onclick="window.print()">🖨️ Imprimer</button>
+    </div>
+  </header>
+
+  <div class="note">
+    <span>🧭</span>
+    <span><b>Couleur = domaine (la « matière »)</b> · <b>en gras = la compétence</b> · <b>en dessous = la sous-compétence</b>
+    précise · <b>le petit tag du bas = le mode</b> (Quête, Cercle, Foyer, Guilde, Enseigner). Un même projet
+    traverse plusieurs domaines : ce n'est pas des matières cloisonnées, mais une carte de compétences reliées.</span>
+  </div>
+
+  <div class="legend">
+    <span class="chip"><span class="dot" style="background:#16a34a"></span>Sciences &amp; monde</span>
+    <span class="chip"><span class="dot" style="background:#7c3aed"></span>Maths &amp; raisonnement</span>
+    <span class="chip"><span class="dot" style="background:#2563eb"></span>Langages &amp; communication</span>
+    <span class="chip"><span class="dot" style="background:#0d9488"></span>Langues étrangères</span>
+    <span class="chip"><span class="dot" style="background:#0891b2"></span>Numérique &amp; littératie IA</span>
+    <span class="chip"><span class="dot" style="background:#ea580c"></span>Société &amp; citoyenneté</span>
+    <span class="chip"><span class="dot" style="background:#db2777"></span>Arts &amp; création</span>
+    <span class="chip"><span class="dot" style="background:#e11d48"></span>Corps &amp; santé</span>
+    <span class="chip"><span class="dot" style="background:#d97706"></span>Soi &amp; relations</span>
+    <span class="chip"><span class="dot" style="background:#4f46e5"></span>Philosophie &amp; sens</span>
+    <span class="chip"><span class="dot" style="background:#a16207"></span>Validation · Passeport</span>
+    <span class="chip"><span class="dot" style="background:#64748b"></span>Révision · Mentor</span>
+    <span class="chip"><span class="dot" style="background:#6366f1"></span>Libre</span>
+    <span class="chip"><span class="dot" style="background:#94a3b8"></span>Repos</span>
+  </div>
+  <p class="legend2"><b>Modes :</b> 🔬/✍️/💻 Quête (projet réel) · 👥 Cercle (pairs) · 🏠 Foyer (sur place) ·
+    ⚒️ Guilde · 🧑‍🏫 Enseigner · 🧠 Mentor · 🎖️ Preuve</p>
+
+  <div class="grid">
+  <table>
+    <thead>
+      <tr>
+        <th class="timehead">Heure</th>
+        <th>Lundi<span class="d">8 juin</span></th>
+        <th>Mardi<span class="d">9 juin</span></th>
+        <th>Mercredi<span class="d">10 juin</span></th>
+        <th>Jeudi<span class="d">11 juin</span></th>
+        <th>Vendredi<span class="d">12 juin</span></th>
+        <th>Samedi<span class="d">13 juin</span></th>
+        <th>Dimanche<span class="d">14 juin</span></th>
+      </tr>
+    </thead>
+    <tbody>
+
+      <!-- R1 08:30-09:00 : Réveil cognitif -->
+      <tr>
+        <td class="time">08:30<small>09:00</small></td>
+        <td class="revision"><div class="act"><span class="badge">Révision</span><strong>Réveil cognitif</strong><em>Rappel espacé · Maths &amp; Sciences</em><span class="mode">🧠 Mentor</span></div></td>
+        <td class="revision"><div class="act"><span class="badge">Révision</span><strong>Réveil cognitif</strong><em>Rappel espacé · Sciences &amp; Langues</em><span class="mode">🧠 Mentor</span></div></td>
+        <td class="revision"><div class="act"><span class="badge">Révision</span><strong>Réveil cognitif</strong><em>Rappel espacé · Langages &amp; Société</em><span class="mode">🧠 Mentor</span></div></td>
+        <td class="revision"><div class="act"><span class="badge">Révision</span><strong>Réveil cognitif</strong><em>Rappel espacé · Numérique &amp; Maths</em><span class="mode">🧠 Mentor</span></div></td>
+        <td class="revision"><div class="act"><span class="badge">Révision</span><strong>Réveil cognitif</strong><em>Rappel espacé · révision générale</em><span class="mode">🧠 Mentor</span></div></td>
+        <td class="libre"><div class="act"><span class="badge">Libre</span><strong>Réveil libre</strong><em>Sans réveil imposé</em><span class="mode">😴</span></div></td>
+        <td class="repos" rowspan="8"><div class="act"><span class="badge">Repos</span><strong>Repos</strong><em>Aucune notification. Le repos fait partie de l'apprentissage : pas de « série » à entretenir.</em><span class="mode">🌿 Dimanche</span></div></td>
+      </tr>
+
+      <!-- R2 09:00-10:30 -->
+      <tr>
+        <td class="time">09:00<small>10:30</small></td>
+        <td class="sci"><div class="act"><span class="badge">Sciences &amp; monde</span><strong>Méthode scientifique</strong><em>Nettoyer &amp; interpréter un jeu de données</em><span class="mode">🔬 Quête</span></div></td>
+        <td class="sci"><div class="act"><span class="badge">Sciences &amp; monde</span><strong>Mesure &amp; instruments</strong><em>Relever des mesures avec un capteur d'air</em><span class="mode">🏠 Foyer</span></div></td>
+        <td class="lang"><div class="act"><span class="badge">Langages &amp; com.</span><strong>Écrit structuré</strong><em>Rédiger l'intro &amp; la méthode du rapport</em><span class="mode">✍️ Quête</span></div></td>
+        <td class="lang"><div class="act"><span class="badge">Langages &amp; com.</span><strong>Critique constructive</strong><em>Revue du brouillon par les pairs</em><span class="mode">👥 Cercle</span></div></td>
+        <td class="lang"><div class="act"><span class="badge">Langages &amp; com.</span><strong>Publication</strong><em>Finaliser &amp; publier le rapport (usage réel)</em><span class="mode">🚀 Quête</span></div></td>
+        <td class="libre" rowspan="3"><div class="act"><span class="badge">Libre / Passion</span><strong>Exploration libre</strong><em>Au choix dans l'Atlas : musique, langue, dessin, lecture… La curiosité décide.</em><span class="mode">🎨 Libre</span></div></td>
+      </tr>
+
+      <!-- R3 10:30-11:00 -->
+      <tr>
+        <td class="time">10:30<small>11:00</small></td>
+        <td class="pause">☕ Pause</td><td class="pause">☕ Pause</td><td class="pause">☕ Pause</td><td class="pause">☕ Pause</td><td class="pause">☕ Pause</td>
+      </tr>
+
+      <!-- R4 11:00-12:30 -->
+      <tr>
+        <td class="time">11:00<small>12:30</small></td>
+        <td class="math"><div class="act"><span class="badge">Maths &amp; raisonn.</span><strong>Statistiques descriptives</strong><em>Moyenne, médiane, valeurs extrêmes</em><span class="mode">🧩 Quête + Mentor</span></div></td>
+        <td class="soc"><div class="act"><span class="badge">Société &amp; citoyen.</span><strong>Enjeux environnementaux</strong><em>Comprendre les sources de pollution locales</em><span class="mode">🏠 Foyer + Guilde</span></div></td>
+        <td class="lang"><div class="act"><span class="badge">Langages &amp; com.</span><strong>Argumentation</strong><em>Raisonner, citer ses sources</em><span class="mode">🧩 Quête + Mentor</span></div></td>
+        <td class="num"><div class="act"><span class="badge">Numérique &amp; IA</span><strong>Esprit critique face à l'IA</strong><em>Vérifier une info, repérer une hallucination</em><span class="mode">🔎 Quête</span></div></td>
+        <td class="preuve"><div class="act"><span class="badge">Validation</span><strong>→ Passeport</strong><em>Méthode scientifique · Statistiques · Argumentation</em><span class="mode">🎖️ Pairs + maître de Guilde</span></div></td>
+      </tr>
+
+      <!-- R5 12:30-14:00 -->
+      <tr>
+        <td class="time">12:30<small>14:00</small></td>
+        <td class="pause">🍽️ Déjeuner / libre</td>
+        <td class="pause">🍽️ Déjeuner au Foyer</td>
+        <td class="pause">🍽️ Déjeuner / libre</td>
+        <td class="pause">🍽️ Déjeuner / libre</td>
+        <td class="pause">🍽️ Déjeuner / libre</td>
+        <td class="libre" rowspan="4"><div class="act"><span class="badge">Libre</span><strong>Temps personnel</strong><em>Famille, amis, sport, sorties, ou rien du tout. Le week-end n'est pas « scolarisé ».</em><span class="mode">🧺 Libre</span></div></td>
+      </tr>
+
+      <!-- R6 14:00-15:30 -->
+      <tr>
+        <td class="time">14:00<small>15:30</small></td>
+        <td class="num"><div class="act"><span class="badge">Numérique &amp; IA</span><strong>Données &amp; tableurs</strong><em>Construire un graphique lisible</em><span class="mode">💻 Quête</span></div></td>
+        <td class="corps"><div class="act"><span class="badge">Corps &amp; santé</span><strong>Activité physique</strong><em>Sport collectif · endurance</em><span class="mode">🏠 Foyer</span></div></td>
+        <td class="langue"><div class="act"><span class="badge">Langues étr.</span><strong>Anglais — compréhension</strong><em>Lire un article scientifique en anglais</em><span class="mode">🌍 Atlas</span></div></td>
+        <td class="soc"><div class="act"><span class="badge">Société &amp; citoyen.</span><strong>Sciences citoyennes</strong><em>Séance de Guilde · projet collectif</em><span class="mode">⚒️ Guilde</span></div></td>
+        <td class="soi"><div class="act"><span class="badge">Soi &amp; relations</span><strong>Transmettre</strong><em>Mini-atelier : lire un graphique (aux plus jeunes)</em><span class="mode">🧑‍🏫 Enseigner</span></div></td>
+      </tr>
+
+      <!-- R7 15:30-16:30 -->
+      <tr>
+        <td class="time">15:30<small>16:30</small></td>
+        <td class="soi"><div class="act"><span class="badge">Soi &amp; relations</span><strong>Entraide</strong><em>Expliquer un graphique à un pair</em><span class="mode">🤝 Enseigner</span></div></td>
+        <td class="soi"><div class="act"><span class="badge">Soi &amp; relations</span><strong>Coopération</strong><em>Travailler en équipe sur le terrain</em><span class="mode">🏠 Foyer</span></div></td>
+        <td class="art"><div class="act"><span class="badge">Arts &amp; création</span><strong>Création visuelle</strong><em>Infographie &amp; mise en forme du rapport</em><span class="mode">🎨 Quête</span></div></td>
+        <td class="philo"><div class="act"><span class="badge">Philo &amp; sens</span><strong>Éthique</strong><em>Débat : données, vie privée &amp; bien commun</em><span class="mode">💬 Guilde</span></div></td>
+        <td class="revision"><div class="act"><span class="badge">Révision</span><strong>Bilan de la semaine</strong><em>Métacognition : ce que j'ai appris, comment</em><span class="mode">📈 Mentor</span></div></td>
+      </tr>
+
+      <!-- R8 16:30-17:00 -->
+      <tr>
+        <td class="time">16:30<small>17:00</small></td>
+        <td class="revision"><div class="act"><span class="badge">Clôture</span><strong>Bilan du jour</strong><em>« Bonne journée, à demain »</em><span class="mode">🧠 Mentor</span></div></td>
+        <td class="revision"><div class="act"><span class="badge">Clôture</span><strong>Bilan du jour</strong><em>Synchronisation du parcours</em><span class="mode">🧠 Mentor</span></div></td>
+        <td class="revision"><div class="act"><span class="badge">Clôture</span><strong>Bilan du jour</strong><em>Écran fermé</em><span class="mode">🧠 Mentor</span></div></td>
+        <td class="revision"><div class="act"><span class="badge">Clôture</span><strong>Bilan du jour</strong><em>Écran fermé</em><span class="mode">🧠 Mentor</span></div></td>
+        <td class="libre"><div class="act"><span class="badge">Libre</span><strong>Quête bouclée 🎉</strong><em>Temps libre mérité</em><span class="mode">🎵</span></div></td>
+      </tr>
+
+    </tbody>
+  </table>
+  </div>
+
+  <footer>
+    Dowze · La couleur dit le <b>domaine</b>, le texte dit la <b>compétence</b> et la <b>sous-compétence</b>, le tag dit le <b>mode</b>.<br>
+    Maîtrise &gt; horloge · Un projet traverse plusieurs domaines · Conçu pour le bien-être, pas pour l'addiction.
+  </footer>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,19 @@
+# Normalisation des fins de ligne : LF dans le dépôt, quel que soit l'OS.
+* text=auto eol=lf
+
+# Fichiers binaires (pas de normalisation)
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.pdf  binary
+*.woff  binary
+*.woff2 binary
+
+# Marque les Markdown comme du texte (diffs lisibles)
+*.md   text
+*.html text
+*.json text
+*.yml  text
+*.yaml text

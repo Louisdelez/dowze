@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dowze · Planning de la semaine</title>
+<style>
+  :root{
+    --bg:#f4f6fb; --ink:#1e293b; --muted:#64748b; --line:#e2e8f0; --card:#ffffff;
+    --mentor-b:#3b82f6; --mentor-f:#eaf2ff;
+    --quete-b:#7c3aed; --quete-f:#f1ebfe;
+    --cercle-b:#16a34a; --cercle-f:#e3f7e9;
+    --guilde-b:#ea580c; --guilde-f:#ffeede;
+    --foyer-b:#0891b2; --foyer-f:#dff6fb;
+    --enseig-b:#db2777; --enseig-f:#fde6f1;
+    --preuve-b:#ca8a04; --preuve-f:#fdf4cf;
+    --libre-b:#6366f1; --libre-f:#eaecff;
+    --repos-b:#94a3b8; --repos-f:#f1f5f9;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;padding:28px 18px 60px}
+  .wrap{max-width:1240px;margin:0 auto}
+
+  header.top{display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:14px;margin-bottom:14px}
+  .brand{display:flex;align-items:center;gap:14px}
+  .logo{width:48px;height:48px;border-radius:13px;background:linear-gradient(135deg,#3b82f6,#7c3aed);
+    color:#fff;font-weight:800;font-size:22px;display:grid;place-items:center;box-shadow:0 6px 18px rgba(59,130,246,.35)}
+  h1{font-size:22px;margin:0;letter-spacing:.3px}
+  .sub{color:var(--muted);font-size:14px;margin-top:3px}
+  .weeknav{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);
+    border-radius:12px;padding:8px 14px;font-size:14px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+  .weeknav b{font-size:15px}
+  .btn{cursor:pointer;border:none;background:#1e293b;color:#fff;padding:9px 14px;border-radius:10px;font-size:13px;font-weight:600}
+
+  .note{background:#fffbeb;border:1px solid #fcd34d;border-radius:12px;padding:12px 16px;margin:6px 0 18px;
+    font-size:13.5px;color:#854d0e;display:flex;gap:10px;align-items:flex-start}
+  .note b{color:#713f12}
+
+  /* Légende */
+  .legend{display:flex;flex-wrap:wrap;gap:8px 14px;margin:0 0 16px}
+  .chip{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:#334155;
+    background:var(--card);border:1px solid var(--line);border-radius:999px;padding:5px 11px}
+  .dot{width:11px;height:11px;border-radius:3px;display:inline-block}
+
+  /* Grille */
+  .grid{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden;
+    box-shadow:0 10px 30px rgba(15,23,42,.06)}
+  table{border-collapse:collapse;width:100%;table-layout:fixed}
+  thead th{background:#0f172a;color:#fff;font-size:13px;font-weight:600;padding:11px 6px;text-align:center;
+    border-right:1px solid rgba(255,255,255,.08)}
+  thead th .d{display:block;font-size:11px;color:#cbd5e1;font-weight:500;margin-top:2px}
+  thead th.timehead{width:74px;background:#1e293b}
+  tbody td{border:1px solid var(--line);vertical-align:top;height:64px;padding:0}
+  td.time{background:#f8fafc;color:var(--muted);font-size:11.5px;text-align:center;font-weight:600;
+    line-height:1.35;padding:6px 2px;width:74px}
+  td.time small{display:block;font-weight:400;color:#94a3b8;font-size:10px;margin-top:2px}
+
+  .act{display:flex;flex-direction:column;gap:2px;height:100%;padding:7px 8px;border-left:4px solid transparent}
+  .act .ico{font-size:13px}
+  .act strong{font-size:12.5px;line-height:1.2}
+  .act em{font-style:normal;font-size:11px;color:#475569;line-height:1.25}
+  .act .tag{margin-top:auto;font-size:9.5px;letter-spacing:.4px;text-transform:uppercase;color:#94a3b8;font-weight:700}
+
+  td.mentor .act{background:var(--mentor-f);border-left-color:var(--mentor-b)}
+  td.quete  .act{background:var(--quete-f); border-left-color:var(--quete-b)}
+  td.cercle .act{background:var(--cercle-f);border-left-color:var(--cercle-b)}
+  td.guilde .act{background:var(--guilde-f);border-left-color:var(--guilde-b)}
+  td.foyer  .act{background:var(--foyer-f); border-left-color:var(--foyer-b)}
+  td.enseig .act{background:var(--enseig-f);border-left-color:var(--enseig-b)}
+  td.preuve .act{background:var(--preuve-f);border-left-color:var(--preuve-b)}
+  td.libre  .act{background:var(--libre-f); border-left-color:var(--libre-b)}
+  td.repos  .act{background:var(--repos-f); border-left-color:var(--repos-b)}
+
+  td.pause{background:repeating-linear-gradient(45deg,#fafafa,#fafafa 6px,#f1f5f9 6px,#f1f5f9 12px);
+    text-align:center;color:#94a3b8;font-size:11px;font-style:italic}
+
+  footer{margin-top:18px;color:var(--muted);font-size:12px;text-align:center;line-height:1.6}
+
+  @media print{
+    body{background:#fff;padding:0}
+    .btn{display:none}
+    .grid{box-shadow:none;border-color:#cbd5e1}
+    @page{size:A4 landscape;margin:10mm}
+  }
+  @media(max-width:760px){
+    thead th .full{display:none}
+    .act em{display:none}
+    tbody td{height:auto}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand">
+      <div class="logo">N</div>
+      <div>
+        <h1>Dowze · Rythme de la semaine</h1>
+        <div class="sub">Maya, 16 ans · Quête en cours : « Qualité de l'air du quartier »</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center">
+      <div class="weeknav">◀ &nbsp;<b>Semaine du 8 au 14 juin 2026</b>&nbsp; ▶</div>
+      <button class="btn" onclick="window.print()">🖨️ Imprimer</button>
+    </div>
+  </header>
+
+  <div class="note">
+    <span>💡</span>
+    <span><b>Ce n'est pas un emploi du temps imposé.</b> Dans Dowze, il n'y a ni sonnerie ni horaire
+    obligatoire : ceci est un <b>rythme proposé</b>. Maya avance à sa <b>maîtrise</b>, pas à l'horloge.
+    Elle peut décaler, allonger ou déplacer un bloc. Le temps d'écran « solo » est volontairement
+    <b>limité</b> ; le reste, c'est de l'humain, du physique et du repos.</span>
+  </div>
+
+  <div class="legend">
+    <span class="chip"><span class="dot" style="background:var(--mentor-b)"></span>Mentor (IA-tuteur · révision)</span>
+    <span class="chip"><span class="dot" style="background:var(--quete-b)"></span>Quête (projet réel)</span>
+    <span class="chip"><span class="dot" style="background:var(--cercle-b)"></span>Cercle (pairs)</span>
+    <span class="chip"><span class="dot" style="background:var(--guilde-b)"></span>Guilde</span>
+    <span class="chip"><span class="dot" style="background:var(--foyer-b)"></span>Foyer (sur place)</span>
+    <span class="chip"><span class="dot" style="background:var(--enseig-b)"></span>Enseigner</span>
+    <span class="chip"><span class="dot" style="background:var(--preuve-b)"></span>Preuve · Passeport</span>
+    <span class="chip"><span class="dot" style="background:var(--libre-b)"></span>Libre / Passion</span>
+    <span class="chip"><span class="dot" style="background:var(--repos-b)"></span>Repos</span>
+  </div>
+
+  <div class="grid">
+  <table>
+    <thead>
+      <tr>
+        <th class="timehead">Heure</th>
+        <th>Lundi<span class="d">8 juin</span></th>
+        <th>Mardi<span class="d">9 juin</span></th>
+        <th>Mercredi<span class="d">10 juin</span></th>
+        <th>Jeudi<span class="d">11 juin</span></th>
+        <th>Vendredi<span class="d">12 juin</span></th>
+        <th>Samedi<span class="d">13 juin</span></th>
+        <th>Dimanche<span class="d">14 juin</span></th>
+      </tr>
+    </thead>
+    <tbody>
+
+      <!-- R1 08:30-09:00 -->
+      <tr>
+        <td class="time">08:30<small>09:00</small></td>
+        <td class="mentor"><div class="act"><span class="ico">🧠</span><strong>Réveil cognitif</strong><em>Rappel espacé (5-6 questions)</em><span class="tag">Mentor</span></div></td>
+        <td class="mentor"><div class="act"><span class="ico">🧠</span><strong>Réveil cognitif</strong><em>Rappel espacé</em><span class="tag">Mentor</span></div></td>
+        <td class="mentor"><div class="act"><span class="ico">🧠</span><strong>Réveil cognitif</strong><em>Rappel espacé</em><span class="tag">Mentor</span></div></td>
+        <td class="mentor"><div class="act"><span class="ico">🧠</span><strong>Réveil cognitif</strong><em>Rappel espacé</em><span class="tag">Mentor</span></div></td>
+        <td class="mentor"><div class="act"><span class="ico">🧠</span><strong>Réveil cognitif</strong><em>Rappel espacé</em><span class="tag">Mentor</span></div></td>
+        <td class="libre"><div class="act"><span class="ico">😴</span><strong>Réveil libre</strong><em>Sans réveil imposé</em><span class="tag">Libre</span></div></td>
+        <td class="repos" rowspan="8"><div class="act"><span class="ico">🌿</span><strong>Repos</strong><em>Aucune notification. Le repos fait partie de l'apprentissage — pas de « série » à entretenir, pas de culpabilité.</em><span class="tag">Dimanche</span></div></td>
+      </tr>
+
+      <!-- R2 09:00-10:30 -->
+      <tr>
+        <td class="time">09:00<small>10:30</small></td>
+        <td class="quete"><div class="act"><span class="ico">🔬</span><strong>Travail profond</strong><em>Quête : analyse des données</em><span class="tag">Quête</span></div></td>
+        <td class="foyer"><div class="act"><span class="ico">🏠</span><strong>Foyer — arrivée</strong><em>Atelier sur place</em><span class="tag">Foyer</span></div></td>
+        <td class="quete"><div class="act"><span class="ico">✍️</span><strong>Rédaction</strong><em>Rapport : 1ᵉʳ jet</em><span class="tag">Quête</span></div></td>
+        <td class="cercle"><div class="act"><span class="ico">👥</span><strong>Cercle</strong><em>Revue du brouillon par les pairs</em><span class="tag">Cercle</span></div></td>
+        <td class="quete"><div class="act"><span class="ico">🚀</span><strong>Finalisation</strong><em>Publication du rapport (usage réel)</em><span class="tag">Quête</span></div></td>
+        <td class="libre" rowspan="3"><div class="act"><span class="ico">🎨</span><strong>Exploration libre</strong><em>Passion au choix dans l'Atlas : musique, langue, dessin… Aucune obligation, juste la curiosité.</em><span class="tag">Libre / Passion</span></div></td>
+      </tr>
+
+      <!-- R3 10:30-11:00 -->
+      <tr>
+        <td class="time">10:30<small>11:00</small></td>
+        <td class="pause">☕ Pause</td>
+        <td class="pause">☕ Pause</td>
+        <td class="pause">☕ Pause</td>
+        <td class="pause">☕ Pause</td>
+        <td class="pause">☕ Pause</td>
+      </tr>
+
+      <!-- R4 11:00-12:30 -->
+      <tr>
+        <td class="time">11:00<small>12:30</small></td>
+        <td class="cercle"><div class="act"><span class="ico">👥</span><strong>Cercle</strong><em>Point d'avancement (3-7 pairs)</em><span class="tag">Cercle</span></div></td>
+        <td class="foyer"><div class="act"><span class="ico">🌬️</span><strong>Foyer — expérience</strong><em>Mesures avec capteurs d'air</em><span class="tag">Foyer</span></div></td>
+        <td class="quete"><div class="act"><span class="ico">🧩</span><strong>Rédaction + Mentor</strong><em>Structurer l'argumentation</em><span class="tag">Quête</span></div></td>
+        <td class="quete"><div class="act"><span class="ico">♻️</span><strong>Corrections</strong><em>Intégrer les retours du Cercle</em><span class="tag">Quête</span></div></td>
+        <td class="preuve"><div class="act"><span class="ico">🎖️</span><strong>Validation → Passeport</strong><em>Pairs + maître de Guilde</em><span class="tag">Preuve</span></div></td>
+      </tr>
+
+      <!-- R5 12:30-14:00 -->
+      <tr>
+        <td class="time">12:30<small>14:00</small></td>
+        <td class="pause">🍽️ Déjeuner / libre</td>
+        <td class="pause">🍽️ Déjeuner au Foyer (social)</td>
+        <td class="pause">🍽️ Déjeuner / libre</td>
+        <td class="pause">🍽️ Déjeuner / libre</td>
+        <td class="pause">🍽️ Déjeuner / libre</td>
+        <td class="libre" rowspan="4"><div class="act"><span class="ico">🧺</span><strong>Temps personnel</strong><em>Famille, amis, sport, sorties, rien du tout… Le week-end n'est pas « scolarisé ».</em><span class="tag">Libre</span></div></td>
+      </tr>
+
+      <!-- R6 14:00-15:30 -->
+      <tr>
+        <td class="time">14:00<small>15:30</small></td>
+        <td class="quete"><div class="act"><span class="ico">🔬</span><strong>Travail profond</strong><em>Quête (suite) + lecture</em><span class="tag">Quête</span></div></td>
+        <td class="foyer"><div class="act"><span class="ico">🧑‍🏫</span><strong>Mentor humain</strong><em>Échange avec la Guilde sur place</em><span class="tag">Foyer</span></div></td>
+        <td class="quete"><div class="act"><span class="ico">🔎</span><strong>Recherche & sources</strong><em>Esprit critique · littératie IA</em><span class="tag">Quête</span></div></td>
+        <td class="guilde"><div class="act"><span class="ico">⚒️</span><strong>Guilde Sciences citoyennes</strong><em>Séance collective</em><span class="tag">Guilde</span></div></td>
+        <td class="enseig"><div class="act"><span class="ico">🧑‍🏫</span><strong>Mini-atelier</strong><em>Elle enseigne aux plus jeunes</em><span class="tag">Enseigner</span></div></td>
+      </tr>
+
+      <!-- R7 15:30-16:30 -->
+      <tr>
+        <td class="time">15:30<small>16:30</small></td>
+        <td class="enseig"><div class="act"><span class="ico">🤝</span><strong>Entraide / enseigner</strong><em>Expliquer à un plus jeune</em><span class="tag">Enseigner</span></div></td>
+        <td class="foyer"><div class="act"><span class="ico">⚽</span><strong>Foyer</strong><em>Sport / socialisation</em><span class="tag">Foyer</span></div></td>
+        <td class="libre"><div class="act"><span class="ico">🎵</span><strong>Temps libre / passion</strong><em>Au choix</em><span class="tag">Libre</span></div></td>
+        <td class="guilde"><div class="act"><span class="ico">🛠️</span><strong>Guilde</strong><em>Projet de groupe</em><span class="tag">Guilde</span></div></td>
+        <td class="mentor"><div class="act"><span class="ico">📈</span><strong>Bilan de la semaine</strong><em>Métacognition avec le Mentor</em><span class="tag">Mentor</span></div></td>
+      </tr>
+
+      <!-- R8 16:30-17:00 -->
+      <tr>
+        <td class="time">16:30<small>17:00</small></td>
+        <td class="mentor"><div class="act"><span class="ico">✅</span><strong>Clôture</strong><em>« Bonne journée, à demain »</em><span class="tag">Mentor</span></div></td>
+        <td class="mentor"><div class="act"><span class="ico">✅</span><strong>Clôture</strong><em>Synchronisation du parcours</em><span class="tag">Mentor</span></div></td>
+        <td class="mentor"><div class="act"><span class="ico">✅</span><strong>Clôture</strong><em>Écran fermé</em><span class="tag">Mentor</span></div></td>
+        <td class="mentor"><div class="act"><span class="ico">✅</span><strong>Clôture</strong><em>Écran fermé</em><span class="tag">Mentor</span></div></td>
+        <td class="libre"><div class="act"><span class="ico">🎉</span><strong>Quête bouclée !</strong><em>Temps libre mérité</em><span class="tag">Libre</span></div></td>
+      </tr>
+
+    </tbody>
+  </table>
+  </div>
+
+  <footer>
+    Dowze · Rythme hebdomadaire (exemple) — temps d'écran « solo » ≈ 2 h 30 / jour, borné par conception.<br>
+    Maîtrise &gt; horloge · Le terminal est la porte, pas la pièce · Conçu pour le bien-être, pas pour l'addiction.
+  </footer>
+
+</div>
+</body>
+</html>
