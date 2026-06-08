@@ -2,6 +2,18 @@
 
 Ce fichier trace l'évolution du document de conception **et de l'implémentation**.
 
+## [2.24.0] — 2026-06-08
+
+### Ajouté — Pont `.json` bout-en-bout (exemple réel + test d'intégration)
+- **Fixture réelle** : un `.json` retour complet pour `generer-competence` — la compétence
+  *lire-comprendre-texte* **avec toute sa clôture** (les racines *déchiffrer-lire* et *comprendre-oral-l1*),
+  alignée sur le seed Supabase.
+- **Test bout-en-bout** : l'intra fabrique l'aller → on simule le retour → validation stricte (taille, parse,
+  anti prototype-pollution, schéma, **loi de clôture**). Vérifie aussi le **rejet d'une clôture incomplète**
+  (trou → `dangling-prerequisite`).
+- La page web `/bridge` réalise le même cycle de façon interactive.
+- **60 tests** au total ; build/typecheck/lint verts ; 0 vulnérabilité.
+
 ## [2.23.0] — 2026-06-08
 
 ### Ajouté — `@dowze/web` : le frontend Next.js 15

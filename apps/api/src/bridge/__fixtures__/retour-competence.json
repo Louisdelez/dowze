@@ -1,0 +1,39 @@
+{
+  "bridgeVersion": "1",
+  "requestId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+  "operation": "generer-competence",
+  "payload": {
+    "skill": {
+      "id": "00000000-0000-4000-8000-000000000101",
+      "slug": "lire-comprendre-texte",
+      "title": "Lire et comprendre un texte simple",
+      "description": "Lire un texte court et en restituer le sens littéral.",
+      "kind": "savoir-faire",
+      "depth": 1,
+      "prerequisites": [
+        "00000000-0000-4000-8000-000000000003",
+        "00000000-0000-4000-8000-000000000001"
+      ],
+      "isRoot": false,
+      "masteryThreshold": 0.9
+    },
+    "closure": [
+      {
+        "id": "00000000-0000-4000-8000-000000000003",
+        "slug": "dechiffrer-lire",
+        "title": "Déchiffrer et lire",
+        "kind": "savoir-faire",
+        "depth": 0,
+        "isRoot": true
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000001",
+        "slug": "comprendre-oral-l1",
+        "title": "Comprendre l'oral (langue maternelle)",
+        "kind": "savoir-faire",
+        "depth": 0,
+        "isRoot": true
+      }
+    ]
+  }
+}
