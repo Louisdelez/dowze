@@ -2,6 +2,25 @@
 
 Ce fichier trace l'évolution du document de conception **et de l'implémentation**.
 
+## [2.20.0] — 2026-06-08
+
+### Ajouté — `@dowze/core` : la logique de domaine pure (le cœur), entièrement testée
+Toute la logique métier sans I/O, en petits modules testés en isolation (**49 tests** au total) :
+- **Loi de clôture R1-R8** (`closure/`) : clôture transitive, détection de cycle, tri topologique, et
+  `validateGraph` qui interdit par construction les trous (prérequis pendant), cycles, profondeurs
+  non décroissantes, racines incohérentes → **« zéro trou » garanti**. `isPublishable` / `missingPrerequisites`
+  pour la boucle validate→repair.
+- **BKT** (`bkt/`) : mise à jour bayésienne de la probabilité de maîtrise (posterior + apprentissage),
+  seuil de maîtrise.
+- **SM-2** (`sm2/`) : répétition espacée (intervalles 1 → 6 → ×EF, facteur de facilité borné, échéances).
+- **Planning déterministe** (`planning/`) : agencement des tâches priorisées dans les créneaux (le « quand »).
+- **Pont `.json`** (`bridge/`) : pipeline de validation du retour (taille bornée, parse, **anti
+  prototype-pollution**, enveloppe stricte, cohérence requestId/opération, payload par opération,
+  **clôture du graphe**) + construction du `.json` aller.
+- **Validation par paliers** (`validation/`) : grille binaire, agrégation des pairs (≥ 2, majorité stricte),
+  niveaux Open Badges, déblocage non bloquant.
+- **Vérifié** : `build`/`typecheck`/`lint` verts ; **49 tests** ; `npm audit` 0 vulnérabilité.
+
 ## [2.19.0] — 2026-06-08
 
 ### Ajouté — `@dowze/schemas` : les schémas Zod partagés (source de vérité des types)
