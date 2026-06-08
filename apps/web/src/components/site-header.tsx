@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { AuthStatus } from './auth-status';
 
 const NAV = [
+  { href: '/demarrer', label: 'Démarrer' },
   { href: '/dashboard', label: 'Tableau de bord' },
   { href: '/progression', label: 'Progression' },
   { href: '/planning', label: 'Planning' },
