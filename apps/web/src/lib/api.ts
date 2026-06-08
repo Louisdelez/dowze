@@ -164,3 +164,25 @@ export interface RegisterAccountResult {
 export function registerAccount(input: RegisterAccountInput): Promise<RegisterAccountResult> {
   return post('/accounts', input);
 }
+
+export interface SkillRow {
+  id: string;
+  slug: string;
+  title: string;
+  depth: number;
+  isRoot: boolean;
+}
+export function getSkills(): Promise<SkillRow[]> {
+  return get('/skills');
+}
+
+export interface PlacementResult {
+  masteredSkillIds: string[];
+  entrySkillId: string | null;
+}
+export function runDiagnostic(
+  profileId: string,
+  demonstratedSkillIds: string[],
+): Promise<PlacementResult> {
+  return post('/diagnostic', { profileId, demonstratedSkillIds });
+}
