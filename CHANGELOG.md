@@ -2,6 +2,15 @@
 
 Ce fichier trace l'évolution du document de conception **et de l'implémentation**.
 
+## [2.35.0] — 2026-06-08
+
+### Ajouté — Temps réel (Supabase Realtime)
+- **`@dowze/web`** : composant **LiveClasse** — **chat de classe en direct** (broadcast) + **présence**
+  (« qui est en ligne ») via Supabase Realtime, intégré à l'écran **/communaute** (s'active dès qu'une
+  classe est sélectionnée). Désabonnement propre au démontage.
+- **Vérifié** : `next build` + typecheck + lint verts ; **94 tests** ; `npm audit` 0 vulnérabilité.
+  *(Le fonctionnement en direct nécessite une instance Supabase active.)*
+
 ## [2.34.0] — 2026-06-08
 
 ### Ajouté — Minuteur & sonnerie (début Phase 4)
