@@ -2,6 +2,19 @@
 
 Ce fichier trace l'évolution du document de conception **et de l'implémentation**.
 
+## [2.27.0] — 2026-06-08
+
+### Ajouté — Validation par les pairs (modèle École 42)
+- **`@dowze/api`** : module **validation** — `GET /validation/rubric/:skillId` (la grille),
+  `POST /validation/self` (auto-validation via la grille → **débloque** + mise en file de revue par les
+  pairs), `POST /validation/peer` (revue par un pair), `GET /validation/badge/:skillId/:learnerId` (niveau
+  de badge auto/pair/expert). Tables Drizzle ajoutées (rubrics, rubric_criteria, validations,
+  validation_verdicts, peer_review_queue). Helper **pur** `summarizeValidations` testé (api : 17 tests).
+- **`@dowze/web`** : écran **/validation** (charger la grille, cocher les critères démontrés, s'auto-valider).
+- **Corrigé** : `parseOr400` renvoie désormais le type de **sortie** Zod (`z.infer`) — les `.default()`
+  sont bien appliqués.
+- **Vérifié** : build/typecheck/lint verts ; **70 tests** ; `npm audit` 0 vulnérabilité.
+
 ## [2.26.0] — 2026-06-08
 
 ### Ajouté — Progression (BKT) & planning (SM-2) de bout en bout

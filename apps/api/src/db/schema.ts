@@ -103,3 +103,51 @@ export const planningEntries = pgTable('planning_entries', {
   durationMin: smallint('duration_min').notNull(),
   status: text('status').notNull().default('prevu'),
 });
+
+export const rubrics = pgTable('rubrics', {
+  skillId: uuid('skill_id').primaryKey(),
+});
+
+export const rubricCriteria = pgTable(
+  'rubric_criteria',
+  {
+    skillId: uuid('skill_id').notNull(),
+    id: text('id').notNull(),
+    label: text('label').notNull(),
+    description: text('description').notNull().default(''),
+    required: boolean('required').notNull().default(true),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.skillId, t.id] }) }),
+);
+
+export const validations = pgTable('validations', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  skillId: uuid('skill_id').notNull(),
+  learnerId: uuid('learner_id').notNull(),
+  tier: text('tier').notNull(),
+  reviewerId: uuid('reviewer_id'),
+  passed: boolean('passed').notNull(),
+  evidenceUrl: text('evidence_url'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const validationVerdicts = pgTable(
+  'validation_verdicts',
+  {
+    validationId: uuid('validation_id').notNull(),
+    criterionId: text('criterion_id').notNull(),
+    met: boolean('met').notNull(),
+    comment: text('comment').notNull().default(''),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.validationId, t.criterionId] }) }),
+);
+
+export const peerReviewQueue = pgTable('peer_review_queue', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  skillId: uuid('skill_id').notNull(),
+  learnerId: uuid('learner_id').notNull(),
+  evidenceUrl: text('evidence_url'),
+  claimedBy: uuid('claimed_by'),
+  resolved: boolean('resolved').notNull().default(false),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
