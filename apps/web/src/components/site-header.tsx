@@ -5,6 +5,7 @@ const NAV = [
   { href: '/progression', label: 'Progression' },
   { href: '/planning', label: 'Planning' },
   { href: '/validation', label: 'Validation' },
+  { href: '/communaute', label: 'Communauté' },
   { href: '/bridge', label: 'Pont .json' },
 ];
 
