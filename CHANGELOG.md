@@ -2,6 +2,24 @@
 
 Ce fichier trace l'évolution du document de conception **et de l'implémentation**.
 
+## [2.19.0] — 2026-06-08
+
+### Ajouté — `@dowze/schemas` : les schémas Zod partagés (source de vérité des types)
+Le socle typé de tout le projet (front + back + validation du pont `.json`), en petits fichiers focalisés :
+- **Compétences & graphe** (`skill`) : nœud d'Atlas (nature, profondeur DAG, prérequis, seuil de maîtrise,
+  statut épistémique, demi-vie) + liste d'adjacence — base de la **loi de clôture**.
+- **Cursus** (`cursus`) : fils (Fondations / Aptitudes durables / Concepts-clés), Expéditions
+  (Étincelle→Question→Défi→Acte→Trace), Modules-éclair, phases tronc commun / spécialisation.
+- **Profil & graine** (`profile`), **progression BKT** (`progression`), **répétition espacée SM-2**
+  (`spaced-repetition`), **planning/présence/minuteur** (`planning`), **contenu/leçon** (`content`).
+- **Validation par paliers** (`validation`) : grille (rubrique binaire), paliers auto/IA/pair/expert,
+  3 niveaux Open Badges — **pas de QCM**.
+- **Pont `.json`** (`bridge`) : enveloppes aller/retour **`.strict()`** + payloads par opération + registre
+  opération→schéma (utilisé par `@dowze/core` pour valider le retour).
+- **Comptes & parental** (`account`), **communauté/classes** (`community`), **modération + alertes
+  parentales** (`moderation`).
+- **Vérifié** : `build`/`typecheck`/`lint` verts ; **9 tests** (dont la rigueur stricte du pont).
+
 ## [2.18.0] — 2026-06-08
 
 ### Ajouté — DÉBUT DE L'IMPLÉMENTATION : fondation du monorepo
