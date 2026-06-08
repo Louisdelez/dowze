@@ -7,6 +7,7 @@ import { ProgressionModule } from './progression/progression.module';
 import { SpacedRepetitionModule } from './spaced-repetition/spaced-repetition.module';
 import { PlanningModule } from './planning/planning.module';
 import { ValidationModule } from './validation/validation.module';
+import { CommunityModule } from './community/community.module';
 import { HealthModule } from './health/health.module';
 
 @Module({
@@ -19,6 +20,7 @@ import { HealthModule } from './health/health.module';
     SpacedRepetitionModule,
     PlanningModule,
     ValidationModule,
+    CommunityModule,
     HealthModule,
   ],
 })
