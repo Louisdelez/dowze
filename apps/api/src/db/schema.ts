@@ -151,3 +151,41 @@ export const peerReviewQueue = pgTable('peer_review_queue', {
   resolved: boolean('resolved').notNull().default(false),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const classes = pgTable('classes', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  slug: text('slug').notNull().unique(),
+  name: text('name').notNull(),
+  locale: text('locale').notNull(),
+  timezone: text('timezone').notNull(),
+  type: text('type').notNull(),
+  cycle: text('cycle').notNull().default('trimestre'),
+  status: text('status').notNull().default('active'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const memberships = pgTable(
+  'memberships',
+  {
+    classeId: uuid('classe_id').notNull(),
+    profileId: uuid('profile_id').notNull(),
+    role: text('role').notNull().default('membre'),
+    joinedAt: timestamp('joined_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.classeId, t.profileId] }) }),
+);
+
+export const channels = pgTable('channels', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  kind: text('kind').notNull(),
+  classeId: uuid('classe_id'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const messages = pgTable('messages', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  channelId: uuid('channel_id').notNull(),
+  authorId: uuid('author_id').notNull(),
+  body: text('body').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});

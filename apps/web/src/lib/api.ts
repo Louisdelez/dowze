@@ -107,3 +107,33 @@ export interface BadgeSummaryRow {
 export function getBadge(skillId: string, learnerId: string): Promise<BadgeSummaryRow> {
   return get(`/validation/badge/${skillId}/${learnerId}`);
 }
+
+export interface ClasseRow {
+  id: string;
+  slug: string;
+  name: string;
+  locale: string;
+  timezone: string;
+  type: string;
+  status: string;
+}
+export function listClasses(): Promise<ClasseRow[]> {
+  return get('/community/classes');
+}
+
+export interface MessageRow {
+  id: string;
+  authorId: string;
+  body: string;
+  createdAt: string;
+}
+export function listClasseMessages(classeId: string): Promise<MessageRow[]> {
+  return get(`/community/classes/${classeId}/messages`);
+}
+export function postClasseMessage(
+  classeId: string,
+  authorId: string,
+  body: string,
+): Promise<MessageRow> {
+  return post(`/community/classes/${classeId}/messages`, { authorId, body });
+}

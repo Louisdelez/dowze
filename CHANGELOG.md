@@ -2,6 +2,17 @@
 
 Ce fichier trace l'évolution du document de conception **et de l'implémentation**.
 
+## [2.28.0] — 2026-06-08
+
+### Ajouté — Communauté & Classes
+- **`@dowze/api`** : module **community** — affectation en Classes (`POST /community/form-classes`,
+  logique **pure** : contraintes dures langue/fuseau/type + niveaux hétérogènes intra-classe par
+  round-robin), classes (`GET`/`POST /community/classes`), adhésion (`POST /community/classes/:id/join`),
+  messages de classe (`GET`/`POST /community/classes/:id/messages`). Tables Drizzle (classes, memberships,
+  channels, messages). **4 tests** d'affectation (api : 21 tests).
+- **`@dowze/web`** : écran **/communaute** (liste des classes + discussion de classe).
+- **Vérifié** : build/typecheck/lint verts ; **74 tests** ; `npm audit` 0 vulnérabilité.
+
 ## [2.27.0] — 2026-06-08
 
 ### Ajouté — Validation par les pairs (modèle École 42)
