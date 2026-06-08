@@ -1,6 +1,6 @@
 {
   "name": "@dowze/core",
-  "version": "2.32.0",
+  "version": "2.34.0",
   "private": true,
   "description": "Logique de domaine pure de Dowze (clôture du graphe, SM-2, BKT, planning, pont .json). Sans I/O, entièrement testée.",
   "type": "commonjs",

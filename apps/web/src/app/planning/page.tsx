@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { generatePlanning, type PlanningEntryRow } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Minuteur } from '@/components/minuteur';
 
 /** Lundi 00:00 UTC de la semaine courante (calcul côté client). */
 function mondayThisWeekIso(): string {
@@ -44,6 +45,8 @@ export default function PlanningPage() {
           Généré pour toi : révisions dues d’abord, puis la prochaine compétence prescrite. Sans pression.
         </p>
       </header>
+
+      <Minuteur />
 
       <div className="flex gap-3">
         <input
