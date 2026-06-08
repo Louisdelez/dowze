@@ -186,3 +186,30 @@ export function runDiagnostic(
 ): Promise<PlacementResult> {
   return post('/diagnostic', { profileId, demonstratedSkillIds });
 }
+
+export interface ExpeditionRow {
+  id: string;
+  slug: string;
+  title: string;
+  grandeQuestion: string;
+  phase: string;
+  status: string;
+  durationWeeks: number;
+}
+export function listExpeditions(): Promise<ExpeditionRow[]> {
+  return get('/expeditions');
+}
+export interface CreateExpeditionInput {
+  slug: string;
+  title: string;
+  grandeQuestion: string;
+  durationWeeks?: number;
+}
+export function createExpedition(input: CreateExpeditionInput): Promise<ExpeditionRow> {
+  return post('/expeditions', input);
+}
+export function advanceExpedition(
+  id: string,
+): Promise<{ id: string; phase: string; status: string }> {
+  return post(`/expeditions/${id}/advance`, {});
+}

@@ -6,8 +6,11 @@
  * pont `.json`. Tout est testé en isolation, sans base de données.
  */
 
-export const CORE_VERSION = '2.31.0' as const;
+export const CORE_VERSION = '2.32.0' as const;
 export { SCHEMAS_VERSION } from '@dowze/schemas';
+
+// Cursus
+export * from './cursus/expedition';
 
 // Graphe & loi de clôture
 export * from './closure/graph';

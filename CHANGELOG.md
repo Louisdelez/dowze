@@ -2,6 +2,18 @@
 
 Ce fichier trace l'évolution du document de conception **et de l'implémentation**.
 
+## [2.32.0] — 2026-06-08
+
+### Ajouté — Expéditions (cycle Étincelle→…→Trace)
+- **`@dowze/core`** : `cursus/expedition` (PUR) — phases du gabarit, `advancePhase`, `phaseProgress`,
+  `isComplete`. Tests (core : 53).
+- **`@dowze/api`** : module **expeditions** (`GET`/`POST /expeditions`, `GET /expeditions/:id`,
+  `POST /expeditions/:id/advance` via `advancePhase`). Tables Drizzle (expeditions, expedition_skills).
+- **`@dowze/web`** : écran **/expeditions** (lancer une expédition, suivre les 5 phases, avancer). La
+  génération de leçons/grilles à la demande passe par le [pont `.json`](docs/10-APP-WEB/10-pont-json.md)
+  existant (`generer-cours` / `generer-grille`).
+- **Vérifié** : build/typecheck/lint verts ; **87 tests** ; `npm audit` 0 vulnérabilité.
+
 ## [2.31.0] — 2026-06-08
 
 ### Ajouté — Onboarding & diagnostic
