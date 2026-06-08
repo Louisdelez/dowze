@@ -68,3 +68,42 @@ export interface PlanningResult {
 export function generatePlanning(profileId: string, weekStartIso: string): Promise<PlanningResult> {
   return post('/planning/generate', { profileId, weekStartIso });
 }
+
+export interface RubricCriterionRow {
+  id: string;
+  label: string;
+  description: string;
+  required: boolean;
+}
+export interface RubricRow {
+  skillId: string;
+  criteria: RubricCriterionRow[];
+}
+
+export function getRubric(skillId: string): Promise<RubricRow | null> {
+  return get(`/validation/rubric/${skillId}`);
+}
+
+export interface VerdictInput {
+  criterionId: string;
+  met: boolean;
+}
+
+export function selfValidate(
+  profileId: string,
+  skillId: string,
+  verdicts: VerdictInput[],
+): Promise<{ passed: boolean }> {
+  return post('/validation/self', { profileId, skillId, verdicts });
+}
+
+export interface BadgeSummaryRow {
+  badge: string;
+  peerPassed: boolean;
+  expertEndorsed: boolean;
+  reviewerCount: number;
+}
+
+export function getBadge(skillId: string, learnerId: string): Promise<BadgeSummaryRow> {
+  return get(`/validation/badge/${skillId}/${learnerId}`);
+}

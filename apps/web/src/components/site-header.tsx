@@ -4,6 +4,7 @@ const NAV = [
   { href: '/dashboard', label: 'Tableau de bord' },
   { href: '/progression', label: 'Progression' },
   { href: '/planning', label: 'Planning' },
+  { href: '/validation', label: 'Validation' },
   { href: '/bridge', label: 'Pont .json' },
 ];
 
