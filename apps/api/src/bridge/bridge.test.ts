@@ -1,10 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { bridgeRequestSchema } from '@dowze/schemas';
-import { validateBridgeResponseText } from '@dowze/core';
+import { buildBridgeRequest, validateBridgeResponseText } from '@dowze/core';
 import { responseSchemaFor, promptFor, exampleFor } from './prompts';
-import { GenerationService } from './generation.service';
+
+// NB : on teste la composition PURE (prompts + @dowze/core). On n'importe pas
+// les services NestJS ici pour éviter de charger le runtime Nest sous vitest.
 
 const REQ = '33333333-3333-4333-8333-333333333333';
+const NOW = '2026-06-08T10:00:00.000Z';
 
 describe('bridge — prompts', () => {
   it('génère un JSON Schema non vide pour chaque opération', () => {
@@ -33,31 +36,27 @@ describe('bridge — prompts', () => {
   });
 });
 
-describe('bridge — GenerationService', () => {
-  it('produit un .json aller conforme au schéma strict', () => {
-    const service = new GenerationService();
-    const req = service.buildRequest('generer-grille', {
+describe('bridge — construction du .json aller', () => {
+  it('produit un aller conforme au schéma strict', () => {
+    const req = buildBridgeRequest({
       requestId: REQ,
-      seed: 'graine-1',
-      nowIso: '2026-06-08T10:00:00.000Z',
+      operation: 'generer-grille',
+      prompt: promptFor('generer-grille', { seed: 'g' }),
+      responseSchema: responseSchemaFor('generer-grille'),
+      example: exampleFor('generer-grille'),
+      seed: 'g',
+      nowIso: NOW,
     });
-    // Doit passer la validation stricte de l'enveloppe aller.
     expect(bridgeRequestSchema.parse(req)).toBeTruthy();
     expect(req.operation).toBe('generer-grille');
   });
 
   it('l’exemple d’une grille est lui-même un retour valide', () => {
-    const service = new GenerationService();
-    const req = service.buildRequest('generer-grille', {
-      requestId: REQ,
-      seed: 'g',
-      nowIso: '2026-06-08T10:00:00.000Z',
-    });
     const envelope = JSON.stringify({
       bridgeVersion: '1',
       requestId: REQ,
       operation: 'generer-grille',
-      payload: req.example,
+      payload: exampleFor('generer-grille'),
     });
     const result = validateBridgeResponseText(envelope, {
       expectedRequestId: REQ,
