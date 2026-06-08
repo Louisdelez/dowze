@@ -2,6 +2,23 @@
 
 Ce fichier trace l'évolution du document de conception **et de l'implémentation**.
 
+## [2.23.0] — 2026-06-08
+
+### Ajouté — `@dowze/web` : le frontend Next.js 15
+Le portail, en **Next.js 15 (App Router) + React 19 + TypeScript + Tailwind v4**, design épuré façon Notion :
+- **Design system** : tokens Tailwind v4 (`@theme`), 1 couleur d'accent, composants `ui/` (Button, Card),
+  calm technology, RSC par défaut.
+- **Pages** : accueil (la promesse + piliers), **tableau de bord** (progression BKT, plan du jour),
+  **pont `.json`** (générer l'aller, coller le retour, validation — page interactive).
+- **Client API** typé (`lib/api.ts`) vers le backend ; réutilise les types `@dowze/schemas`.
+- **Vérifié** : `next build` (6 pages statiques générées) + `typecheck` + `lint` verts.
+
+### Corrigé — robustesse de l'installation & sécurité
+- `npm` omettait `uid@2.0.2` (dépendance runtime de NestJS) du lockfile dans ce graphe workspaces :
+  déclaré explicitement dans `@dowze/api` (workaround).
+- **`overrides.postcss ^8.5.10`** pour corriger un avis XSS dans la copie de PostCSS bundlée par Next.
+- **`npm audit` : 0 vulnérabilité** sur tout le monorepo.
+
 ## [2.22.0] — 2026-06-08
 
 ### Ajouté — `@dowze/api` : le backend NestJS (l'intra-core)

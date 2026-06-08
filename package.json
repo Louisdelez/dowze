@@ -1,6 +1,6 @@
 {
   "name": "dowze",
-  "version": "2.22.0",
+  "version": "2.23.0",
   "private": true,
   "description": "Dowze — système d'éducation 2.0 en bien commun. Monorepo (web + api + packages).",
   "type": "module",
@@ -18,6 +18,9 @@
     "apps/*",
     "packages/*"
   ],
+  "overrides": {
+    "postcss": "^8.5.10"
+  },
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
