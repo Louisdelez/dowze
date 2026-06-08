@@ -2,6 +2,16 @@
 
 Ce fichier trace l'évolution du document de conception **et de l'implémentation**.
 
+## [2.25.0] — 2026-06-08
+
+### Ajouté — Intégration continue (CI) & documentation développeur
+- **GitHub Actions** (`.github/workflows/ci.yml`) : sur push `main`/`develop` et chaque PR — `npm ci` puis
+  **lint + typecheck + test + build** (via Turbo) + `npm audit --audit-level=high`. Annulation des
+  exécutions concurrentes.
+- **README** : badge CI, section **« L'application (monorepo) »** (structure + commandes de démarrage),
+  statut mis à jour.
+- Le dépôt passe désormais une **vérification automatique complète** à chaque contribution.
+
 ## [2.24.0] — 2026-06-08
 
 ### Ajouté — Pont `.json` bout-en-bout (exemple réel + test d'intégration)
