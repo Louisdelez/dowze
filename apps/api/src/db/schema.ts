@@ -210,6 +210,14 @@ export const expeditionSkills = pgTable(
   (t) => ({ pk: primaryKey({ columns: [t.expeditionId, t.skillId] }) }),
 );
 
+export const carnetEntries = pgTable('carnet_entries', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  profileId: uuid('profile_id').notNull(),
+  skillId: uuid('skill_id'),
+  note: text('note').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const guardians = pgTable('guardians', {
   id: uuid('id').primaryKey().defaultRandom(),
   minorAccountId: uuid('minor_account_id').notNull(),
