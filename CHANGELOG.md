@@ -2,6 +2,17 @@
 
 Ce fichier trace l'évolution du document de conception **et de l'implémentation**.
 
+## [2.37.0] — 2026-06-08
+
+### Ajouté — Jobs & observabilité
+- **`@dowze/api`** : **Redis cache-aside** (`CacheService` + clés **versionnées** pures testées),
+  **BullMQ** (`JobsService` : files `parental-digest` et `peer-notify`, **jobId idempotent**, backoff
+  exponentiel, `removeOnComplete`) avec un **process worker séparé** (`worker.ts` → `npm run worker`,
+  graceful shutdown), **pino** (logs structurés + redaction) utilisé au démarrage. Connexion Redis par
+  options (compat BullMQ). Helpers purs testés (api : 35 tests).
+- **Vérifié** : build/typecheck/lint verts ; **99 tests** ; `npm audit` 0 vulnérabilité. *(L'exécution des
+  jobs nécessite Redis.)*
+
 ## [2.36.0] — 2026-06-08
 
 ### Ajouté — PWA & hors-ligne (Serwist)

@@ -11,7 +11,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "start": "node dist/main.js",
+    "worker": "node dist/worker.js",
     "dev": "tsx watch src/main.ts",
+    "dev:worker": "tsx watch src/worker.ts",
     "clean": "rimraf dist"
   },
   "dependencies": {
@@ -20,8 +22,11 @@
     "@nestjs/common": "^11.1.6",
     "@nestjs/core": "^11.1.6",
     "@nestjs/platform-express": "^11.1.6",
+    "bullmq": "^5.34.0",
     "drizzle-orm": "^0.45.2",
+    "ioredis": "^5.4.2",
     "jose": "^5.9.6",
+    "pino": "^9.5.0",
     "postgres": "^3.4.5",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
