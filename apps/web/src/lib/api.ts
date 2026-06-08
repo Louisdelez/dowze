@@ -147,3 +147,20 @@ export interface ParentalSummaryRow {
 export function getParentalSummary(minorAccountId: string): Promise<ParentalSummaryRow> {
   return get(`/parental/summary/${minorAccountId}`);
 }
+
+export interface RegisterAccountInput {
+  email: string;
+  authUserId?: string | null;
+  isMinor: boolean;
+  displayName: string;
+  locale: string;
+  timezone: string;
+  guardianEmail?: string | null;
+}
+export interface RegisterAccountResult {
+  account: { id: string };
+  profile: { id: string };
+}
+export function registerAccount(input: RegisterAccountInput): Promise<RegisterAccountResult> {
+  return post('/accounts', input);
+}

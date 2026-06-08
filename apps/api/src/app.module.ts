@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from './config/config.module';
 import { DrizzleModule } from './db/drizzle.module';
+import { AuthModule } from './auth/auth.module';
+import { AccountsModule } from './accounts/accounts.module';
 import { SkillGraphModule } from './skill-graph/skill-graph.module';
 import { BridgeModule } from './bridge/bridge.module';
 import { ProgressionModule } from './progression/progression.module';
@@ -16,6 +18,8 @@ import { HealthModule } from './health/health.module';
   imports: [
     ConfigModule,
     DrizzleModule,
+    AuthModule,
+    AccountsModule,
     SkillGraphModule,
     BridgeModule,
     ProgressionModule,

@@ -2,6 +2,18 @@
 
 Ce fichier trace l'évolution du document de conception **et de l'implémentation**.
 
+## [2.30.0] — 2026-06-08
+
+### Ajouté — Auth & comptes (Supabase Auth bout-en-bout)
+Début de la **Phase 3 (parcours)** — voir [reste-à-faire](docs/11-IMPLEMENTATION/01-reste-a-faire.md).
+- **`@dowze/api`** : module **accounts** (`POST /accounts` → crée compte + profil, et le **responsable légal**
+  si mineur ; `GET /accounts/:id/profile`). Règles d'inscription **pures** (`onboardingErrors` : email du
+  responsable requis pour un mineur) testées (api : 27 tests). **AuthModule** global ; garde JWT
+  (`SupabaseAuthGuard`) appliquée à progression/planning/parental (permissive en dev sans secret).
+- **`@dowze/web`** : client **Supabase** (lazy), **session persistée** (Zustand), pages **/inscription** et
+  **/connexion**, statut d'auth dans l'en-tête.
+- **Vérifié** : build/typecheck/lint verts ; **80 tests** ; `npm audit` 0 vulnérabilité.
+
 ## [2.29.0] — 2026-06-08
 
 ### Ajouté — Système parental & modération

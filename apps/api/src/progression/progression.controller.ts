@@ -1,6 +1,7 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { z } from 'zod';
 import { parseOr400 } from '../common/validate-body';
+import { SupabaseAuthGuard } from '../auth/supabase-auth.guard';
 import { ProgressionService } from './progression.service';
 
 const observeBody = z.object({
@@ -10,6 +11,7 @@ const observeBody = z.object({
 });
 
 @Controller('progression')
+@UseGuards(SupabaseAuthGuard)
 export class ProgressionController {
   constructor(private readonly service: ProgressionService) {}
 

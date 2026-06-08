@@ -1,6 +1,7 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { z } from 'zod';
 import { parseOr400 } from '../common/validate-body';
+import { SupabaseAuthGuard } from '../auth/supabase-auth.guard';
 import { ParentalService } from './parental.service';
 
 const guardianBody = z.object({
@@ -14,6 +15,7 @@ const consentBody = z.object({
 });
 
 @Controller('parental')
+@UseGuards(SupabaseAuthGuard)
 export class ParentalController {
   constructor(private readonly service: ParentalService) {}
 

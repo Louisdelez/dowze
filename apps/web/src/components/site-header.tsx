@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { AuthStatus } from './auth-status';
 
 const NAV = [
   { href: '/dashboard', label: 'Tableau de bord' },
@@ -17,7 +18,7 @@ export function SiteHeader() {
         <Link href="/" className="text-lg font-semibold tracking-tight">
           Dowze
         </Link>
-        <nav className="flex gap-1 text-sm">
+        <nav className="flex flex-wrap items-center gap-1 text-sm">
           {NAV.map((item) => (
             <Link
               key={item.href}
@@ -27,6 +28,7 @@ export function SiteHeader() {
               {item.label}
             </Link>
           ))}
+          <AuthStatus />
         </nav>
       </div>
     </header>
