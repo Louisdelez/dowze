@@ -8,6 +8,8 @@ import { SpacedRepetitionModule } from './spaced-repetition/spaced-repetition.mo
 import { PlanningModule } from './planning/planning.module';
 import { ValidationModule } from './validation/validation.module';
 import { CommunityModule } from './community/community.module';
+import { ParentalModule } from './parental/parental.module';
+import { ModerationModule } from './moderation/moderation.module';
 import { HealthModule } from './health/health.module';
 
 @Module({
@@ -21,6 +23,8 @@ import { HealthModule } from './health/health.module';
     PlanningModule,
     ValidationModule,
     CommunityModule,
+    ParentalModule,
+    ModerationModule,
     HealthModule,
   ],
 })
