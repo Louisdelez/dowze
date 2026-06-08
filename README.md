@@ -5,7 +5,7 @@
 
 [![CI](https://github.com/Louisdelez/dowze/actions/workflows/ci.yml/badge.svg)](https://github.com/Louisdelez/dowze/actions/workflows/ci.yml)
 [![Licence: MIT](https://img.shields.io/badge/Licence-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-2.25.0-success.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-3.0.0-success.svg)](CHANGELOG.md)
 [![Conventional Commits](https://img.shields.io/badge/commits-conventional-FE5196.svg)](CONTRIBUTING.md)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
@@ -141,7 +141,8 @@ npm run dev -w @dowze/web   # frontend (http://localhost:3000)
 
 ## Statut & honnêteté intellectuelle
 
-- **Statut** : conception **+ implémentation en cours**, version **2.25.0** (voir [`CHANGELOG.md`](CHANGELOG.md)).
+- **Statut** : conception **+ implémentation**, version **3.0.0** — toutes les couches et tous les
+  parcours majeurs sont en place, testés et en CI verte (voir [`CHANGELOG.md`](CHANGELOG.md)).
 - **Ce document affronte ses propres failles** : voir [le registre des risques](docs/07-RISQUES-ETHIQUE/01-registre-risques.md)
   et [les objections & réponses](docs/07-RISQUES-ETHIQUE/05-objections-reponses.md).
 - **Aucune métrique gonflée** : nous avons banni les chiffres marketing non vérifiables. Quand une
