@@ -190,6 +190,26 @@ export const messages = pgTable('messages', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const expeditions = pgTable('expeditions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  slug: text('slug').notNull().unique(),
+  title: text('title').notNull(),
+  grandeQuestion: text('grande_question').notNull(),
+  durationWeeks: smallint('duration_weeks').notNull().default(3),
+  phase: text('phase').notNull().default('etincelle'),
+  status: text('status').notNull().default('proposee'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const expeditionSkills = pgTable(
+  'expedition_skills',
+  {
+    expeditionId: uuid('expedition_id').notNull(),
+    skillId: uuid('skill_id').notNull(),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.expeditionId, t.skillId] }) }),
+);
+
 export const guardians = pgTable('guardians', {
   id: uuid('id').primaryKey().defaultRandom(),
   minorAccountId: uuid('minor_account_id').notNull(),
