@@ -3,8 +3,9 @@
 > *Un protocole ouvert pour l'apprentissage humain. Pas un lieu. Pas un âge. Pas un diplôme.
 > Juste un terminal, une connexion, et l'envie d'apprendre — de la naissance à la mort.*
 
+[![CI](https://github.com/Louisdelez/dowze/actions/workflows/ci.yml/badge.svg)](https://github.com/Louisdelez/dowze/actions/workflows/ci.yml)
 [![Licence: MIT](https://img.shields.io/badge/Licence-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-2.17.0-success.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-2.25.0-success.svg)](CHANGELOG.md)
 [![Conventional Commits](https://img.shields.io/badge/commits-conventional-FE5196.svg)](CONTRIBUTING.md)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
@@ -102,9 +103,45 @@ Détail : [`docs/03-ARCHITECTURE/00-vue-ensemble-pile.md`](docs/03-ARCHITECTURE/
 
 ---
 
+## L'application (monorepo)
+
+Au-delà de la conception (dossiers `docs/`), le dépôt contient **l'implémentation** — un monorepo
+**npm workspaces + Turborepo**. Plan complet : [`docs/11-IMPLEMENTATION`](docs/11-IMPLEMENTATION/00-plan.md).
+
+```
+apps/
+  web/        # Next.js 15 + React 19 + Tailwind v4 — le portail
+  api/        # NestJS modulaire (Drizzle, pont .json, auth) — l'intra-core
+packages/
+  schemas/    # @dowze/schemas — schémas Zod partagés (source de vérité des types)
+  core/       # @dowze/core — logique pure (clôture R1-R8, BKT, SM-2, planning, pont .json), testée
+supabase/     # schéma Postgres versionné (migrations + seed + RLS)
+```
+
+**Démarrer :**
+
+```bash
+npm install            # installe tout le monorepo
+npm run build          # build (turbo)
+npm run typecheck      # vérification des types
+npm run lint           # ESLint
+npm run test           # tests (Vitest) — 60 tests
+
+# Application (nécessite Docker pour la base) :
+supabase start         # Postgres + Auth + Realtime en local
+npm run dev -w @dowze/api   # backend
+npm run dev -w @dowze/web   # frontend (http://localhost:3000)
+```
+
+> Les `build` / `typecheck` / `lint` / `test` ne nécessitent **pas** Docker. Lancer la base (Supabase) et
+> les serveurs nécessite Docker. Détails : [`apps/web`](apps/web/README.md), [`apps/api`](apps/api/README.md),
+> [`supabase`](supabase/README.md). Flux de versionnement : [`CONTRIBUTING.md`](CONTRIBUTING.md).
+
+---
+
 ## Statut & honnêteté intellectuelle
 
-- **Statut** : document de conception, version **2.17.0** (voir [`CHANGELOG.md`](CHANGELOG.md)).
+- **Statut** : conception **+ implémentation en cours**, version **2.25.0** (voir [`CHANGELOG.md`](CHANGELOG.md)).
 - **Ce document affronte ses propres failles** : voir [le registre des risques](docs/07-RISQUES-ETHIQUE/01-registre-risques.md)
   et [les objections & réponses](docs/07-RISQUES-ETHIQUE/05-objections-reponses.md).
 - **Aucune métrique gonflée** : nous avons banni les chiffres marketing non vérifiables. Quand une
