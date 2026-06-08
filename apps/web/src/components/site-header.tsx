@@ -2,6 +2,8 @@ import Link from 'next/link';
 
 const NAV = [
   { href: '/dashboard', label: 'Tableau de bord' },
+  { href: '/progression', label: 'Progression' },
+  { href: '/planning', label: 'Planning' },
   { href: '/bridge', label: 'Pont .json' },
 ];
 
