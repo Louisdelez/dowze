@@ -10,6 +10,7 @@ import {
 } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardTitle } from '@/components/ui/card';
+import { LiveClasse } from '@/components/live-classe';
 
 export default function CommunautePage() {
   const [classes, setClasses] = useState<ClasseRow[]>([]);
@@ -116,6 +117,8 @@ export default function CommunautePage() {
           </Button>
         </div>
       </Card>
+
+      {classeId && <LiveClasse classeId={classeId} profileId={authorId} />}
 
       {erreur && (
         <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{erreur}</p>
