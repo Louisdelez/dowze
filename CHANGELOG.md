@@ -2,6 +2,20 @@
 
 Ce fichier trace l'évolution du document de conception **et de l'implémentation**.
 
+## [2.29.0] — 2026-06-08
+
+### Ajouté — Système parental & modération
+- **`@dowze/api`** : module **moderation** — politique **pure** de gradation (`decideEscalation` : revue
+  humaine si moyen+, alerte parent si grave/critique avec mineur auteur OU victime), signalement
+  (`POST /moderation/incidents` → prépare une alerte parentale **non envoyée**, validée par un humain),
+  file de revue (`GET /moderation/incidents`), décision humaine (`POST /moderation/incidents/:id/action`).
+  Module **parental** — responsable légal (`POST /parental/guardians`), consentement (`POST /parental/consent`),
+  **synthèse** de haut niveau (`GET /parental/summary/:id` — compteurs uniquement, **jamais** le contenu
+  privé). Tables Drizzle (guardians, moderation_incidents, moderation_actions, parental_alerts). **4 tests**
+  de politique (api : 25 tests).
+- **`@dowze/web`** : écran **/parent** (synthèse bienveillante, façon Pronote).
+- **Vérifié** : build/typecheck/lint verts ; **78 tests** ; `npm audit` 0 vulnérabilité.
+
 ## [2.28.0] — 2026-06-08
 
 ### Ajouté — Communauté & Classes

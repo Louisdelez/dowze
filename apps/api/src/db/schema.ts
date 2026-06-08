@@ -189,3 +189,45 @@ export const messages = pgTable('messages', {
   body: text('body').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const guardians = pgTable('guardians', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  minorAccountId: uuid('minor_account_id').notNull(),
+  email: text('email').notNull(),
+  consentStatus: text('consent_status').notNull().default('en-attente'),
+  consentAt: timestamp('consent_at', { withTimezone: true }),
+  hasDashboardAccount: boolean('has_dashboard_account').notNull().default(false),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const moderationIncidents = pgTable('moderation_incidents', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  source: text('source').notNull(),
+  severity: text('severity').notNull(),
+  contentRef: text('content_ref').notNull(),
+  authorId: uuid('author_id'),
+  victimId: uuid('victim_id'),
+  status: text('status').notNull().default('ouvert'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const moderationActions = pgTable('moderation_actions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  incidentId: uuid('incident_id').notNull(),
+  actorId: uuid('actor_id').notNull(),
+  kind: text('kind').notNull(),
+  reason: text('reason').notNull().default(''),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const parentalAlerts = pgTable('parental_alerts', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  minorAccountId: uuid('minor_account_id').notNull(),
+  guardianEmail: text('guardian_email').notNull(),
+  incidentId: uuid('incident_id'),
+  severity: text('severity').notNull(),
+  reason: text('reason').notNull(),
+  humanValidated: boolean('human_validated').notNull().default(false),
+  sentAt: timestamp('sent_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});

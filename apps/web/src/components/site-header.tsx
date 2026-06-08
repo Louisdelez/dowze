@@ -6,6 +6,7 @@ const NAV = [
   { href: '/planning', label: 'Planning' },
   { href: '/validation', label: 'Validation' },
   { href: '/communaute', label: 'Communauté' },
+  { href: '/parent', label: 'Espace parent' },
   { href: '/bridge', label: 'Pont .json' },
 ];
 

@@ -137,3 +137,13 @@ export function postClasseMessage(
 ): Promise<MessageRow> {
   return post(`/community/classes/${classeId}/messages`, { authorId, body });
 }
+
+export interface ParentalSummaryRow {
+  profileId: string | null;
+  masteredCount: number;
+  inProgressCount: number;
+  planningCount: number;
+}
+export function getParentalSummary(minorAccountId: string): Promise<ParentalSummaryRow> {
+  return get(`/parental/summary/${minorAccountId}`);
+}
