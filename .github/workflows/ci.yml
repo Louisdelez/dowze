@@ -41,3 +41,38 @@ jobs:
 
       - name: Audit (échoue si vulnérabilité ≥ high)
         run: npm audit --audit-level=high
+
+  e2e:
+    name: E2E · Playwright (web)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install (npm ci)
+        run: npm ci
+
+      - name: Build web (+ dépendances)
+        run: npx turbo run build --filter=@dowze/web
+
+      - name: Install Playwright browsers
+        working-directory: apps/web
+        run: npx playwright install --with-deps chromium
+
+      - name: Run e2e (le webServer lance next start)
+        working-directory: apps/web
+        run: npm run test:e2e
+
+      - name: Upload rapport en cas d'échec
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report
+          retention-days: 7
