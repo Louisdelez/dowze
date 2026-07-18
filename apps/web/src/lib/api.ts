@@ -1,12 +1,25 @@
 import type { BridgeOperation } from '@dowze/schemas';
+import { getSupabase } from '@/lib/supabase';
 
 /** Client minimal vers le backend Dowze (l'intra-core). */
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:3001';
 
+/** En-tête d'auth : le jeton d'accès Supabase (l'API le vérifie via SupabaseAuthGuard). */
+async function authHeaders(): Promise<Record<string, string>> {
+  try {
+    const {
+      data: { session },
+    } = await getSupabase().auth.getSession();
+    return session?.access_token ? { authorization: `Bearer ${session.access_token}` } : {};
+  } catch {
+    return {};
+  }
+}
+
 async function post<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', ...(await authHeaders()) },
     body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(`API ${res.status} — ${await res.text()}`);
@@ -14,7 +27,7 @@ async function post<T>(path: string, body: unknown): Promise<T> {
 }
 
 async function get<T>(path: string): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`);
+  const res = await fetch(`${API_BASE}${path}`, { headers: { ...(await authHeaders()) } });
   if (!res.ok) throw new Error(`API ${res.status} — ${await res.text()}`);
   return res.json() as Promise<T>;
 }
