@@ -20,9 +20,19 @@ export class ProgressionController {
     return this.service.getMastery(profileId);
   }
 
+  @Get(':profileId/next')
+  next(@Param('profileId') profileId: string) {
+    return this.service.nextPrescribed(profileId);
+  }
+
   @Post('observe')
   observe(@Body() body: unknown) {
     const input = parseOr400(observeBody, body);
-    return this.service.observe(input.profileId, input.skillId, input.correct, new Date().toISOString());
+    return this.service.observe(
+      input.profileId,
+      input.skillId,
+      input.correct,
+      new Date().toISOString(),
+    );
   }
 }

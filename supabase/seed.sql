@@ -41,3 +41,59 @@ insert into rubric_criteria (id, skill_id, label, required) values
   ('lit-a-voix-haute', '00000000-0000-4000-8000-000000000101', 'Lit un texte simple à voix haute sans buter', true),
   ('repond-questions', '00000000-0000-4000-8000-000000000101', 'Répond à des questions de compréhension littérale', true),
   ('infere-sens',      '00000000-0000-4000-8000-000000000101', 'Infère le sens d''un mot inconnu par le contexte', false);
+
+-- ╔══════════════════════════════════════════════════════════════════════╗
+-- ║ Domaines de DÉMONSTRATION (illustratifs) — deux fils multi-niveaux    ║
+-- ║ pour éprouver le placement, la frontière et la validation.            ║
+-- ║ Respecte la loi de clôture : profondeur strictement décroissante.     ║
+-- ╚══════════════════════════════════════════════════════════════════════╝
+
+-- Fil NUMÉRATIE et fil LITTÉRATIE (profondeurs 1 → 3)
+insert into skills (id, slug, title, kind, depth, is_root) values
+  ('00000000-0000-4000-8000-000000000103', 'soustraire', 'Soustraire', 'savoir-faire', 1, false),
+  ('00000000-0000-4000-8000-000000000104', 'ecrire-phrase', 'Écrire une phrase', 'savoir-faire', 1, false),
+  ('00000000-0000-4000-8000-000000000202', 'multiplier', 'Multiplier', 'savoir-faire', 2, false),
+  ('00000000-0000-4000-8000-000000000203', 'resoudre-probleme-arithmetique', 'Résoudre un problème arithmétique', 'savoir-faire', 2, false),
+  ('00000000-0000-4000-8000-000000000204', 'rediger-court-texte', 'Rédiger un court texte', 'savoir-faire', 2, false),
+  ('00000000-0000-4000-8000-000000000301', 'diviser', 'Diviser', 'savoir-faire', 3, false),
+  ('00000000-0000-4000-8000-000000000302', 'fractions-simples', 'Comprendre les fractions simples', 'savoir-faire', 3, false),
+  ('00000000-0000-4000-8000-000000000303', 'argumenter-ecrit', 'Argumenter à l''écrit', 'savoir-faire', 3, false);
+
+insert into prerequisites (skill_id, prerequisite_id) values
+  -- soustraire ← dénombrer + comparer
+  ('00000000-0000-4000-8000-000000000103', '00000000-0000-4000-8000-000000000005'),
+  ('00000000-0000-4000-8000-000000000103', '00000000-0000-4000-8000-000000000006'),
+  -- écrire une phrase ← écrire-tracer + s'exprimer à l'oral
+  ('00000000-0000-4000-8000-000000000104', '00000000-0000-4000-8000-000000000004'),
+  ('00000000-0000-4000-8000-000000000104', '00000000-0000-4000-8000-000000000002'),
+  -- multiplier ← additionner + classer-ordonner
+  ('00000000-0000-4000-8000-000000000202', '00000000-0000-4000-8000-000000000102'),
+  ('00000000-0000-4000-8000-000000000202', '00000000-0000-4000-8000-000000000007'),
+  -- résoudre un problème ← additionner + soustraire + lire-comprendre
+  ('00000000-0000-4000-8000-000000000203', '00000000-0000-4000-8000-000000000102'),
+  ('00000000-0000-4000-8000-000000000203', '00000000-0000-4000-8000-000000000103'),
+  ('00000000-0000-4000-8000-000000000203', '00000000-0000-4000-8000-000000000101'),
+  -- rédiger un court texte ← écrire une phrase + lire-comprendre
+  ('00000000-0000-4000-8000-000000000204', '00000000-0000-4000-8000-000000000104'),
+  ('00000000-0000-4000-8000-000000000204', '00000000-0000-4000-8000-000000000101'),
+  -- diviser ← multiplier + soustraire
+  ('00000000-0000-4000-8000-000000000301', '00000000-0000-4000-8000-000000000202'),
+  ('00000000-0000-4000-8000-000000000301', '00000000-0000-4000-8000-000000000103'),
+  -- fractions ← multiplier + comparer
+  ('00000000-0000-4000-8000-000000000302', '00000000-0000-4000-8000-000000000202'),
+  ('00000000-0000-4000-8000-000000000302', '00000000-0000-4000-8000-000000000006'),
+  -- argumenter à l'écrit ← rédiger un court texte + résumer un texte
+  ('00000000-0000-4000-8000-000000000303', '00000000-0000-4000-8000-000000000204'),
+  ('00000000-0000-4000-8000-000000000303', '00000000-0000-4000-8000-000000000201');
+
+-- Grilles pour deux compétences de démonstration
+insert into rubrics (skill_id) values
+  ('00000000-0000-4000-8000-000000000102'),
+  ('00000000-0000-4000-8000-000000000202');
+insert into rubric_criteria (id, skill_id, label, required) values
+  ('add-sans-retenue', '00000000-0000-4000-8000-000000000102', 'Additionne deux nombres sans retenue', true),
+  ('add-avec-retenue', '00000000-0000-4000-8000-000000000102', 'Additionne deux nombres avec retenue', true),
+  ('add-mental',       '00000000-0000-4000-8000-000000000102', 'Calcule une addition simple de tête', false),
+  ('mult-table',       '00000000-0000-4000-8000-000000000202', 'Récite les tables jusqu''à 10', true),
+  ('mult-pose',        '00000000-0000-4000-8000-000000000202', 'Pose et effectue une multiplication à deux chiffres', true),
+  ('mult-sens',        '00000000-0000-4000-8000-000000000202', 'Explique la multiplication comme une addition répétée', false);

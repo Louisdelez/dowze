@@ -11,6 +11,7 @@ import {
   peerReviewQueue,
 } from '../db/schema';
 import { summarizeValidations, type BadgeSummary } from './validation-logic';
+import { ProgressionService } from '../progression/progression.service';
 
 type ValidationRow = typeof validations.$inferSelect;
 
@@ -30,7 +31,10 @@ function toValidation(row: ValidationRow): Validation {
 
 @Injectable()
 export class ValidationService {
-  constructor(@Inject(DB) private readonly db: Database) {}
+  constructor(
+    @Inject(DB) private readonly db: Database,
+    private readonly progression: ProgressionService,
+  ) {}
 
   /** La grille (rubrique) d'une compétence. */
   async getRubric(skillId: string): Promise<Rubric | null> {
@@ -83,6 +87,8 @@ export class ValidationService {
     }
     if (passed) {
       await this.db.insert(peerReviewQueue).values({ skillId, learnerId: profileId });
+      // La preuve fait avancer la frontière : la compétence est maîtrisée.
+      await this.progression.markMastered(profileId, skillId, new Date().toISOString());
     }
     return { passed };
   }
@@ -97,6 +103,9 @@ export class ValidationService {
     await this.db
       .insert(validations)
       .values({ skillId, learnerId, tier: 'pair', reviewerId, passed });
+    if (passed) {
+      await this.progression.markMastered(learnerId, skillId, new Date().toISOString());
+    }
     return { ok: true };
   }
 

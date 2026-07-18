@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { getProgression, getSkills, type MasteryRow, type SkillRow } from '@/lib/api';
+import { getProgression, getNextSkill } from '@/lib/api';
 import { useProfile } from '@/lib/use-profile';
 import { Button } from '@/components/ui/button';
 import { Card, CardTitle, CardDescription } from '@/components/ui/card';
@@ -36,19 +36,15 @@ export default function DashboardPage() {
     let annule = false;
     setCharge(true);
     setErreur(false);
-    Promise.all([getProgression(profileId), getSkills()])
-      .then(([rows, skills]: [MasteryRow[], SkillRow[]]) => {
+    Promise.all([getProgression(profileId), getNextSkill(profileId)])
+      .then(([rows, next]) => {
         if (annule) return;
-        const titre = new Map(skills.map((s) => [s.id, s.title]));
         const mastered = rows.filter((r) => r.pMastery >= 0.95).length;
         const enCours = rows.filter((r) => r.pMastery > 0 && r.pMastery < 0.95);
-        const prochain = [...enCours].sort((a, b) => b.pMastery - a.pMastery)[0];
         setVue({
           mastered,
           inProgress: enCours.length,
-          next: prochain
-            ? { title: titre.get(prochain.skillId) ?? 'ta prochaine compétence' }
-            : undefined,
+          next: next ? { title: next.title } : undefined,
         });
       })
       .catch(() => !annule && setErreur(true))
@@ -124,7 +120,7 @@ function ContinuerCard({
     if (next) {
       titre = `Reprendre : ${next.title}`;
       desc = 'Continue là où tu t’es arrêté·e.';
-      href = '/expeditions';
+      href = '/seance';
       cta = 'Continuer';
     } else {
       titre = 'Fais ton diagnostic';

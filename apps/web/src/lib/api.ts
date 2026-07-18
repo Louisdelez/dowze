@@ -40,6 +40,11 @@ export function importBridgeResponse(input: ImportResponseInput): Promise<unknow
   return post('/bridge/responses', input);
 }
 
+/** Persiste une ossature générée dans le graphe (école générative, validée par clôture). */
+export function ingestOssature(skills: unknown): Promise<{ ok: true; added: number }> {
+  return post('/skills/ingest', { skills });
+}
+
 export interface MasteryRow {
   skillId: string;
   pMastery: number;
@@ -49,6 +54,23 @@ export interface MasteryRow {
 
 export function getProgression(profileId: string): Promise<MasteryRow[]> {
   return get(`/progression/${profileId}`);
+}
+
+export interface NextSkillRow {
+  id: string;
+  slug: string;
+  title: string;
+  depth: number;
+}
+
+/** La prochaine compétence prescrite (frontière d'apprentissage), ou null. */
+export function getNextSkill(profileId: string): Promise<NextSkillRow | null> {
+  return get(`/progression/${profileId}/next`);
+}
+
+/** Enregistre une observation (réussite/échec) → met à jour la maîtrise (BKT). */
+export function observe(profileId: string, skillId: string, correct: boolean): Promise<MasteryRow> {
+  return post('/progression/observe', { profileId, skillId, correct });
 }
 
 export interface PlanningEntryRow {

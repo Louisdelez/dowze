@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import type { BridgeOperation } from '@dowze/schemas';
-import { createBridgeRequest, importBridgeResponse } from '@/lib/api';
+import { createBridgeRequest, importBridgeResponse, ingestOssature } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardTitle, CardDescription } from '@/components/ui/card';
 import { SelectField, TextField, TextAreaField } from '@/components/ui/field';
@@ -25,6 +25,8 @@ export default function BridgePage() {
   const [aller, setAller] = useState('');
   const [retour, setRetour] = useState('');
   const [resultat, setResultat] = useState('');
+  const [payload, setPayload] = useState<unknown>(null);
+  const [ingest, setIngest] = useState('');
   const [erreur, setErreur] = useState('');
 
   async function genererAller() {
@@ -42,13 +44,35 @@ export default function BridgePage() {
 
   async function validerRetour() {
     setErreur('');
+    setIngest('');
     try {
       const json = await importBridgeResponse({
         raw: retour,
         expectedRequestId: requestId,
         expectedOperation: operation,
       });
+      setPayload(json);
       setResultat(JSON.stringify(json, null, 2));
+    } catch (e) {
+      setErreur(String(e instanceof Error ? e.message : e));
+    }
+  }
+
+  // École générative : une ossature validée peut être persistée dans le graphe.
+  const ossature =
+    operation === 'generer-ossature' &&
+    payload &&
+    typeof payload === 'object' &&
+    Array.isArray((payload as { skills?: unknown }).skills)
+      ? ((payload as { skills: unknown[] }).skills as unknown[])
+      : null;
+
+  async function persister() {
+    if (!ossature) return;
+    setErreur('');
+    try {
+      const res = await ingestOssature(ossature);
+      setIngest(`${res.added} compétence(s) ajoutée(s) au graphe.`);
     } catch (e) {
       setErreur(String(e instanceof Error ? e.message : e));
     }
@@ -104,6 +128,19 @@ export default function BridgePage() {
         </Button>
         {resultat && (
           <pre className="max-h-72 overflow-auto rounded-md bg-muted p-4 text-xs">{resultat}</pre>
+        )}
+
+        {ossature && (
+          <div className="space-y-2 border-t border-border pt-3">
+            <CardDescription>
+              Ossature valide ({ossature.length} compétence·s). Tu peux l’ajouter au graphe — elle
+              sera revalidée par la loi de clôture avant d’être persistée.
+            </CardDescription>
+            <Button variant="secondary" onClick={persister}>
+              Persister au graphe
+            </Button>
+            {ingest && <Note>{ingest}</Note>}
+          </div>
         )}
       </Card>
 

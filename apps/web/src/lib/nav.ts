@@ -1,6 +1,7 @@
 import type { ComponentType, SVGProps } from 'react';
 import {
   IconToday,
+  IconSparkles,
   IconCompass,
   IconChart,
   IconCalendar,
@@ -32,6 +33,7 @@ export const NAV_GROUPS: NavGroup[] = [
     title: 'Apprendre',
     items: [
       { href: '/dashboard', label: "Aujourd'hui", icon: IconToday },
+      { href: '/seance', label: 'Ma séance', icon: IconSparkles },
       { href: '/expeditions', label: 'Expéditions', icon: IconCompass },
       { href: '/progression', label: 'Progression', icon: IconChart },
       { href: '/planning', label: 'Planning', icon: IconCalendar },
