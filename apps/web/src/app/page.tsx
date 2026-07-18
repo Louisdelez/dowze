@@ -1,7 +1,5 @@
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
 import { Card, CardTitle, CardDescription } from '@/components/ui/card';
-import { IconArrowRight } from '@/components/ui/icons';
+import { HeroActions } from '@/components/hero-actions';
 
 const PILIERS = [
   {
@@ -30,17 +28,7 @@ export default function HomePage() {
           Pas un lieu, pas un âge, pas un diplôme. Juste un terminal, une connexion, et l’envie
           d’apprendre. Dowze est un <strong>commun</strong> ouvert.
         </p>
-        <div className="flex flex-wrap gap-3">
-          <Link href="/inscription">
-            <Button className="gap-2">
-              Commencer
-              <IconArrowRight />
-            </Button>
-          </Link>
-          <Link href="/dashboard">
-            <Button variant="secondary">Voir la démo</Button>
-          </Link>
-        </div>
+        <HeroActions />
       </section>
 
       <section className="grid gap-4 sm:grid-cols-3">
