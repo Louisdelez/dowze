@@ -31,7 +31,11 @@ export function startOfIsoWeekUtc(iso: string): string {
 }
 
 /** Construit un instant à partir du début de semaine + jour (0=dim..6=sam) + minute. */
-export function atWeekdayMinute(weekStartIso: string, dayOfWeek: number, startMinute: number): string {
+export function atWeekdayMinute(
+  weekStartIso: string,
+  dayOfWeek: number,
+  startMinute: number,
+): string {
   // weekStartIso = lundi 00:00. Décalage depuis lundi : (jour - 1), dimanche → 6.
   const offsetDays = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
   const base = addDaysIso(weekStartIso, offsetDays);

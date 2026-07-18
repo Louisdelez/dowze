@@ -37,10 +37,7 @@ export function aggregatePeerReviews(reviews: readonly Validation[]): PeerAggreg
 }
 
 /** Le niveau de badge (Open Badges) selon les paliers atteints. */
-export function badgeLevel(opts: {
-  peerPassed: boolean;
-  expertEndorsed: boolean;
-}): BadgeLevel {
+export function badgeLevel(opts: { peerPassed: boolean; expertEndorsed: boolean }): BadgeLevel {
   if (opts.expertEndorsed) return 'endosse-expert';
   if (opts.peerPassed) return 'valide-par-pair';
   return 'auto-declare';

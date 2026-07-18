@@ -21,7 +21,12 @@ function skill(n: number, prereqs: number[], depth: number, isRoot = false): Ski
 }
 
 // 1 → 2 → 3 ; 4 (racine)
-const graph: Skill[] = [skill(1, [], 0, true), skill(2, [1], 1), skill(3, [2], 2), skill(4, [], 0, true)];
+const graph: Skill[] = [
+  skill(1, [], 0, true),
+  skill(2, [1], 1),
+  skill(3, [2], 2),
+  skill(4, [], 0, true),
+];
 
 describe('diagnostic / placement', () => {
   it('démontrer une compétence maîtrise toute sa chaîne de prérequis', () => {

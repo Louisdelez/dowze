@@ -12,11 +12,7 @@ export class DiagnosticService {
   ) {}
 
   /** Place l'élève sur le Cursus et enregistre les compétences déjà maîtrisées. */
-  async run(
-    profileId: string,
-    demonstratedSkillIds: string[],
-    nowIso: string,
-  ): Promise<Placement> {
+  async run(profileId: string, demonstratedSkillIds: string[], nowIso: string): Promise<Placement> {
     const skills = await this.graph.loadGraph();
     const placement = computePlacement(skills, demonstratedSkillIds);
 

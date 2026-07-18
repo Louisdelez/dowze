@@ -65,7 +65,10 @@ describe('pont .json — validation du retour', () => {
   });
 
   it('rejette la prototype pollution', () => {
-    const poison = '{"bridgeVersion":"1","requestId":"' + REQ + '","operation":"generer-competence","payload":{"__proto__":{"x":1},"skill":{},"closure":[]}}';
+    const poison =
+      '{"bridgeVersion":"1","requestId":"' +
+      REQ +
+      '","operation":"generer-competence","payload":{"__proto__":{"x":1},"skill":{},"closure":[]}}';
     const r = validateBridgeResponseText(poison, opts);
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.errors[0]?.message).toMatch(/interdite/);

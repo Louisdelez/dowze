@@ -28,11 +28,7 @@ export const validationTierSchema = z.enum(['auto', 'ia-precorrection', 'pair', 
 export type ValidationTier = z.infer<typeof validationTierSchema>;
 
 /** Les 3 niveaux de confiance (façon Open Badges). */
-export const badgeLevelSchema = z.enum([
-  'auto-declare',
-  'valide-par-pair',
-  'endosse-expert',
-]);
+export const badgeLevelSchema = z.enum(['auto-declare', 'valide-par-pair', 'endosse-expert']);
 export type BadgeLevel = z.infer<typeof badgeLevelSchema>;
 
 /** Verdict sur un critère lors d'une revue. */

@@ -26,10 +26,7 @@ function hardKey(c: Candidate): string {
   return `${c.locale}|${c.timezone}|${c.type}`;
 }
 
-export function formClasses(
-  candidates: readonly Candidate[],
-  targetSize = 24,
-): FormedClasse[] {
+export function formClasses(candidates: readonly Candidate[], targetSize = 24): FormedClasse[] {
   const groups = new Map<string, Candidate[]>();
   for (const c of candidates) {
     const k = hardKey(c);

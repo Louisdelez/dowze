@@ -24,9 +24,7 @@ describe('formation des classes', () => {
     const candidates = Array.from({ length: 6 }, (_, i) => cand(`p${i}`, i));
     const classes = formClasses(candidates, 3);
     // classe 0 reçoit les indices triés 0,2,4 ; classe 1 reçoit 1,3,5
-    const levelsByClasse = classes.map((c) =>
-      c.memberIds.map((id) => Number(id.replace('p', ''))),
-    );
+    const levelsByClasse = classes.map((c) => c.memberIds.map((id) => Number(id.replace('p', ''))));
     for (const levels of levelsByClasse) {
       expect(Math.max(...levels) - Math.min(...levels)).toBeGreaterThanOrEqual(2);
     }

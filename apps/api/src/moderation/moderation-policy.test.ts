@@ -21,7 +21,11 @@ describe('politique de modération', () => {
   });
 
   it('incident critique sans mineur : revue, pas d’alerte', () => {
-    const d = decideEscalation({ severity: 'critique', authorIsMinor: false, victimIsMinor: false });
+    const d = decideEscalation({
+      severity: 'critique',
+      authorIsMinor: false,
+      victimIsMinor: false,
+    });
     expect(d.humanReview).toBe(true);
     expect(d.alertParent).toBe(false);
   });

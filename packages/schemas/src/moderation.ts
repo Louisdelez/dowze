@@ -14,12 +14,7 @@ export type IncidentSource = z.infer<typeof incidentSourceSchema>;
 export const incidentSeveritySchema = z.enum(['faible', 'moyen', 'grave', 'critique']);
 export type IncidentSeverity = z.infer<typeof incidentSeveritySchema>;
 
-export const incidentStatusSchema = z.enum([
-  'ouvert',
-  'en-revue-humaine',
-  'resolu',
-  'escalade',
-]);
+export const incidentStatusSchema = z.enum(['ouvert', 'en-revue-humaine', 'resolu', 'escalade']);
 export type IncidentStatus = z.infer<typeof incidentStatusSchema>;
 
 export const moderationIncidentSchema = z.object({

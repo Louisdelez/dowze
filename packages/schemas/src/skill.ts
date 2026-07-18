@@ -1,10 +1,5 @@
 import { z } from 'zod';
-import {
-  uuidSchema,
-  slugSchema,
-  epistemicStatusSchema,
-  probabilitySchema,
-} from './common';
+import { uuidSchema, slugSchema, epistemicStatusSchema, probabilitySchema } from './common';
 
 /**
  * La compétence (nœud d'Atlas) et le graphe de prérequis.

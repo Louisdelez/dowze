@@ -24,12 +24,7 @@ export const weeklyAvailabilitySchema = z.object({
 export type WeeklyAvailability = z.infer<typeof weeklyAvailabilitySchema>;
 
 /** Nature d'une entrée de planning. */
-export const planningEntryKindSchema = z.enum([
-  'apprentissage',
-  'revision',
-  'expedition',
-  'pause',
-]);
+export const planningEntryKindSchema = z.enum(['apprentissage', 'revision', 'expedition', 'pause']);
 export type PlanningEntryKind = z.infer<typeof planningEntryKindSchema>;
 
 /** Statut d'une entrée — neutre, jamais culpabilisant. */

@@ -68,7 +68,9 @@ export function computeWeeklyPlanning(input: PlanningInput): PlanningOutput {
           status: 'prevu',
         });
         index += 1;
-        cursorIso = new Date(new Date(cursorIso).getTime() + head.durationMin * 60_000).toISOString();
+        cursorIso = new Date(
+          new Date(cursorIso).getTime() + head.durationMin * 60_000,
+        ).toISOString();
         remaining -= head.durationMin;
       } else if (head.durationMin > slot.durationMin) {
         // Ne tiendra dans aucun créneau de cette taille → non planifiable ici.

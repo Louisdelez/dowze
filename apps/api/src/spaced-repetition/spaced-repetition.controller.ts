@@ -16,6 +16,11 @@ export class SpacedRepetitionController {
   @Post()
   review(@Body() body: unknown) {
     const input = parseOr400(reviewBody, body);
-    return this.service.review(input.profileId, input.skillId, input.grade, new Date().toISOString());
+    return this.service.review(
+      input.profileId,
+      input.skillId,
+      input.grade,
+      new Date().toISOString(),
+    );
   }
 }

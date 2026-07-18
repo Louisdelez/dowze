@@ -29,10 +29,7 @@ export class CommunityService {
   }
 
   async join(classeId: string, profileId: string) {
-    await this.db
-      .insert(memberships)
-      .values({ classeId, profileId })
-      .onConflictDoNothing();
+    await this.db.insert(memberships).values({ classeId, profileId }).onConflictDoNothing();
     return { ok: true as const };
   }
 

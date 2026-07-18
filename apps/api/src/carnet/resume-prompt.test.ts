@@ -10,7 +10,11 @@ describe('prompt de reprise (carnet)', () => {
   });
 
   it('inclut la dernière note si présente', () => {
-    const p = buildResumePrompt({ nextSkillTitle: 'X', masteredCount: 0, lastNote: 'revoir les fractions' });
+    const p = buildResumePrompt({
+      nextSkillTitle: 'X',
+      masteredCount: 0,
+      lastNote: 'revoir les fractions',
+    });
     expect(p).toContain('revoir les fractions');
   });
 

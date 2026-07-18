@@ -1,11 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
-import {
-  computeWeeklyPlanning,
-  nextPrescribedSkill,
-  type PlanningOutput,
-} from '@dowze/core';
+import { computeWeeklyPlanning, nextPrescribedSkill, type PlanningOutput } from '@dowze/core';
 import type { Slot } from '@dowze/schemas';
 import { DB, type Database } from '../db/drizzle.module';
 import { availabilitySlots, sm2Cards, masteryStates, planningEntries } from '../db/schema';

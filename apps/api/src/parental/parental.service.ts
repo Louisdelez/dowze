@@ -16,10 +16,7 @@ export class ParentalService {
 
   /** Enregistre le responsable légal d'un compte mineur (« email plus »). */
   async registerGuardian(minorAccountId: string, email: string) {
-    const inserted = await this.db
-      .insert(guardians)
-      .values({ minorAccountId, email })
-      .returning();
+    const inserted = await this.db.insert(guardians).values({ minorAccountId, email }).returning();
     return inserted[0];
   }
 

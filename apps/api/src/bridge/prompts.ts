@@ -26,9 +26,9 @@ const SYSTEM_PROMPTS: Record<BridgeOperation, string> = {
   'generer-ossature':
     'Génère un fragment cohérent du graphe de compétences (voisinage local), sans trou ni cycle.',
   'generer-expedition':
-    'Conçois une expédition (2-6 semaines) autour d\'une grande question, gabarit Étincelle→Question→Défi→Acte→Trace.',
+    "Conçois une expédition (2-6 semaines) autour d'une grande question, gabarit Étincelle→Question→Défi→Acte→Trace.",
   'generer-grille':
-    'Produis la grille (rubrique binaire) d\'une compétence : critères observables, démontrables, sans QCM.',
+    "Produis la grille (rubrique binaire) d'une compétence : critères observables, démontrables, sans QCM.",
   'generer-cours':
     'Rédige une leçon avec objectifs explicites et exemples résolus (réduire la charge cognitive).',
   'generer-plan':
@@ -69,7 +69,14 @@ export function exampleFor(op: BridgeOperation): unknown {
     case 'generer-ossature':
       return {
         skills: [
-          { id: SAMPLE_UUID, slug: 'racine', title: 'Racine', kind: 'savoir', depth: 0, isRoot: true },
+          {
+            id: SAMPLE_UUID,
+            slug: 'racine',
+            title: 'Racine',
+            kind: 'savoir',
+            depth: 0,
+            isRoot: true,
+          },
         ],
       };
     case 'generer-grille':

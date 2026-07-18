@@ -66,7 +66,10 @@ export function validateBridgeResponseText(
   // 1. taille
   const bytes = Buffer.byteLength(rawText, 'utf8');
   if (bytes > maxBytes) {
-    return { ok: false, errors: [{ path: '$', message: `JSON trop volumineux (${bytes} octets)` }] };
+    return {
+      ok: false,
+      errors: [{ path: '$', message: `JSON trop volumineux (${bytes} octets)` }],
+    };
   }
 
   // 2. parse
@@ -74,7 +77,10 @@ export function validateBridgeResponseText(
   try {
     parsed = JSON.parse(rawText);
   } catch (e) {
-    return { ok: false, errors: [{ path: '$', message: `JSON invalide: ${(e as Error).message}` }] };
+    return {
+      ok: false,
+      errors: [{ path: '$', message: `JSON invalide: ${(e as Error).message}` }],
+    };
   }
 
   // 3. prototype pollution
