@@ -2,6 +2,37 @@
 
 Ce fichier trace l'évolution du document de conception **et de l'implémentation**.
 
+## [3.1.0] — 2026-07-18
+
+### 🔁 La boucle d'apprentissage fermée + école générative + observabilité
+Jalon qui transforme le squelette en **produit vivant** : la chaîne apprendre → pratiquer →
+observer → maîtrise → étape suivante fonctionne enfin de bout en bout.
+
+- **Boucle d'apprentissage (P0)** : nouvel écran **`/seance`** (compétence prescrite → leçon
+  générée via le pont `.json` → pratique auto-évaluée → `POST /progression/observe` → **BKT** →
+  la **frontière avance**). Endpoint **`GET /progression/:id/next`** (prochaine compétence).
+- **Placement (P0)** : `/demarrer` permet de déclarer des compétences **à toute profondeur**
+  (groupées par niveau) — la **clôture** place l'élève haut, il ne refait pas l'acquis.
+- **Validation → maîtrise (P0)** : réussir un palier (`selfValidate`/`peerReview`) **marque la
+  compétence maîtrisée** (`markMastered`) → fait avancer la frontière. Les deux systèmes ne sont
+  plus découplés.
+- **École générative (P1)** : **`POST /skills/ingest`** ingère une ossature générée via le pont,
+  **revalidée par la loi de clôture** avant persistance (croissance paresseuse du graphe). Câblée
+  à la page **Pont** (« Persister au graphe »).
+- **Contenu (P1)** : le seed gagne deux fils de démonstration multi-niveaux (numératie, littératie)
+  avec grilles — graphe **clos vérifié** par `validateGraph`.
+- **Observabilité (P2)** : couche **OpenTelemetry + Sentry optionnelle et sans dépendance
+  obligatoire** (chargée dynamiquement, no-op si non configurée), filtre d'exceptions global,
+  variables d'env documentées.
+- **Tests & CI (P2)** : **test d'intégration Testcontainers** (migrations → seed → diagnostic →
+  frontière → validation, hors du run unitaire), **job Playwright e2e** ajouté à la CI, smoke
+  e2e mis à jour pour la nouvelle interface.
+- **Sécurité** : `npm audit fix` (multer via `@nestjs/platform-express`, esbuild) → **0
+  vulnérabilité** rétablie.
+- **Vérifié** : build/typecheck/lint/format verts ; **99 tests** unitaires (core 57 · api 35 ·
+  schemas 7) ; 14 routes web en 200. *(Base réelle, Testcontainers, Playwright et visio :
+  exécutables côté déploiement avec Docker/navigateurs/SDK — non exécutés ici.)*
+
 ## [3.0.0] — 2026-06-08
 
 ### 🎉 Produit complet — E2E, résilience & finition
