@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { AppShell } from '@/components/app-shell';
+import { SessionHydrator } from '@/components/session-hydrator';
 
 // Inter = substitut open-source de « NotionInter » (cf. DESIGN.md).
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
@@ -19,6 +20,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="fr" className={inter.variable}>
       <body>
+        <SessionHydrator />
         <AppShell>{children}</AppShell>
       </body>
     </html>
