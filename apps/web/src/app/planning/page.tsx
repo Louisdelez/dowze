@@ -1,12 +1,20 @@
 'use client';
 
-import { useState } from 'react';
-import { generatePlanning, type PlanningEntryRow } from '@/lib/api';
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { generatePlanning, getSkills, type PlanningEntryRow, type SkillRow } from '@/lib/api';
+import { useProfile } from '@/lib/use-profile';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { PageHeader } from '@/components/page-header';
+import { EmptyState } from '@/components/ui/empty-state';
+import { Note } from '@/components/ui/note';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Minuteur } from '@/components/minuteur';
+import { IconCalendar } from '@/components/ui/icons';
 
-/** Lundi 00:00 UTC de la semaine courante (calcul côté client). */
+/** Lundi 00:00 UTC de la semaine courante. */
 function mondayThisWeekIso(): string {
   const d = new Date();
   const day = d.getUTCDay() === 0 ? 7 : d.getUTCDay();
@@ -15,72 +23,96 @@ function mondayThisWeekIso(): string {
   return d.toISOString();
 }
 
-export default function PlanningPage() {
-  const [profileId, setProfileId] = useState('');
-  const [entries, setEntries] = useState<PlanningEntryRow[]>([]);
-  const [erreur, setErreur] = useState('');
-  const [charge, setCharge] = useState(false);
-  const [vu, setVu] = useState(false);
+const KIND_LABEL: Record<string, string> = {
+  revision: 'Révision',
+  apprentissage: 'Apprentissage',
+  new: 'Apprentissage',
+  pause: 'Pause',
+};
+const kindLabel = (k: string) => KIND_LABEL[k] ?? k.charAt(0).toUpperCase() + k.slice(1);
 
-  async function generer() {
-    setErreur('');
+export default function PlanningPage() {
+  const { profileId, ready, signedIn } = useProfile();
+  const [entries, setEntries] = useState<PlanningEntryRow[] | null>(null);
+  const [titres, setTitres] = useState<Map<string, string>>(new Map());
+  const [charge, setCharge] = useState(false);
+  const [erreur, setErreur] = useState(false);
+
+  useEffect(() => {
+    if (!signedIn || !profileId) return;
+    let annule = false;
     setCharge(true);
-    try {
-      const res = await generatePlanning(profileId, mondayThisWeekIso());
-      setEntries(res.entries);
-      setVu(true);
-    } catch (e) {
-      setErreur(String(e));
-      setEntries([]);
-    } finally {
-      setCharge(false);
-    }
-  }
+    setErreur(false);
+    Promise.all([generatePlanning(profileId, mondayThisWeekIso()), getSkills()])
+      .then(([res, skills]: [{ entries: PlanningEntryRow[] }, SkillRow[]]) => {
+        if (annule) return;
+        setTitres(new Map(skills.map((s) => [s.id, s.title])));
+        setEntries(res.entries);
+      })
+      .catch(() => !annule && setErreur(true))
+      .finally(() => !annule && setCharge(false));
+    return () => {
+      annule = true;
+    };
+  }, [signedIn, profileId]);
 
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Planning de la semaine</h1>
-        <p className="mt-1 text-muted-foreground">
-          Généré pour toi : révisions dues d’abord, puis la prochaine compétence prescrite. Sans pression.
-        </p>
-      </header>
+      <PageHeader
+        title="Planning de la semaine"
+        subtitle="Généré pour toi : les révisions dues d’abord, puis ta prochaine compétence. Sans pression."
+      />
 
       <Minuteur />
 
-      <div className="flex gap-3">
-        <input
-          className="flex-1 rounded-md border border-border px-3 py-2 text-sm"
-          value={profileId}
-          onChange={(e) => setProfileId(e.target.value)}
-          placeholder="identifiant de profil (UUID)"
+      {ready && !signedIn && (
+        <EmptyState
+          icon={<IconCalendar />}
+          title="Connecte-toi pour voir ton planning"
+          description="Ton emploi du temps se construit automatiquement à partir de ta progression."
+          action={
+            <Link href="/connexion">
+              <Button>Se connecter</Button>
+            </Link>
+          }
         />
-        <Button onClick={generer} disabled={!profileId || charge}>
-          {charge ? 'Génération…' : 'Générer la semaine'}
-        </Button>
-      </div>
+      )}
+
+      {charge && (
+        <div className="space-y-2">
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+        </div>
+      )}
 
       {erreur && (
-        <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{erreur}</p>
+        <Note tone="error">Impossible de générer ton planning. Réessaie dans un instant.</Note>
       )}
 
-      {vu && entries.length === 0 && !erreur && (
-        <p className="text-sm text-muted-foreground">
-          Rien à planifier (ni révision due, ni créneau disponible).
-        </p>
+      {signedIn && !charge && !erreur && entries?.length === 0 && (
+        <Note>
+          Rien à planifier cette semaine — aucune révision due pour le moment. Profite d’une pause.
+        </Note>
       )}
 
-      {entries.length > 0 && (
+      {entries && entries.length > 0 && (
         <Card className="divide-y divide-border p-0">
           {entries.map((e) => (
             <div key={e.id} className="flex items-center gap-4 px-6 py-3">
-              <span className="w-40 text-sm tabular-nums text-muted-foreground">
-                {new Date(e.dateIso).toLocaleString('fr-CH')}
+              <span className="w-36 shrink-0 text-sm tabular-nums text-muted-foreground">
+                {new Date(e.dateIso).toLocaleString('fr-CH', {
+                  weekday: 'short',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
               </span>
-              <span className="flex-1 text-sm">{e.skillId ?? '—'}</span>
-              <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                {e.kind} · {e.durationMin} min
+              <span className="flex-1 text-sm">
+                {e.skillId ? (titres.get(e.skillId) ?? 'Compétence') : 'Séance libre'}
               </span>
+              <Badge>
+                {kindLabel(e.kind)} · {e.durationMin} min
+              </Badge>
             </div>
           ))}
         </Card>

@@ -1,12 +1,15 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
 import { useSession } from '@/lib/session';
 import { registerAccount } from '@/lib/api';
 import { Button } from '@/components/ui/button';
-import { Card, CardTitle } from '@/components/ui/card';
+import { Card, CardTitle, CardDescription } from '@/components/ui/card';
+import { TextField } from '@/components/ui/field';
+import { Note } from '@/components/ui/note';
 
 export default function InscriptionPage() {
   const router = useRouter();
@@ -48,44 +51,63 @@ export default function InscriptionPage() {
   return (
     <div className="mx-auto max-w-md">
       <Card className="space-y-4">
-        <CardTitle>Rejoindre Dowze</CardTitle>
-        <input
-          className="w-full rounded-md border border-border px-3 py-2 text-sm"
+        <div>
+          <CardTitle>Rejoindre Dowze</CardTitle>
+          <CardDescription>
+            Quelques secondes suffisent. Aucune carte, aucun engagement.
+          </CardDescription>
+        </div>
+        <TextField
+          label="Prénom ou pseudo"
           value={displayName}
           onChange={(e) => setDisplayName(e.target.value)}
-          placeholder="Prénom / pseudo"
+          placeholder="Comment veux-tu qu’on t’appelle ?"
         />
-        <input
-          className="w-full rounded-md border border-border px-3 py-2 text-sm"
+        <TextField
+          label="Email"
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="email"
+          placeholder="toi@exemple.com"
         />
-        <input
-          className="w-full rounded-md border border-border px-3 py-2 text-sm"
+        <TextField
+          label="Mot de passe"
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          placeholder="mot de passe"
+          placeholder="Au moins 8 caractères"
         />
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={isMinor} onChange={(e) => setIsMinor(e.target.checked)} />
           Je suis mineur·e
         </label>
         {isMinor && (
-          <input
-            className="w-full rounded-md border border-border px-3 py-2 text-sm"
+          <TextField
+            label="Email du responsable légal"
             type="email"
             value={guardianEmail}
             onChange={(e) => setGuardianEmail(e.target.value)}
-            placeholder="email du responsable légal"
+            hint="Il recevra un bilan bienveillant, jamais le contenu privé de tes échanges."
+            placeholder="parent@exemple.com"
           />
         )}
-        <Button onClick={inscrire} disabled={enCours || !email || !password || !displayName}>
+        <Button
+          onClick={inscrire}
+          disabled={enCours || !email || !password || !displayName}
+          className="w-full"
+        >
           {enCours ? 'Création…' : 'Créer mon compte'}
         </Button>
-        {erreur && <p className="text-sm text-red-700">{erreur}</p>}
+        {erreur && <Note tone="error">{erreur}</Note>}
+        <p className="text-center text-sm text-muted-foreground">
+          Déjà un compte ?{' '}
+          <Link
+            href="/connexion"
+            className="font-medium text-accent underline-offset-2 hover:underline"
+          >
+            Se connecter
+          </Link>
+        </p>
       </Card>
     </div>
   );

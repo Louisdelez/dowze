@@ -8,6 +8,7 @@ import { Button } from './ui/button';
 
 interface LiveMsg {
   authorId: string;
+  authorName: string;
   body: string;
   at: string;
 }
@@ -16,7 +17,15 @@ interface LiveMsg {
  * Chat de classe en **direct** + **présence** (« qui est en ligne ») via
  * Supabase Realtime. Nécessite une instance Supabase qui tourne.
  */
-export function LiveClasse({ classeId, profileId }: { classeId: string; profileId: string }) {
+export function LiveClasse({
+  classeId,
+  profileId,
+  authorName = 'Élève',
+}: {
+  classeId: string;
+  profileId: string;
+  authorName?: string;
+}) {
   const [messages, setMessages] = useState<LiveMsg[]>([]);
   const [online, setOnline] = useState(0);
   const [text, setText] = useState('');
@@ -47,6 +56,7 @@ export function LiveClasse({ classeId, profileId }: { classeId: string; profileI
   function envoyer() {
     const msg: LiveMsg = {
       authorId: profileId || 'anon',
+      authorName,
       body: text,
       at: new Date().toISOString(),
     };
@@ -66,20 +76,30 @@ export function LiveClasse({ classeId, profileId }: { classeId: string; profileI
       </div>
 
       <div className="max-h-56 space-y-2 overflow-auto">
-        {messages.map((m, i) => (
-          <div key={`${m.at}-${i}`} className="rounded-md bg-muted p-2 text-sm">
-            <span className="font-mono text-[10px] text-muted-foreground">{m.authorId}</span>
-            <p>{m.body}</p>
-          </div>
-        ))}
+        {messages.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            Aucun message pour l’instant. Lance la discussion 👋
+          </p>
+        ) : (
+          messages.map((m, i) => (
+            <div key={`${m.at}-${i}`} className="rounded-md bg-muted p-2 text-sm">
+              <span className="text-xs font-medium text-muted-foreground">
+                {m.authorId === profileId ? 'Toi' : m.authorName}
+              </span>
+              <p>{m.body}</p>
+            </div>
+          ))
+        )}
       </div>
 
       <div className="flex gap-2">
         <input
-          className="flex-1 rounded-md border border-border px-3 py-2 text-sm"
+          className="flex-1 rounded-md border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="message en direct…"
+          onKeyDown={(e) => e.key === 'Enter' && text && envoyer()}
+          placeholder="Message en direct…"
+          aria-label="Message en direct"
         />
         <Button onClick={envoyer} disabled={!text}>
           Envoyer

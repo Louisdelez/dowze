@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 import { getSupabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Card, CardTitle } from '@/components/ui/card';
+import { TextField } from '@/components/ui/field';
+import { Note } from '@/components/ui/note';
 
 export default function ConnexionPage() {
   const router = useRouter();
@@ -32,26 +34,32 @@ export default function ConnexionPage() {
     <div className="mx-auto max-w-md">
       <Card className="space-y-4">
         <CardTitle>Se connecter</CardTitle>
-        <input
-          className="w-full rounded-md border border-border px-3 py-2 text-sm"
+        <TextField
+          label="Email"
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="email"
+          placeholder="toi@exemple.com"
         />
-        <input
-          className="w-full rounded-md border border-border px-3 py-2 text-sm"
+        <TextField
+          label="Mot de passe"
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          placeholder="mot de passe"
+          onKeyDown={(e) => e.key === 'Enter' && email && password && connecter()}
         />
-        <Button onClick={connecter} disabled={enCours || !email || !password}>
+        <Button onClick={connecter} disabled={enCours || !email || !password} className="w-full">
           {enCours ? 'Connexion…' : 'Se connecter'}
         </Button>
-        {erreur && <p className="text-sm text-red-700">{erreur}</p>}
-        <p className="text-sm text-muted-foreground">
-          Pas encore de compte ? <Link href="/inscription" className="underline">S’inscrire</Link>
+        {erreur && <Note tone="error">{erreur}</Note>}
+        <p className="text-center text-sm text-muted-foreground">
+          Pas encore de compte ?{' '}
+          <Link
+            href="/inscription"
+            className="font-medium text-accent underline-offset-2 hover:underline"
+          >
+            S’inscrire
+          </Link>
         </p>
       </Card>
     </div>

@@ -62,7 +62,7 @@ export function Minuteur() {
   }
 
   return (
-    <div className="flex items-center gap-6 rounded-xl border border-border bg-white p-6">
+    <div className="flex flex-wrap items-center gap-6 rounded-lg border border-border bg-surface p-6">
       <div className="relative h-32 w-32">
         <svg viewBox="0 0 120 120" className="h-32 w-32 -rotate-90">
           <circle cx="60" cy="60" r={R} fill="none" stroke="var(--color-muted)" strokeWidth="8" />

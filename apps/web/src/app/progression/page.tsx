@@ -1,78 +1,110 @@
 'use client';
 
-import { useState } from 'react';
-import { getProgression, type MasteryRow } from '@/lib/api';
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { getProgression, getSkills, type MasteryRow, type SkillRow } from '@/lib/api';
+import { useProfile } from '@/lib/use-profile';
 import { Button } from '@/components/ui/button';
 import { Card, CardTitle } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
+import { PageHeader } from '@/components/page-header';
+import { EmptyState } from '@/components/ui/empty-state';
+import { Note } from '@/components/ui/note';
+import { SkeletonCards } from '@/components/ui/skeleton';
+import { IconChart } from '@/components/ui/icons';
+
+interface Ligne {
+  skillId: string;
+  titre: string;
+  pct: number;
+}
 
 export default function ProgressionPage() {
-  const [profileId, setProfileId] = useState('');
-  const [rows, setRows] = useState<MasteryRow[]>([]);
-  const [erreur, setErreur] = useState('');
+  const { profileId, ready, signedIn } = useProfile();
+  const [rows, setRows] = useState<Ligne[] | null>(null);
   const [charge, setCharge] = useState(false);
-  const [vu, setVu] = useState(false);
+  const [erreur, setErreur] = useState(false);
 
-  async function charger() {
-    setErreur('');
+  useEffect(() => {
+    if (!signedIn || !profileId) return;
+    let annule = false;
     setCharge(true);
-    try {
-      setRows(await getProgression(profileId));
-      setVu(true);
-    } catch (e) {
-      setErreur(String(e));
-      setRows([]);
-    } finally {
-      setCharge(false);
-    }
-  }
+    setErreur(false);
+    Promise.all([getProgression(profileId), getSkills()])
+      .then(([mastery, skills]: [MasteryRow[], SkillRow[]]) => {
+        if (annule) return;
+        const titre = new Map(skills.map((s) => [s.id, s.title]));
+        setRows(
+          mastery
+            .map((r) => ({
+              skillId: r.skillId,
+              titre: titre.get(r.skillId) ?? 'Compétence',
+              pct: Math.round(r.pMastery * 100),
+            }))
+            .sort((a, b) => b.pct - a.pct),
+        );
+      })
+      .catch(() => !annule && setErreur(true))
+      .finally(() => !annule && setCharge(false));
+    return () => {
+      annule = true;
+    };
+  }, [signedIn, profileId]);
 
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Progression</h1>
-        <p className="mt-1 text-muted-foreground">
-          La maîtrise par compétence, estimée par BKT. Saisis un identifiant de profil.
-        </p>
-      </header>
+      <PageHeader
+        title="Progression"
+        subtitle="Ta maîtrise, compétence par compétence — estimée automatiquement à mesure que tu avances."
+      />
 
-      <div className="flex gap-3">
-        <input
-          className="flex-1 rounded-md border border-border px-3 py-2 text-sm"
-          value={profileId}
-          onChange={(e) => setProfileId(e.target.value)}
-          placeholder="identifiant de profil (UUID)"
+      {ready && !signedIn && (
+        <EmptyState
+          icon={<IconChart />}
+          title="Connecte-toi pour voir ta progression"
+          description="Ta maîtrise se construit au fil de tes séances. Elle apparaîtra ici une fois connecté·e."
+          action={
+            <Link href="/connexion">
+              <Button>Se connecter</Button>
+            </Link>
+          }
         />
-        <Button onClick={charger} disabled={!profileId || charge}>
-          {charge ? 'Chargement…' : 'Charger'}
-        </Button>
-      </div>
+      )}
+
+      {charge && <SkeletonCards count={4} />}
 
       {erreur && (
-        <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{erreur}</p>
+        <Note tone="error">Impossible de charger ta progression. Réessaie dans un instant.</Note>
       )}
 
-      {vu && rows.length === 0 && !erreur && (
-        <p className="text-sm text-muted-foreground">Aucune maîtrise enregistrée pour ce profil.</p>
+      {signedIn && !charge && !erreur && rows?.length === 0 && (
+        <EmptyState
+          icon={<IconChart />}
+          title="Rien à afficher pour l’instant"
+          description="Fais ton diagnostic pour démarrer ton parcours — ta progression s’affichera ici."
+          action={
+            <Link href="/demarrer">
+              <Button>Faire le diagnostic</Button>
+            </Link>
+          }
+        />
       )}
 
-      <div className="grid gap-3">
-        {rows.map((r) => (
-          <Card key={r.skillId} className="p-4">
-            <div className="flex items-center justify-between">
-              <CardTitle className="font-mono text-xs">{r.skillId}</CardTitle>
-              <span className="text-sm text-muted-foreground">
-                {Math.round(r.pMastery * 100)}%
-              </span>
-            </div>
-            <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full rounded-full bg-accent"
-                style={{ width: `${Math.round(r.pMastery * 100)}%` }}
-              />
-            </div>
-          </Card>
-        ))}
-      </div>
+      {rows && rows.length > 0 && (
+        <div className="grid gap-3">
+          {rows.map((r) => (
+            <Card key={r.skillId} className="p-4">
+              <div className="flex items-center justify-between gap-4">
+                <CardTitle className="text-sm font-medium">{r.titre}</CardTitle>
+                <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
+                  {r.pct}%
+                </span>
+              </div>
+              <Progress value={r.pct} className="mt-2" label={r.titre} />
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

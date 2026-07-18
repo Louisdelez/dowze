@@ -1,67 +1,82 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { getParentalSummary, type ParentalSummaryRow } from '@/lib/api';
+import { useProfile } from '@/lib/use-profile';
 import { Button } from '@/components/ui/button';
-import { Card, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardDescription } from '@/components/ui/card';
+import { TextField } from '@/components/ui/field';
+import { PageHeader } from '@/components/page-header';
+import { Note } from '@/components/ui/note';
 
 export default function ParentPage() {
-  const [accountId, setAccountId] = useState('');
+  const { accountId, ready } = useProfile();
+  const [code, setCode] = useState('');
   const [summary, setSummary] = useState<ParentalSummaryRow | null>(null);
-  const [erreur, setErreur] = useState('');
+  const [charge, setCharge] = useState(false);
+  const [erreur, setErreur] = useState(false);
+
+  // Pré-remplit avec le compte connecté (cas « je suis moi-même l'élève »).
+  useEffect(() => {
+    if (ready && accountId) setCode(accountId);
+  }, [ready, accountId]);
 
   async function charger() {
-    setErreur('');
+    if (!code) return;
+    setCharge(true);
+    setErreur(false);
     try {
-      setSummary(await getParentalSummary(accountId));
-    } catch (e) {
-      setErreur(String(e));
+      setSummary(await getParentalSummary(code));
+    } catch {
+      setErreur(true);
       setSummary(null);
+    } finally {
+      setCharge(false);
     }
   }
 
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Espace responsable</h1>
-        <p className="mt-1 text-muted-foreground">
-          Un suivi bienveillant (façon Pronote) : une <strong>synthèse</strong> de la progression — jamais
-          le contenu privé des échanges.
-        </p>
-      </header>
+      <PageHeader
+        title="Espace responsable"
+        subtitle="Un suivi bienveillant : une synthèse de la progression — jamais le contenu privé des échanges."
+      />
 
-      <div className="flex gap-3">
-        <input
-          className="flex-1 rounded-md border border-border px-3 py-2 text-sm"
-          value={accountId}
-          onChange={(e) => setAccountId(e.target.value)}
-          placeholder="identifiant du compte de l’élève (UUID)"
+      <Card className="space-y-3">
+        <TextField
+          label="Code de l’élève"
+          value={code}
+          onChange={(e) => setCode(e.target.value)}
+          hint="Communiqué par l’élève depuis son profil. Pré-rempli si tu es toi-même connecté·e."
+          placeholder="code élève"
         />
-        <Button onClick={charger} disabled={!accountId}>
-          Voir la synthèse
+        <Button onClick={charger} disabled={!code || charge}>
+          {charge ? 'Chargement…' : 'Voir la synthèse'}
         </Button>
-      </div>
+      </Card>
 
       {erreur && (
-        <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{erreur}</p>
+        <Note tone="error">
+          Aucune synthèse trouvée pour ce code. Vérifie-le auprès de l’élève.
+        </Note>
       )}
 
       {summary && (
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Card>
-            <CardTitle>{summary.masteredCount}</CardTitle>
-            <CardDescription>compétences maîtrisées</CardDescription>
-          </Card>
-          <Card>
-            <CardTitle>{summary.inProgressCount}</CardTitle>
-            <CardDescription>en cours d’acquisition</CardDescription>
-          </Card>
-          <Card>
-            <CardTitle>{summary.planningCount}</CardTitle>
-            <CardDescription>séances planifiées</CardDescription>
-          </Card>
-        </div>
+        <section className="grid gap-4 sm:grid-cols-3">
+          <StatCard value={summary.masteredCount} label="compétences maîtrisées" />
+          <StatCard value={summary.inProgressCount} label="en cours d’acquisition" />
+          <StatCard value={summary.planningCount} label="séances planifiées" />
+        </section>
       )}
     </div>
+  );
+}
+
+function StatCard({ value, label }: { value: number; label: string }) {
+  return (
+    <Card>
+      <p className="text-3xl font-bold tracking-tight">{value}</p>
+      <CardDescription>{label}</CardDescription>
+    </Card>
   );
 }

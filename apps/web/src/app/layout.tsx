@@ -1,7 +1,11 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
+import { Inter } from 'next/font/google';
 import './globals.css';
-import { SiteHeader } from '@/components/site-header';
+import { AppShell } from '@/components/app-shell';
+
+// Inter = substitut open-source de « NotionInter » (cf. DESIGN.md).
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
 
 export const metadata: Metadata = {
   title: 'Dowze — le système d’éducation 2.0',
@@ -13,10 +17,9 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="fr">
+    <html lang="fr" className={inter.variable}>
       <body>
-        <SiteHeader />
-        <main className="mx-auto max-w-5xl px-6 py-10">{children}</main>
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );
