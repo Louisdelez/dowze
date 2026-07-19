@@ -232,6 +232,24 @@ Positionnement honnête :
 - **Réutilise** l'existant : `carnet_entries`, BKT (`packages/core`), le séquencement outer-fringe, la
   validation par paliers. On **ajoute** : le service Copilote (API LLM + Zod + crédits) et FSRS.
 
+## 11. État d'implémentation (2026-07-19)
+
+Le Copilote est **implémenté** (commit `feat(copilote)` sur `develop`) :
+- **Backend** `apps/api/src/copilote/` : `provider.ts` (registre multi-fournisseurs via Vercel AI SDK),
+  `copilote.service.ts` (`compose()` déterministe + `ingest()` `generateObject`+Zod avec filet
+  `jsonrepair→Zod`), `credits.service.ts` (ledger + débit atomique + réconciliation), `crypto.util.ts`
+  (BYOK AES-256-GCM), `copilote.controller.ts` (`/models /compose /ingest /settings /balance /credits/grant`).
+- **Données** : migration `0009_copilote.sql` (`ai_model` seedé, `copilote_settings`, `credit_ledger`,
+  `credit_balances`, RLS backend-only) + miroirs Drizzle.
+- **Schémas** : `packages/schemas/src/copilote.ts` (snapshot strict, catalogue, réglages).
+- **Frontend** : `/seance` refondu (prompt lisible + coller le résumé **texte**, plus de `.json`) + page
+  `/copilote` (choix du modèle, crédits/BYOK, solde).
+
+**Avant mise en ligne** : fournir ≥1 clé LLM côté serveur (ou utiliser BYOK), générer `COPILOTE_SECRET_KEY`
+(`openssl rand -base64 32`), appliquer la migration `0009`, redéployer. Non encore fait : **paiement Stripe**
+(recharge) — pour l'instant les crédits s'octroient via `/copilote/credits/grant` (jeton admin) ; **FSRS**
+(la planification reste SM-2).
+
 **Suite** : [prompts & continuité](03-prompts-et-continuite.md) · [le cerveau pédagogique](02-cerveau-pedagogique.md)
 · [le pont `.json` (révisé)](10-pont-json.md) · [stack & conformité](06-stack-et-conformite.md).
 
