@@ -9,6 +9,10 @@ export interface SessionPromptCtx {
   pct: number;
   masteredCount: number;
   lastNote: string | null;
+  /** Erreurs/confusions récurrentes à retravailler en priorité (mémoire). */
+  misconceptions: string[];
+  /** Compétences déjà vues, dues à réviser aujourd'hui (FSRS) — à intercaler. */
+  reviews: string[];
 }
 
 /** Le prompt du jour, à copier dans l'IA de l'élève. */
@@ -22,8 +26,16 @@ export function buildSessionPrompt(ctx: SessionPromptCtx): string {
     reprise,
     `Fonctionne comme un tuteur : pose-moi une question à la fois, laisse-moi chercher par moi-même, aide-moi avec des indices quand je bloque, et corrige-moi tout de suite quand je me trompe. Quand c'est utile, illustre avec un exemple concret, ou propose-moi une flashcard ou une petite question pour m'entraîner.`,
     `Adapte ton niveau au mien : j'estime ma maîtrise à ${ctx.pct}% et j'ai déjà validé ${ctx.masteredCount} compétence(s).`,
+    ctx.reviews.length > 0
+      ? `Pour commencer en douceur, fais-moi d'abord réviser vite fait ce que j'ai déjà vu : ${ctx.reviews.join(' ; ')}. Une ou deux questions rapides suffisent, puis on passe à la compétence du jour.`
+      : '',
+    ctx.misconceptions.length > 0
+      ? `Lors de mes séances précédentes, j'ai encore buté sur : ${ctx.misconceptions.join(' ; ')}. Aide-moi à clarifier ces points en particulier, sans me faire la leçon.`
+      : '',
     `À la fin, je te demanderai un court bilan de la séance : garde donc en tête, au fil de l'échange, ce que je réussis vraiment et ce sur quoi je bute.`,
-  ].join('\n\n');
+  ]
+    .filter((s) => s.length > 0)
+    .join('\n\n');
 }
 
 /**

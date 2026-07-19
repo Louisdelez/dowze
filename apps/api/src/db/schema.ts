@@ -256,6 +256,35 @@ export const creditLedger = pgTable('credit_ledger', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const fsrsCards = pgTable(
+  'fsrs_cards',
+  {
+    profileId: uuid('profile_id').notNull(),
+    skillId: uuid('skill_id').notNull(),
+    due: timestamp('due', { withTimezone: true }).notNull(),
+    stability: doublePrecision('stability').notNull().default(0),
+    difficulty: doublePrecision('difficulty').notNull().default(0),
+    elapsedDays: integer('elapsed_days').notNull().default(0),
+    scheduledDays: integer('scheduled_days').notNull().default(0),
+    reps: integer('reps').notNull().default(0),
+    lapses: integer('lapses').notNull().default(0),
+    state: smallint('state').notNull().default(0),
+    lastReview: timestamp('last_review', { withTimezone: true }),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.profileId, t.skillId] }) }),
+);
+
+export const learnerMisconceptions = pgTable('learner_misconceptions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  profileId: uuid('profile_id').notNull(),
+  skillId: uuid('skill_id').notNull(),
+  label: text('label').notNull(),
+  status: text('status').notNull().default('active'),
+  occurrences: integer('occurrences').notNull().default(1),
+  firstSeen: timestamp('first_seen', { withTimezone: true }).notNull().defaultNow(),
+  lastSeen: timestamp('last_seen', { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const guardians = pgTable('guardians', {
   id: uuid('id').primaryKey().defaultRandom(),
   minorAccountId: uuid('minor_account_id').notNull(),

@@ -6,7 +6,7 @@ import {
   Injectable,
   ServiceUnavailableException,
 } from '@nestjs/common';
-import { asc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 import { generateObject, generateText } from 'ai';
 import { jsonrepair } from 'jsonrepair';
 import {
@@ -21,9 +21,10 @@ import {
 import { DB, type Database } from '../db/drizzle.module';
 import { ENV } from '../config/config.module';
 import type { Env } from '../config/env';
-import { aiModel, copiloteSettings } from '../db/schema';
+import { aiModel, copiloteSettings, learnerMisconceptions, skills } from '../db/schema';
 import { ProgressionService } from '../progression/progression.service';
 import { CarnetService } from '../carnet/carnet.service';
+import { FsrsService, outcomeToRating } from '../fsrs/fsrs.service';
 import { CreditsService, creditsForUsage, estimateCredits } from './credits.service';
 import { platformKeyFor, resolveModel } from './provider';
 import { decryptSecret, encryptSecret } from './crypto.util';
@@ -46,6 +47,7 @@ export class CopiloteService {
     @Inject(ENV) private readonly env: Env,
     private readonly progression: ProgressionService,
     private readonly carnet: CarnetService,
+    private readonly fsrs: FsrsService,
     private readonly credits: CreditsService,
   ) {}
 
@@ -146,7 +148,42 @@ export class CopiloteService {
     const entries = await this.carnet.list(profileId);
     const lastNote = entries[0]?.note ?? null;
 
-    const prompt = buildSessionPrompt({ title: next.title, pct, masteredCount, lastNote });
+    // Mémoire : erreurs/confusions récurrentes actives sur cette compétence (les plus fréquentes).
+    const activeMisc = await this.db
+      .select()
+      .from(learnerMisconceptions)
+      .where(
+        and(
+          eq(learnerMisconceptions.profileId, profileId),
+          eq(learnerMisconceptions.skillId, next.id),
+          eq(learnerMisconceptions.status, 'active'),
+        ),
+      )
+      .orderBy(desc(learnerMisconceptions.occurrences));
+    const misconceptions = activeMisc.slice(0, 4).map((m) => m.label);
+
+    // Mémoire : compétences déjà vues et dues à réviser aujourd'hui (FSRS), à intercaler.
+    const dueIds = (await this.fsrs.due(profileId, new Date().toISOString()))
+      .filter((id) => id !== next.id)
+      .slice(0, 2);
+    let reviews: string[] = [];
+    if (dueIds.length > 0) {
+      const rows = await this.db
+        .select({ id: skills.id, title: skills.title })
+        .from(skills)
+        .where(inArray(skills.id, dueIds));
+      const byId = new Map(rows.map((r) => [r.id, r.title]));
+      reviews = dueIds.map((id) => byId.get(id)).filter((t): t is string => Boolean(t));
+    }
+
+    const prompt = buildSessionPrompt({
+      title: next.title,
+      pct,
+      masteredCount,
+      lastNote,
+      misconceptions,
+      reviews,
+    });
     const closingPrompt = buildClosingPrompt(next.title);
     return { prompt, closingPrompt, skill: { id: next.id, slug: next.slug, title: next.title } };
   }
@@ -242,8 +279,87 @@ export class CopiloteService {
     const correct = snapshot.outcome !== 'bloque';
     const mastery = await this.progression.observe(input.profileId, input.skillId, correct, nowIso);
     await this.carnet.addEntry(input.profileId, snapshot.carnetNote, input.skillId);
+    await this.fsrs.rate(input.profileId, input.skillId, outcomeToRating(snapshot.outcome), nowIso);
+    await this.reconcileMisconceptions(
+      input.profileId,
+      input.skillId,
+      snapshot.errors,
+      snapshot.outcome,
+      nowIso,
+    );
 
     return { snapshot, pMastery: mastery.pMastery, creditsSpent };
+  }
+
+  /**
+   * Réconcilie les erreurs/confusions extraites avec la mémoire existante (pattern Mem0) :
+   * compétence maîtrisée → confusions actives marquées résolues ; sinon on incrémente les
+   * confusions déjà connues et on ajoute les nouvelles. Jamais un simple empilement.
+   */
+  private async reconcileMisconceptions(
+    profileId: string,
+    skillId: string,
+    errors: string[],
+    outcome: SessionSnapshot['outcome'],
+    nowIso: string,
+  ): Promise<void> {
+    const now = new Date(nowIso);
+
+    if (outcome === 'maitrise') {
+      await this.db
+        .update(learnerMisconceptions)
+        .set({ status: 'resolved', lastSeen: now })
+        .where(
+          and(
+            eq(learnerMisconceptions.profileId, profileId),
+            eq(learnerMisconceptions.skillId, skillId),
+            eq(learnerMisconceptions.status, 'active'),
+          ),
+        );
+      return;
+    }
+
+    const norm = (s: string) => s.trim().toLowerCase();
+    const uniq = [
+      ...new Map(
+        errors
+          .map((e) => e.trim())
+          .filter((e) => e.length > 0 && e.length <= 200)
+          .map((e) => [norm(e), e]),
+      ).values(),
+    ];
+    if (uniq.length === 0) return;
+
+    const existing = await this.db
+      .select()
+      .from(learnerMisconceptions)
+      .where(
+        and(
+          eq(learnerMisconceptions.profileId, profileId),
+          eq(learnerMisconceptions.skillId, skillId),
+          eq(learnerMisconceptions.status, 'active'),
+        ),
+      );
+    const byLabel = new Map(existing.map((m) => [norm(m.label), m]));
+
+    for (const label of uniq) {
+      const hit = byLabel.get(norm(label));
+      if (hit) {
+        await this.db
+          .update(learnerMisconceptions)
+          .set({ occurrences: hit.occurrences + 1, lastSeen: now })
+          .where(eq(learnerMisconceptions.id, hit.id));
+      } else {
+        await this.db.insert(learnerMisconceptions).values({
+          profileId,
+          skillId,
+          label,
+          status: 'active',
+          firstSeen: now,
+          lastSeen: now,
+        });
+      }
+    }
   }
 }
 
