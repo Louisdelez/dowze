@@ -1,5 +1,13 @@
 # Le pont `.json` entre l'intra et l'IA (sans API)
 
+> ⚠️ **RÉVISÉ (2026) — lire d'abord [15 · Le Copilote orchestrateur](15-copilote-orchestrateur.md).**
+> Un **test en conditions réelles** (Claude/ChatGPT live) a montré que demander à l'IA de l'élève de
+> renvoyer un **JSON strict** ne marche pas : elle rend le *contenu* pas l'*enveloppe* (→ rejet), et
+> refuse à juste titre de « noter » sans vraie séance. **Décision : l'IA de l'élève rend du TEXTE ; une
+> IA interne à Dowze (le Copilote) le transforme en état structuré.** Le mécanisme `.json` ci-dessous
+> reste valable **en interne** (Copilote) et comme **outil d'auteur** (ossature de compétences), mais
+> **n'est plus exposé à l'élève**.
+
 > *Le lien entre l'intra et l'IA n'est **pas** une connexion API. C'est un **échange de fichiers `.json`**,
 > à la main : l'intra te donne un `.json` (le prompt « quoi faire » + le format exact « comment l'écrire »
 > + un exemple), tu le donnes à ton IA, l'IA te rend un `.json` bien formaté, tu le réimportes dans l'intra

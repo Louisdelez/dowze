@@ -24,6 +24,7 @@ système communautaire). Sources : [bibliographie](../09-ANNEXES/01-bibliographi
 | [12-stack-production.md](12-stack-production.md) | **La stack de production** (vue d'ensemble) : choix, principes, Supabase local-first, maintenabilité. |
 | [13-frontend.md](13-frontend.md) | **Frontend** : Next.js + Tailwind + shadcn, design system `getdesign notion`, UI/UX épurée, a11y, perf, PWA. |
 | [14-backend.md](14-backend.md) | **Backend** : NestJS modulaire sur Supabase, Drizzle, validation `.json`, Redis/BullMQ, Realtime, sécurité, fichiers courts. |
+| [15-copilote-orchestrateur.md](15-copilote-orchestrateur.md) | ⭐ **RÉVISION 2026 — l'IA interne « Copilote »** (par API, à crédits) : compose les prompts lisibles et transforme le résumé de séance (texte) en état structuré. Supprime le `.json` côté élève. Modèle, schémas, FSRS, crédits prépayés. **À lire avec [10-pont-json](10-pont-json.md).** |
 
 ---
 
@@ -49,9 +50,14 @@ Conséquences directes (toutes étayées par la recherche) :
 
 ## Philosophie de construction (MVP)
 
-- **Commencer simple** : le **pont `.json`** (zéro API, zéro coût, marche avec ChatGPT Plus / Claude Pro).
-- **Différer la complexité** : Deep Knowledge Tracing, FSRS, IRT, communauté riche → plus tard. **(Pas
-  d'API : ce n'est pas une évolution prévue — le pont reste le fichier `.json`.)**
+- **Commencer simple** : l'élève apprend avec **son propre abonnement** IA (BYO-AI), zéro coût de sa leçon.
+- **RÉVISION 2026 (voir [15-copilote-orchestrateur](15-copilote-orchestrateur.md))** : le va-et-vient `.json`
+  **côté élève** a échoué au test réel (une vraie IA rend du contenu, pas l'enveloppe, et refuse d'inventer
+  une note). On ajoute une **petite IA interne à Dowze** (« Copilote », par API, à crédits prépayés) qui
+  compose les prompts lisibles et **structure le résumé de séance en texte libre**. Le `.json` devient
+  **interne** (jamais montré à l'élève). Le cœur (graphe, suivi, carnet, BYO-AI) reste gratuit.
+- **Différer la complexité** : Deep Knowledge Tracing, IRT, communauté riche → plus tard. Migration
+  **SM-2 → FSRS** dès qu'il y a de l'historique.
 - **Prouver, puis étendre** (cohérent avec la [culture RCT du projet](../08-MISE-EN-OEUVRE/03-metriques-evaluation.md)).
 - **Fonctionner à 1 utilisateur** : l'app doit être utile **seul avec l'IA**, sans communauté (voir
   [05-systeme-communautaire.md](05-systeme-communautaire.md)).

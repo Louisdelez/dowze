@@ -4,10 +4,12 @@
 > niveau et sa progression, que l'élève donne à son IA. Et comme un LLM oublie d'une session à l'autre, le
 > **carnet de bord** de l'app est la vraie mémoire.*
 >
-> ⚙️ **Forme concrète** : ces prompts ne sont pas du texte nu mais des **fichiers `.json`** (prompt + format
-> attendu + exemple), et l'état revient en `.json` que l'app valide. Tout le mécanisme du va-et-vient est
-> décrit dans [**le pont `.json`**](10-pont-json.md) — ce document-ci se concentre sur le *contenu*
-> pédagogique des prompts et du carnet.
+> ⚙️ **Forme concrète (révisée 2026)** : côté élève, ces prompts sont désormais du **texte lisible** (plus
+> de `.json` à coller), et le retour est un **résumé de séance en texte libre**. C'est le **[Copilote
+> interne](15-copilote-orchestrateur.md)** (petite IA par API) qui *compose* le prompt à partir de l'état,
+> et qui *extrait* l'état structuré du résumé — l'app recalcule ensuite la maîtrise elle-même. Le mécanisme
+> `.json` ([pont](10-pont-json.md)) reste **interne/auteur**, jamais montré à l'élève. Ce document-ci se
+> concentre sur le *contenu* pédagogique des prompts et du carnet.
 
 ---
 
