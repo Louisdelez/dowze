@@ -27,7 +27,12 @@ import { CarnetService } from '../carnet/carnet.service';
 import { CreditsService, creditsForUsage, estimateCredits } from './credits.service';
 import { platformKeyFor, resolveModel } from './provider';
 import { decryptSecret, encryptSecret } from './crypto.util';
-import { EXTRACTION_SYSTEM, buildSessionPrompt, extractionPrompt } from './prompts';
+import {
+  EXTRACTION_SYSTEM,
+  buildClosingPrompt,
+  buildSessionPrompt,
+  extractionPrompt,
+} from './prompts';
 
 const DEFAULT_MODEL_ID = 'gpt-4o-mini';
 const MASTERY_THRESHOLD = 0.95;
@@ -125,11 +130,13 @@ export class CopiloteService {
 
   // --- Composer le prompt du jour (déterministe, gratuit) ---
 
-  async compose(
-    profileId: string,
-  ): Promise<{ prompt: string; skill: { id: string; slug: string; title: string } | null }> {
+  async compose(profileId: string): Promise<{
+    prompt: string;
+    closingPrompt: string;
+    skill: { id: string; slug: string; title: string } | null;
+  }> {
     const next = await this.progression.nextPrescribed(profileId);
-    if (!next) return { prompt: '', skill: null };
+    if (!next) return { prompt: '', closingPrompt: '', skill: null };
 
     const mastery = await this.progression.getMastery(profileId);
     const m = mastery.find((x) => x.skillId === next.id);
@@ -140,7 +147,8 @@ export class CopiloteService {
     const lastNote = entries[0]?.note ?? null;
 
     const prompt = buildSessionPrompt({ title: next.title, pct, masteredCount, lastNote });
-    return { prompt, skill: { id: next.id, slug: next.slug, title: next.title } };
+    const closingPrompt = buildClosingPrompt(next.title);
+    return { prompt, closingPrompt, skill: { id: next.id, slug: next.slug, title: next.title } };
   }
 
   // --- Ingérer le résumé (texte → snapshot → BKT + carnet) ---

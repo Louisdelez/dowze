@@ -26,6 +26,20 @@ export function buildSessionPrompt(ctx: SessionPromptCtx): string {
   ].join('\n\n');
 }
 
+/**
+ * Le prompt de BILAN : à copier par l'élève À LA FIN de la séance et à coller dans
+ * son IA (Claude/ChatGPT) pour qu'elle rédige le résumé — que l'élève recolle ensuite
+ * dans Dowze. Texte clair optimisé pour être ensuite structuré par le Copilote.
+ */
+export function buildClosingPrompt(skillTitle: string): string {
+  return [
+    `On termine la séance sur « ${skillTitle} ».`,
+    `Écris-moi un RÉSUMÉ DE SÉANCE en français simple et HONNÊTE, basé UNIQUEMENT sur ce qu'on a vraiment fait ensemble à l'instant. N'invente rien : si on n'a pas abordé un point, ne le mentionne pas.`,
+    `Couvre en quelques phrases : ce qu'on a vu ; ce que j'ai réussi et ce que je n'ai pas encore réussi ; mes erreurs ou confusions s'il y en a eu ; comment je me suis senti (à l'aise, hésitant, frustré…) ; et la prochaine étape logique pour progresser.`,
+    `Écris-le comme un petit bilan clair que je vais garder dans mon carnet. Pas de format technique ni de JSON, juste du texte que je pourrai recopier tel quel.`,
+  ].join('\n\n');
+}
+
 /** Consigne système du Copilote pour EXTRAIRE le snapshot du résumé (texte → structuré). */
 export const EXTRACTION_SYSTEM = [
   "Tu es le Copilote de Dowze. Tu ne notes pas l'élève : tu EXTRAIS des faits d'un résumé de séance rédigé par une autre IA.",

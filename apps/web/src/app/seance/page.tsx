@@ -31,7 +31,9 @@ export default function SeancePage() {
   const [pct, setPct] = useState(0);
   const [charge, setCharge] = useState(false);
   const [prompt, setPrompt] = useState('');
+  const [closing, setClosing] = useState(''); // prompt de bilan (fin de séance)
   const [copie, setCopie] = useState(false);
+  const [copieBilan, setCopieBilan] = useState(false);
   const [composing, setComposing] = useState(false);
   const [erreur, setErreur] = useState(false);
   const [tout, setTout] = useState(false); // tout est maîtrisé
@@ -46,6 +48,7 @@ export default function SeancePage() {
     setCharge(true);
     setErreur(false);
     setPrompt('');
+    setClosing('');
     setResume('');
     setBilan(null);
     setBilanErr('');
@@ -82,6 +85,7 @@ export default function SeancePage() {
     try {
       const res = await composeSession(profileId);
       setPrompt(res.prompt);
+      setClosing(res.closingPrompt);
     } catch {
       setErreur(true);
     } finally {
@@ -93,6 +97,12 @@ export default function SeancePage() {
     await navigator.clipboard.writeText(prompt);
     setCopie(true);
     setTimeout(() => setCopie(false), 1500);
+  }
+
+  async function copierBilan() {
+    await navigator.clipboard.writeText(closing);
+    setCopieBilan(true);
+    setTimeout(() => setCopieBilan(false), 1500);
   }
 
   // 2 · Enregistrer la séance : le Copilote lit le résumé texte et met à jour la maîtrise.
@@ -229,11 +239,35 @@ export default function SeancePage() {
               <Card className="space-y-3">
                 <CardTitle>2 · Recolle ton résumé de séance</CardTitle>
                 <CardDescription>
-                  À la fin, ton IA t’écrit un court résumé. Colle-le ici : le Copilote le comprend,
-                  met à jour ta maîtrise et l’ajoute à ton carnet. Aucun format à respecter.
+                  Quand tu as fini d’apprendre, demande le bilan à ton IA avec le prompt ci-dessous,
+                  puis colle sa réponse ici. Le Copilote la comprend, met à jour ta maîtrise et
+                  l’ajoute à ton carnet. Aucun format à respecter.
                 </CardDescription>
+
+                <div className="space-y-2 rounded-md border border-border bg-muted/40 p-3">
+                  <p className="text-sm font-medium">
+                    a) Demande le bilan à ton IA — copie ceci et colle-le dans ta conversation :
+                  </p>
+                  {closing ? (
+                    <>
+                      <div className="flex justify-end">
+                        <Button variant="utility" onClick={copierBilan}>
+                          {copieBilan ? 'Copié ✓' : 'Copier le prompt de bilan'}
+                        </Button>
+                      </div>
+                      <pre className="max-h-56 overflow-auto whitespace-pre-wrap rounded-md bg-surface p-3 text-sm">
+                        {closing}
+                      </pre>
+                    </>
+                  ) : (
+                    <Button variant="secondary" onClick={composer} disabled={composing}>
+                      {composing ? 'Préparation…' : 'Préparer le prompt de bilan'}
+                    </Button>
+                  )}
+                </div>
+
                 <TextAreaField
-                  label="Le résumé de séance que ton IA t’a écrit"
+                  label="b) Colle ici le résumé que ton IA t’a écrit"
                   value={resume}
                   onChange={(e) => setResume(e.target.value)}
                   placeholder="Colle ici le texte du résumé…"

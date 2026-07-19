@@ -274,6 +274,7 @@ export function getResumePrompt(profileId: string): Promise<{ prompt: string }> 
 
 export interface ComposeResult {
   prompt: string;
+  closingPrompt: string;
   skill: { id: string; slug: string; title: string } | null;
 }
 /** Compose le prompt LISIBLE du jour (déterministe, sans coût). */
