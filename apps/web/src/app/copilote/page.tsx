@@ -112,6 +112,21 @@ export default function CopilotePage() {
     }
   }
 
+  async function supprimerCleEmb() {
+    if (!profileId) return;
+    setSaving(true);
+    setMsg('');
+    try {
+      const updated = await updateCopiloteSettings({ profileId, embeddingApiKey: null });
+      setSettings(updated);
+      setMsg('Clé d’embedding supprimée.');
+    } catch {
+      setMsg('Échec de la suppression.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -267,6 +282,11 @@ export default function CopilotePage() {
                   >
                     Acheter des crédits API {embSelected.label} ↗
                   </a>
+                )}
+                {settings.hasEmbeddingKey && (
+                  <Button variant="ghost" onClick={supprimerCleEmb} disabled={saving}>
+                    Supprimer ma clé
+                  </Button>
                 )}
               </div>
             )}
