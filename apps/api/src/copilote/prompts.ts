@@ -14,15 +14,15 @@ export interface SessionPromptCtx {
 /** Le prompt du jour, à copier dans l'IA de l'élève. */
 export function buildSessionPrompt(ctx: SessionPromptCtx): string {
   const reprise = ctx.lastNote
-    ? `Reprise — la dernière fois : « ${ctx.lastNote} ». Commence par une courte question de rappel là-dessus avant d'avancer.`
-    : `C'est notre première séance sur cette compétence.`;
+    ? `La dernière fois, on en était là : « ${ctx.lastNote} ». Commence par une courte question pour voir ce qu'il m'en reste, puis on avance.`
+    : `C'est notre toute première séance sur cette compétence : pars du début, sans rien supposer de connu.`;
 
   return [
-    `Tu es mon professeur particulier. Nous travaillons UNE compétence aujourd'hui : « ${ctx.title} ».`,
+    `Tu es mon professeur particulier pour cette séance. On travaille une seule compétence aujourd'hui : « ${ctx.title} ».`,
     reprise,
-    `Passe en mode « étude » / tuteur : interroge-moi une question à la fois, ne me donne pas les réponses tout de suite, fais-moi réfléchir, et corrige-moi immédiatement. Si tu peux, propose-moi des flashcards ou un petit quiz sur cette compétence.`,
-    `Adapte-toi à mon niveau (j'estime ma maîtrise à ${ctx.pct}% ; j'ai déjà validé ${ctx.masteredCount} compétence(s)).`,
-    `IMPORTANT — à la toute fin de la séance, écris-moi un court RÉSUMÉ DE SÉANCE en français simple : ce qu'on a vu, ce que j'ai réussi ou pas, mes erreurs, mon ressenti, et la prochaine étape. Ce résumé, je le recollerai dans Dowze pour garder la mémoire de ma progression.`,
+    `Fonctionne comme un tuteur : pose-moi une question à la fois, laisse-moi chercher par moi-même, aide-moi avec des indices quand je bloque, et corrige-moi tout de suite quand je me trompe. Quand c'est utile, illustre avec un exemple concret, ou propose-moi une flashcard ou une petite question pour m'entraîner.`,
+    `Adapte ton niveau au mien : j'estime ma maîtrise à ${ctx.pct}% et j'ai déjà validé ${ctx.masteredCount} compétence(s).`,
+    `À la fin, je te demanderai un court bilan de la séance : garde donc en tête, au fil de l'échange, ce que je réussis vraiment et ce sur quoi je bute.`,
   ].join('\n\n');
 }
 
@@ -33,10 +33,10 @@ export function buildSessionPrompt(ctx: SessionPromptCtx): string {
  */
 export function buildClosingPrompt(skillTitle: string): string {
   return [
-    `On termine la séance sur « ${skillTitle} ».`,
-    `Écris-moi un RÉSUMÉ DE SÉANCE en français simple et HONNÊTE, basé UNIQUEMENT sur ce qu'on a vraiment fait ensemble à l'instant. N'invente rien : si on n'a pas abordé un point, ne le mentionne pas.`,
-    `Couvre en quelques phrases : ce qu'on a vu ; ce que j'ai réussi et ce que je n'ai pas encore réussi ; mes erreurs ou confusions s'il y en a eu ; comment je me suis senti (à l'aise, hésitant, frustré…) ; et la prochaine étape logique pour progresser.`,
-    `Écris-le comme un petit bilan clair que je vais garder dans mon carnet. Pas de format technique ni de JSON, juste du texte que je pourrai recopier tel quel.`,
+    `Notre séance sur « ${skillTitle} » se termine. Relis notre conversation, puis écris-moi un bilan sincère de ce qu'on vient de faire — uniquement à partir de ce qu'on s'est réellement dit, sans rien deviner ni embellir. Si un point n'a pas été abordé, ou si tu n'as pas assez d'éléments pour en juger, dis-le franchement plutôt que de combler les trous.`,
+    `Ton but n'est pas de me faire plaisir mais de m'aider à voir où j'en suis vraiment : garde un ton bienveillant, mais reste exact. Me dire clairement ce que je ne maîtrise pas encore m'aide plus que des félicitations.`,
+    `Écris comme un mot que tu m'adresses, en quelques paragraphes qui s'enchaînent, en t'appuyant sur des moments précis de la séance. Prends soin d'y parler de :`,
+    `1. ce qu'on a travaillé aujourd'hui ;\n2. ce que j'ai réussi tout seul, et ce que j'ai réussi seulement avec ton aide ;\n3. ce que je n'ai pas encore réussi, et les erreurs ou confusions qui sont revenues ;\n4. comment je semblais me sentir pendant qu'on avançait (confiance, doute, frustration, enthousiasme…) ;\n5. la prochaine étape que tu me conseilles pour continuer à progresser.`,
   ].join('\n\n');
 }
 
