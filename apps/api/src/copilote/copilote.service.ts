@@ -10,8 +10,10 @@ import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 import { generateObject, generateText } from 'ai';
 import { jsonrepair } from 'jsonrepair';
 import {
+  aiEmbeddingModelSchema,
   aiModelSchema,
   sessionSnapshotSchema,
+  type AiEmbeddingModel,
   type AiModel,
   type CopiloteSettingsView,
   type IngestRequest,
@@ -21,7 +23,13 @@ import {
 import { DB, type Database } from '../db/drizzle.module';
 import { ENV } from '../config/config.module';
 import type { Env } from '../config/env';
-import { aiModel, copiloteSettings, learnerMisconceptions, skills } from '../db/schema';
+import {
+  aiEmbeddingModel,
+  aiModel,
+  copiloteSettings,
+  learnerMisconceptions,
+  skills,
+} from '../db/schema';
 import { ProgressionService } from '../progression/progression.service';
 import { CarnetService } from '../carnet/carnet.service';
 import { FsrsService, outcomeToRating } from '../fsrs/fsrs.service';
@@ -70,6 +78,27 @@ export class CopiloteService {
     return aiModelSchema.parse(rows[0]);
   }
 
+  /** Catalogue des modèles d'embedding disponibles (mémoire sémantique). */
+  async embeddingModels(): Promise<AiEmbeddingModel[]> {
+    const rows = await this.db
+      .select()
+      .from(aiEmbeddingModel)
+      .where(eq(aiEmbeddingModel.active, true))
+      .orderBy(asc(aiEmbeddingModel.sort));
+    return rows.map((r) => aiEmbeddingModelSchema.parse(r));
+  }
+
+  private async requireEmbeddingModel(id: string): Promise<AiEmbeddingModel> {
+    const rows = await this.db
+      .select()
+      .from(aiEmbeddingModel)
+      .where(eq(aiEmbeddingModel.id, id));
+    if (!rows[0] || !rows[0].active) {
+      throw new BadRequestException(`Modèle d'embedding inconnu ou inactif : ${id}`);
+    }
+    return aiEmbeddingModelSchema.parse(rows[0]);
+  }
+
   // --- Réglages ---
 
   private async settingsRow(profileId: string): Promise<SettingsRow | null> {
@@ -88,24 +117,38 @@ export class CopiloteService {
       billing: (row?.billing as CopiloteSettingsView['billing']) ?? 'credits',
       byokProvider: (row?.byokProvider as CopiloteSettingsView['byokProvider']) ?? null,
       hasByokKey: Boolean(row?.byokKeyEnc),
+      embeddingModelId: row?.embeddingModelId ?? null,
+      hasEmbeddingKey: Boolean(row?.embeddingKeyEnc),
     };
   }
 
   async updateSettings(input: UpdateSettings): Promise<CopiloteSettingsView> {
     if (input.modelId) await this.requireModel(input.modelId); // valide l'existence
 
-    // Chiffrement de la clé BYOK si fournie.
-    let keyEnc: string | null | undefined;
-    if (input.byokApiKey === null) {
-      keyEnc = null; // effacer
-    } else if (typeof input.byokApiKey === 'string') {
+    const encrypt = (plain: string): string => {
       if (!this.env.COPILOTE_SECRET_KEY) {
         throw new ServiceUnavailableException(
-          'BYOK indisponible : COPILOTE_SECRET_KEY non configurée côté serveur.',
+          'Clé indisponible : COPILOTE_SECRET_KEY non configurée côté serveur.',
         );
       }
-      keyEnc = encryptSecret(input.byokApiKey, this.env.COPILOTE_SECRET_KEY);
+      return encryptSecret(plain, this.env.COPILOTE_SECRET_KEY);
+    };
+
+    // Chiffrement de la clé BYOK (chat) si fournie.
+    let keyEnc: string | null | undefined;
+    if (input.byokApiKey === null) keyEnc = null;
+    else if (typeof input.byokApiKey === 'string') keyEnc = encrypt(input.byokApiKey);
+
+    // Modèle d'embedding + clé d'embedding (dérive le fournisseur du catalogue).
+    let embeddingProvider: string | null | undefined;
+    if (input.embeddingModelId === null) {
+      embeddingProvider = null;
+    } else if (typeof input.embeddingModelId === 'string') {
+      embeddingProvider = (await this.requireEmbeddingModel(input.embeddingModelId)).provider;
     }
+    let embKeyEnc: string | null | undefined;
+    if (input.embeddingApiKey === null) embKeyEnc = null;
+    else if (typeof input.embeddingApiKey === 'string') embKeyEnc = encrypt(input.embeddingApiKey);
 
     const now = new Date();
     const insertValues = {
@@ -114,6 +157,9 @@ export class CopiloteService {
       billing: input.billing ?? 'credits',
       byokProvider: input.byokProvider ?? null,
       byokKeyEnc: keyEnc ?? null,
+      embeddingModelId: input.embeddingModelId ?? null,
+      embeddingProvider: embeddingProvider ?? null,
+      embeddingKeyEnc: embKeyEnc ?? null,
       updatedAt: now,
     };
     const updateSet: Partial<typeof copiloteSettings.$inferInsert> = { updatedAt: now };
@@ -121,6 +167,9 @@ export class CopiloteService {
     if (input.billing !== undefined) updateSet.billing = input.billing;
     if (input.byokProvider !== undefined) updateSet.byokProvider = input.byokProvider;
     if (keyEnc !== undefined) updateSet.byokKeyEnc = keyEnc;
+    if (input.embeddingModelId !== undefined) updateSet.embeddingModelId = input.embeddingModelId;
+    if (embeddingProvider !== undefined) updateSet.embeddingProvider = embeddingProvider;
+    if (embKeyEnc !== undefined) updateSet.embeddingKeyEnc = embKeyEnc;
 
     await this.db
       .insert(copiloteSettings)

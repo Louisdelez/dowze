@@ -49,6 +49,12 @@ export class CopiloteController {
     return this.copilote.models();
   }
 
+  /** Catalogue des modèles d'embedding (mémoire sémantique). */
+  @Get('embedding-models')
+  embeddingModels() {
+    return this.copilote.embeddingModels();
+  }
+
   /** Réglages Copilote de l'élève (jamais la clé BYOK en clair). */
   @Get('settings/:profileId')
   getSettings(@Param('profileId') profileId: string) {

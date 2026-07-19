@@ -2,8 +2,14 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { getModels, getCopiloteSettings, updateCopiloteSettings, getCredits } from '@/lib/api';
-import type { AiModel, CopiloteSettingsView } from '@dowze/schemas';
+import {
+  getModels,
+  getEmbeddingModels,
+  getCopiloteSettings,
+  updateCopiloteSettings,
+  getCredits,
+} from '@/lib/api';
+import type { AiEmbeddingModel, AiModel, CopiloteSettingsView } from '@dowze/schemas';
 import { useProfile } from '@/lib/use-profile';
 import { Button } from '@/components/ui/button';
 import { Card, CardTitle, CardDescription } from '@/components/ui/card';
@@ -18,6 +24,7 @@ import { IconPlug } from '@/components/ui/icons';
 export default function CopilotePage() {
   const { profileId, ready, signedIn } = useProfile();
   const [models, setModels] = useState<AiModel[]>([]);
+  const [embModels, setEmbModels] = useState<AiEmbeddingModel[]>([]);
   const [settings, setSettings] = useState<CopiloteSettingsView | null>(null);
   const [balance, setBalance] = useState<number | null>(null);
   const [charge, setCharge] = useState(false);
@@ -27,6 +34,8 @@ export default function CopilotePage() {
   const [modelId, setModelId] = useState('');
   const [billing, setBilling] = useState<'credits' | 'byok'>('credits');
   const [keyInput, setKeyInput] = useState('');
+  const [embModelId, setEmbModelId] = useState('');
+  const [embKeyInput, setEmbKeyInput] = useState('');
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
 
@@ -35,16 +44,19 @@ export default function CopilotePage() {
     setCharge(true);
     setErreur(false);
     try {
-      const [ms, s, b] = await Promise.all([
+      const [ms, ems, s, b] = await Promise.all([
         getModels(),
+        getEmbeddingModels(),
         getCopiloteSettings(profileId),
         getCredits(profileId).catch(() => ({ balance: 0 })),
       ]);
       setModels(ms);
+      setEmbModels(ems);
       setSettings(s);
       setBalance(b.balance);
       setModelId(s.modelId);
       setBilling(s.billing);
+      setEmbModelId(s.embeddingModelId ?? '');
     } catch {
       setErreur(true);
     } finally {
@@ -57,6 +69,8 @@ export default function CopilotePage() {
   }, [signedIn, charger]);
 
   const selected = models.find((m) => m.id === modelId) ?? null;
+  const embSelected = embModels.find((m) => m.id === embModelId) ?? null;
+  const embNeedsKey = embSelected !== null && embSelected.provider !== 'local';
 
   async function enregistrer() {
     if (!profileId) return;
@@ -69,9 +83,12 @@ export default function CopilotePage() {
         billing,
         byokProvider: selected?.provider ?? null,
         byokApiKey: billing === 'byok' && keyInput.trim() ? keyInput.trim() : undefined,
+        embeddingModelId: embModelId === '' ? null : embModelId,
+        embeddingApiKey: embNeedsKey && embKeyInput.trim() ? embKeyInput.trim() : undefined,
       });
       setSettings(updated);
       setKeyInput('');
+      setEmbKeyInput('');
       setMsg('Réglages du Copilote enregistrés ✓');
     } catch {
       setMsg('Échec de l’enregistrement. Réessaie.');
@@ -189,6 +206,60 @@ export default function CopilotePage() {
                 {saving ? 'Enregistrement…' : 'Enregistrer'}
               </Button>
               {msg && <span className="text-sm text-muted-foreground">{msg}</span>}
+            </div>
+          </Card>
+
+          <Card className="space-y-4">
+            <div>
+              <CardTitle>Mémoire sémantique (embeddings)</CardTitle>
+              <CardDescription>
+                Optionnel. Donne à Dowze une mémoire « par le sens » : regrouper des confusions
+                formulées différemment et retrouver un épisode passé similaire. Sans embeddings, la
+                mémoire fonctionne déjà (par mots-clés).
+              </CardDescription>
+            </div>
+
+            <SelectField
+              label="Modèle d’embedding"
+              value={embModelId}
+              onChange={(e) => setEmbModelId(e.target.value)}
+              hint={
+                embSelected
+                  ? `${embSelected.pricePerM === 0 ? 'Gratuit (auto-hébergé)' : `${embSelected.pricePerM} $/M tokens`} · ${embSelected.dimensions} dim.${embSelected.euHosted ? ' · UE (RGPD)' : ''} — ${embSelected.note}`
+                  : 'Désactivée : la mémoire reste par mots-clés.'
+              }
+            >
+              <option value="">— Aucun (mémoire par mots-clés) —</option>
+              {embModels.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.label} {m.pricePerM === 0 ? '· gratuit' : `· ${m.pricePerM} $/M`}
+                </option>
+              ))}
+            </SelectField>
+
+            {embSelected?.provider === 'local' && (
+              <Note>
+                Modèle auto-hébergé : il tournera sur ton propre serveur (souveraineté totale, coût
+                nul). Le conteneur d’embeddings doit d’abord être installé côté serveur.
+              </Note>
+            )}
+
+            {embNeedsKey && (
+              <TextField
+                label={`Clé API ${embSelected?.provider ?? ''} (embeddings)`}
+                type="password"
+                autoComplete="off"
+                value={embKeyInput}
+                onChange={(e) => setEmbKeyInput(e.target.value)}
+                placeholder={settings.hasEmbeddingKey ? '•••••••• (déjà enregistrée)' : 'clé…'}
+                hint="Chiffrée au repos. Peut être différente de la clé du Copilote."
+              />
+            )}
+
+            <div className="flex flex-wrap items-center gap-3">
+              <Button onClick={enregistrer} disabled={saving}>
+                {saving ? 'Enregistrement…' : 'Enregistrer'}
+              </Button>
             </div>
           </Card>
 

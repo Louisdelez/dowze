@@ -1,4 +1,5 @@
 import type {
+  AiEmbeddingModel,
   AiModel,
   BridgeOperation,
   CopiloteSettingsView,
@@ -302,6 +303,11 @@ export function getModels(): Promise<AiModel[]> {
   return get('/copilote/models');
 }
 
+/** Catalogue des modèles d'embedding (mémoire sémantique). */
+export function getEmbeddingModels(): Promise<AiEmbeddingModel[]> {
+  return get('/copilote/embedding-models');
+}
+
 export function getCopiloteSettings(profileId: string): Promise<CopiloteSettingsView> {
   return get(`/copilote/settings/${profileId}`);
 }
@@ -312,6 +318,8 @@ export interface UpdateCopiloteSettingsInput {
   billing?: 'credits' | 'byok';
   byokProvider?: AiModel['provider'] | null;
   byokApiKey?: string | null;
+  embeddingModelId?: string | null;
+  embeddingApiKey?: string | null;
 }
 export function updateCopiloteSettings(
   input: UpdateCopiloteSettingsInput,

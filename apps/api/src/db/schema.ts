@@ -232,12 +232,30 @@ export const aiModel = pgTable('ai_model', {
   note: text('note').notNull().default(''),
 });
 
+export const aiEmbeddingModel = pgTable('ai_embedding_model', {
+  id: text('id').primaryKey(),
+  provider: text('provider').notNull(),
+  modelId: text('model_id').notNull(),
+  label: text('label').notNull(),
+  pricePerM: doublePrecision('price_per_m').notNull(),
+  dimensions: integer('dimensions').notNull(),
+  contextMax: integer('context_max').notNull(),
+  euHosted: boolean('eu_hosted').notNull().default(false),
+  multilingual: boolean('multilingual').notNull().default(true),
+  active: boolean('active').notNull().default(true),
+  sort: integer('sort').notNull().default(100),
+  note: text('note').notNull().default(''),
+});
+
 export const copiloteSettings = pgTable('copilote_settings', {
   profileId: uuid('profile_id').primaryKey(),
   modelId: text('model_id').notNull().default('gpt-4o-mini'),
   billing: text('billing').notNull().default('credits'),
   byokProvider: text('byok_provider'),
   byokKeyEnc: text('byok_key_enc'),
+  embeddingModelId: text('embedding_model_id'),
+  embeddingProvider: text('embedding_provider'),
+  embeddingKeyEnc: text('embedding_key_enc'),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 

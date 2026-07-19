@@ -72,6 +72,33 @@ export const aiModelSchema = z.object({
 });
 export type AiModel = z.infer<typeof aiModelSchema>;
 
+/** Fournisseurs d'embeddings supportés (sémantique : dédup + rappel par le sens). */
+export const embeddingProviderSchema = z.enum([
+  'openai',
+  'google',
+  'mistral',
+  'voyage',
+  'cohere',
+  'jina',
+  'local',
+]);
+export type EmbeddingProvider = z.infer<typeof embeddingProviderSchema>;
+
+/** Une entrée du catalogue de modèles d'embedding (table `ai_embedding_model`). */
+export const aiEmbeddingModelSchema = z.object({
+  id: z.string(),
+  provider: embeddingProviderSchema,
+  modelId: z.string(),
+  label: z.string(),
+  pricePerM: z.number(), // USD / M tokens (0 = auto-hébergé)
+  dimensions: z.number(),
+  contextMax: z.number(),
+  euHosted: z.boolean(),
+  multilingual: z.boolean(),
+  note: z.string(),
+});
+export type AiEmbeddingModel = z.infer<typeof aiEmbeddingModelSchema>;
+
 /** Mode de facturation choisi par l'élève. */
 export const billingModeSchema = z.enum(['credits', 'byok']);
 export type BillingMode = z.infer<typeof billingModeSchema>;
@@ -102,6 +129,8 @@ export const copiloteSettingsViewSchema = z.object({
   billing: billingModeSchema,
   byokProvider: aiProviderSchema.nullable(),
   hasByokKey: z.boolean(),
+  embeddingModelId: z.string().nullable(),
+  hasEmbeddingKey: z.boolean(),
 });
 export type CopiloteSettingsView = z.infer<typeof copiloteSettingsViewSchema>;
 
@@ -113,6 +142,8 @@ export const updateSettingsSchema = z
     billing: billingModeSchema.optional(),
     byokProvider: aiProviderSchema.nullable().optional(),
     byokApiKey: z.string().max(300).nullable().optional(),
+    embeddingModelId: z.string().nullable().optional(),
+    embeddingApiKey: z.string().max(300).nullable().optional(),
   })
   .strict();
 export type UpdateSettings = z.infer<typeof updateSettingsSchema>;
