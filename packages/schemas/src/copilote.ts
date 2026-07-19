@@ -69,6 +69,7 @@ export const aiModelSchema = z.object({
   strict: z.boolean(), // supporte les structured outputs stricts
   euHosted: z.boolean(), // hébergement UE (RGPD)
   note: z.string(),
+  billingUrl: z.string(), // page « acheter des crédits API » du fournisseur
 });
 export type AiModel = z.infer<typeof aiModelSchema>;
 
@@ -95,6 +96,7 @@ export const aiEmbeddingModelSchema = z.object({
   euHosted: z.boolean(),
   multilingual: z.boolean(),
   note: z.string(),
+  billingUrl: z.string(), // page « acheter des crédits API » du fournisseur
 });
 export type AiEmbeddingModel = z.infer<typeof aiEmbeddingModelSchema>;
 

@@ -230,6 +230,7 @@ export const aiModel = pgTable('ai_model', {
   active: boolean('active').notNull().default(true),
   sort: integer('sort').notNull().default(100),
   note: text('note').notNull().default(''),
+  billingUrl: text('billing_url').notNull().default(''),
 });
 
 export const aiEmbeddingModel = pgTable('ai_embedding_model', {
@@ -245,6 +246,7 @@ export const aiEmbeddingModel = pgTable('ai_embedding_model', {
   active: boolean('active').notNull().default(true),
   sort: integer('sort').notNull().default(100),
   note: text('note').notNull().default(''),
+  billingUrl: text('billing_url').notNull().default(''),
 });
 
 export const copiloteSettings = pgTable('copilote_settings', {

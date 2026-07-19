@@ -16,6 +16,7 @@ const MODEL: AiModel = {
   strict: true,
   euHosted: false,
   note: '',
+  billingUrl: '',
 };
 
 describe('crypto BYOK', () => {

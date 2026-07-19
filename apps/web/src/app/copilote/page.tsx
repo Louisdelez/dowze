@@ -193,6 +193,16 @@ export default function CopilotePage() {
                   placeholder={settings.hasByokKey ? '•••••••• (déjà enregistrée)' : 'sk-…'}
                   hint="Chiffrée au repos, jamais réaffichée. Elle ne sert qu’à tes propres séances."
                 />
+                {selected?.billingUrl && (
+                  <a
+                    href={selected.billingUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex w-fit items-center gap-1 text-xs font-medium text-accent underline"
+                  >
+                    Acheter des crédits API {selected.label} ↗
+                  </a>
+                )}
                 {settings.hasByokKey && (
                   <Button variant="ghost" onClick={supprimerCle} disabled={saving}>
                     Supprimer ma clé
@@ -238,15 +248,27 @@ export default function CopilotePage() {
             </SelectField>
 
             {embNeedsKey && (
-              <TextField
-                label={`Clé API ${embSelected?.provider ?? ''} (embeddings)`}
-                type="password"
-                autoComplete="off"
-                value={embKeyInput}
-                onChange={(e) => setEmbKeyInput(e.target.value)}
-                placeholder={settings.hasEmbeddingKey ? '•••••••• (déjà enregistrée)' : 'clé…'}
-                hint="Chiffrée au repos. Peut être différente de la clé du Copilote."
-              />
+              <div className="space-y-2">
+                <TextField
+                  label={`Clé API ${embSelected?.provider ?? ''} (embeddings)`}
+                  type="password"
+                  autoComplete="off"
+                  value={embKeyInput}
+                  onChange={(e) => setEmbKeyInput(e.target.value)}
+                  placeholder={settings.hasEmbeddingKey ? '•••••••• (déjà enregistrée)' : 'clé…'}
+                  hint="Chiffrée au repos. Peut être différente de la clé du Copilote."
+                />
+                {embSelected?.billingUrl && (
+                  <a
+                    href={embSelected.billingUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex w-fit items-center gap-1 text-xs font-medium text-accent underline"
+                  >
+                    Acheter des crédits API {embSelected.label} ↗
+                  </a>
+                )}
+              </div>
             )}
 
             <div className="flex flex-wrap items-center gap-3">
