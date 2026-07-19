@@ -12,6 +12,7 @@ import { ExpeditionsModule } from './expeditions/expeditions.module';
 import { CarnetModule } from './carnet/carnet.module';
 import { SkillGraphModule } from './skill-graph/skill-graph.module';
 import { BridgeModule } from './bridge/bridge.module';
+import { CopiloteModule } from './copilote/copilote.module';
 import { ProgressionModule } from './progression/progression.module';
 import { SpacedRepetitionModule } from './spaced-repetition/spaced-repetition.module';
 import { PlanningModule } from './planning/planning.module';
@@ -35,6 +36,7 @@ import { HealthModule } from './health/health.module';
     CarnetModule,
     SkillGraphModule,
     BridgeModule,
+    CopiloteModule,
     ProgressionModule,
     SpacedRepetitionModule,
     PlanningModule,

@@ -218,6 +218,44 @@ export const carnetEntries = pgTable('carnet_entries', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const aiModel = pgTable('ai_model', {
+  id: text('id').primaryKey(),
+  provider: text('provider').notNull(),
+  modelId: text('model_id').notNull(),
+  label: text('label').notNull(),
+  priceIn: doublePrecision('price_in').notNull(),
+  priceOut: doublePrecision('price_out').notNull(),
+  strict: boolean('strict').notNull().default(false),
+  euHosted: boolean('eu_hosted').notNull().default(false),
+  active: boolean('active').notNull().default(true),
+  sort: integer('sort').notNull().default(100),
+  note: text('note').notNull().default(''),
+});
+
+export const copiloteSettings = pgTable('copilote_settings', {
+  profileId: uuid('profile_id').primaryKey(),
+  modelId: text('model_id').notNull().default('gpt-4o-mini'),
+  billing: text('billing').notNull().default('credits'),
+  byokProvider: text('byok_provider'),
+  byokKeyEnc: text('byok_key_enc'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const creditBalances = pgTable('credit_balances', {
+  profileId: uuid('profile_id').primaryKey(),
+  balance: doublePrecision('balance').notNull().default(0),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const creditLedger = pgTable('credit_ledger', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  profileId: uuid('profile_id').notNull(),
+  delta: doublePrecision('delta').notNull(),
+  reason: text('reason').notNull(),
+  ref: text('ref'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const guardians = pgTable('guardians', {
   id: uuid('id').primaryKey().defaultRandom(),
   minorAccountId: uuid('minor_account_id').notNull(),

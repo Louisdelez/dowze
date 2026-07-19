@@ -1,4 +1,9 @@
-import type { BridgeOperation } from '@dowze/schemas';
+import type {
+  AiModel,
+  BridgeOperation,
+  CopiloteSettingsView,
+  SessionSnapshot,
+} from '@dowze/schemas';
 import { getSupabase } from '@/lib/supabase';
 
 /** Client minimal vers le backend Dowze (l'intra-core). */
@@ -263,4 +268,56 @@ export function addCarnetEntry(profileId: string, note: string): Promise<CarnetE
 }
 export function getResumePrompt(profileId: string): Promise<{ prompt: string }> {
   return get(`/carnet/${profileId}/prompt`);
+}
+
+// ── Le Copilote (IA interne orchestratrice) ──
+
+export interface ComposeResult {
+  prompt: string;
+  skill: { id: string; slug: string; title: string } | null;
+}
+/** Compose le prompt LISIBLE du jour (déterministe, sans coût). */
+export function composeSession(profileId: string): Promise<ComposeResult> {
+  return post('/copilote/compose', { profileId });
+}
+
+export interface IngestResult {
+  snapshot: SessionSnapshot;
+  pMastery: number;
+  creditsSpent: number;
+}
+/** Ingère le résumé de séance (texte libre) → snapshot → BKT + carnet. */
+export function ingestSummary(
+  profileId: string,
+  skillId: string,
+  summary: string,
+  modelId?: string,
+): Promise<IngestResult> {
+  return post('/copilote/ingest', { profileId, skillId, summary, modelId });
+}
+
+/** Catalogue des modèles disponibles (multi-fournisseurs). */
+export function getModels(): Promise<AiModel[]> {
+  return get('/copilote/models');
+}
+
+export function getCopiloteSettings(profileId: string): Promise<CopiloteSettingsView> {
+  return get(`/copilote/settings/${profileId}`);
+}
+
+export interface UpdateCopiloteSettingsInput {
+  profileId: string;
+  modelId?: string;
+  billing?: 'credits' | 'byok';
+  byokProvider?: AiModel['provider'] | null;
+  byokApiKey?: string | null;
+}
+export function updateCopiloteSettings(
+  input: UpdateCopiloteSettingsInput,
+): Promise<CopiloteSettingsView> {
+  return post('/copilote/settings', input);
+}
+
+export function getCredits(profileId: string): Promise<{ profileId: string; balance: number }> {
+  return get(`/copilote/balance/${profileId}`);
 }

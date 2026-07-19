@@ -107,3 +107,11 @@ export const IconInbox = (p: IconProps) => (
     <path d="M5 5h14l2 8v5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-5L5 5Z" />
   </Svg>
 );
+
+export const IconRobot = (p: IconProps) => (
+  <Svg {...p}>
+    <rect x="5" y="8" width="14" height="10" rx="2" />
+    <path d="M12 5v3M9 12h.01M15 12h.01M9.5 15.5h5" />
+    <path d="M3 12v2m18-2v2" />
+  </Svg>
+);

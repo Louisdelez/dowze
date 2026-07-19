@@ -10,6 +10,7 @@ import {
   IconBadgeCheck,
   IconPlug,
   IconHeart,
+  IconRobot,
 } from '@/components/ui/icons';
 
 export interface NavItem {
@@ -54,6 +55,7 @@ export const NAV_GROUPS: NavGroup[] = [
 
 /** Liens de bas de barre (discrets) : espace responsable + outil avancé. */
 export const NAV_SECONDARY: NavItem[] = [
+  { href: '/copilote', label: 'Mon Copilote', icon: IconRobot },
   { href: '/parent', label: 'Espace responsable', icon: IconHeart },
   { href: '/bridge', label: 'Pont .json', icon: IconPlug },
 ];

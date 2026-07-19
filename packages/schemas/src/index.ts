@@ -3,7 +3,7 @@
  * Schémas Zod partagés par le frontend, le backend et la validation du pont `.json`.
  */
 
-export const SCHEMAS_VERSION = '2.19.0' as const;
+export const SCHEMAS_VERSION = '2.20.0' as const;
 
 export * from './common';
 export * from './skill';
@@ -15,6 +15,7 @@ export * from './planning';
 export * from './content';
 export * from './validation';
 export * from './bridge';
+export * from './copilote';
 export * from './account';
 export * from './community';
 export * from './moderation';

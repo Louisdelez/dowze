@@ -1,0 +1,208 @@
+'use client';
+
+import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
+import { getModels, getCopiloteSettings, updateCopiloteSettings, getCredits } from '@/lib/api';
+import type { AiModel, CopiloteSettingsView } from '@dowze/schemas';
+import { useProfile } from '@/lib/use-profile';
+import { Button } from '@/components/ui/button';
+import { Card, CardTitle, CardDescription } from '@/components/ui/card';
+import { TextField, SelectField } from '@/components/ui/field';
+import { Badge } from '@/components/ui/badge';
+import { Note } from '@/components/ui/note';
+import { Skeleton } from '@/components/ui/skeleton';
+import { EmptyState } from '@/components/ui/empty-state';
+import { PageHeader } from '@/components/page-header';
+import { IconPlug } from '@/components/ui/icons';
+
+export default function CopilotePage() {
+  const { profileId, ready, signedIn } = useProfile();
+  const [models, setModels] = useState<AiModel[]>([]);
+  const [settings, setSettings] = useState<CopiloteSettingsView | null>(null);
+  const [balance, setBalance] = useState<number | null>(null);
+  const [charge, setCharge] = useState(false);
+  const [erreur, setErreur] = useState(false);
+
+  // Form
+  const [modelId, setModelId] = useState('');
+  const [billing, setBilling] = useState<'credits' | 'byok'>('credits');
+  const [keyInput, setKeyInput] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState('');
+
+  const charger = useCallback(async () => {
+    if (!profileId) return;
+    setCharge(true);
+    setErreur(false);
+    try {
+      const [ms, s, b] = await Promise.all([
+        getModels(),
+        getCopiloteSettings(profileId),
+        getCredits(profileId).catch(() => ({ balance: 0 })),
+      ]);
+      setModels(ms);
+      setSettings(s);
+      setBalance(b.balance);
+      setModelId(s.modelId);
+      setBilling(s.billing);
+    } catch {
+      setErreur(true);
+    } finally {
+      setCharge(false);
+    }
+  }, [profileId]);
+
+  useEffect(() => {
+    if (signedIn) charger();
+  }, [signedIn, charger]);
+
+  const selected = models.find((m) => m.id === modelId) ?? null;
+
+  async function enregistrer() {
+    if (!profileId) return;
+    setSaving(true);
+    setMsg('');
+    try {
+      const updated = await updateCopiloteSettings({
+        profileId,
+        modelId,
+        billing,
+        byokProvider: selected?.provider ?? null,
+        byokApiKey: billing === 'byok' && keyInput.trim() ? keyInput.trim() : undefined,
+      });
+      setSettings(updated);
+      setKeyInput('');
+      setMsg('Réglages du Copilote enregistrés ✓');
+    } catch {
+      setMsg('Échec de l’enregistrement. Réessaie.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function supprimerCle() {
+    if (!profileId) return;
+    setSaving(true);
+    setMsg('');
+    try {
+      const updated = await updateCopiloteSettings({ profileId, byokApiKey: null });
+      setSettings(updated);
+      setMsg('Clé supprimée.');
+    } catch {
+      setMsg('Échec de la suppression.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="Mon Copilote"
+        subtitle="L’IA interne qui prépare tes prompts et lit tes résumés de séance. Choisis ton modèle et comment tu le paies."
+      />
+
+      {ready && !signedIn && (
+        <EmptyState
+          icon={<IconPlug />}
+          title="Connecte-toi pour régler ton Copilote"
+          description="Le Copilote structure tes séances et tient ta mémoire de progression."
+          action={
+            <Link href="/connexion">
+              <Button>Se connecter</Button>
+            </Link>
+          }
+        />
+      )}
+
+      {charge && <Skeleton className="h-64 w-full" />}
+      {erreur && <Note tone="error">Impossible de charger tes réglages. Réessaie.</Note>}
+
+      {signedIn && !charge && settings && (
+        <>
+          <Card className="space-y-4">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <CardTitle>Le modèle du Copilote</CardTitle>
+                <CardDescription>
+                  Une petite IA guidée par Dowze. Elle n’enseigne pas — c’est ton IA (ChatGPT,
+                  Claude…) qui enseigne.
+                </CardDescription>
+              </div>
+              {billing === 'credits' && balance !== null && (
+                <Badge tone={balance > 0 ? 'accent' : 'neutral'}>{Math.round(balance)} crédits</Badge>
+              )}
+            </div>
+
+            <SelectField
+              label="Modèle"
+              value={modelId}
+              onChange={(e) => setModelId(e.target.value)}
+              hint={
+                selected
+                  ? `${selected.note}${selected.euHosted ? ' · hébergement UE (RGPD)' : ''}`
+                  : undefined
+              }
+            >
+              {models.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.label}
+                </option>
+              ))}
+            </SelectField>
+
+            <SelectField
+              label="Comment payer le Copilote"
+              value={billing}
+              onChange={(e) => setBilling(e.target.value as 'credits' | 'byok')}
+              hint={
+                billing === 'credits'
+                  ? 'Crédits Dowze : tu recharges, Dowze fournit l’IA. ~0,2 centime par séance.'
+                  : 'Ta propre clé API : gratuit pour Dowze, tu paies ton fournisseur directement.'
+              }
+            >
+              <option value="credits">Crédits Dowze (recharge)</option>
+              <option value="byok">Ma propre clé API (BYOK)</option>
+            </SelectField>
+
+            {billing === 'byok' && (
+              <div className="space-y-2 rounded-md border border-border bg-muted/40 p-4">
+                <TextField
+                  label={`Clé API ${selected?.provider ?? ''}`}
+                  type="password"
+                  autoComplete="off"
+                  value={keyInput}
+                  onChange={(e) => setKeyInput(e.target.value)}
+                  placeholder={settings.hasByokKey ? '•••••••• (déjà enregistrée)' : 'sk-…'}
+                  hint="Chiffrée au repos, jamais réaffichée. Elle ne sert qu’à tes propres séances."
+                />
+                {settings.hasByokKey && (
+                  <Button variant="ghost" onClick={supprimerCle} disabled={saving}>
+                    Supprimer ma clé
+                  </Button>
+                )}
+              </div>
+            )}
+
+            <div className="flex flex-wrap items-center gap-3">
+              <Button onClick={enregistrer} disabled={saving}>
+                {saving ? 'Enregistrement…' : 'Enregistrer'}
+              </Button>
+              {msg && <span className="text-sm text-muted-foreground">{msg}</span>}
+            </div>
+          </Card>
+
+          {billing === 'credits' && (
+            <Card className="space-y-2">
+              <CardTitle>Recharger mes crédits</CardTitle>
+              <CardDescription>
+                Le paiement par carte (Stripe) arrive bientôt. En attendant, tes crédits peuvent être
+                ajoutés par l’équipe Dowze. 1 crédit ≈ 0,1 centime ; une séance coûte ~2 crédits.
+              </CardDescription>
+            </Card>
+          )}
+        </>
+      )}
+    </div>
+  );
+}

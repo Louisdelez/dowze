@@ -67,14 +67,27 @@ puissance mais : **structured outputs fiables + français + prix bas + latence**
 | DeepSeek V3/V4-flash | ~$0.14 / $0.28 | 128k | JSON valide | ★★★ (API en Chine → RGPD) |
 | Claude Haiku 4.5 | $1 / $5 | 200k | strict | ★★★ (5-10× trop cher ici) |
 
-**Reco** :
-- **Par défaut : GPT-4o-mini** en **Structured Outputs (`strict:true`)** — schéma garanti à 100 %, c'est ce
-  qui répare le bug de format.
-- **Alternative low-cost : Gemini 2.5 Flash-Lite** (`responseSchema`), avec le **filet de secours**
-  (`jsonrepair → Zod → 1 retry` réinjectant l'erreur).
-- **Si souveraineté/FR = argument produit : Mistral Small 3.2** (hébergement UE) + même filet.
-- **Phase 2 confidentialité** : auto-héberger (Ollama : Qwen/Mistral) avec **Outlines/XGrammar** (~100 % JSON)
-  — à réserver plus tard (coûts GPU/ops).
+**Choix produit : le Copilote est multi-fournisseurs (l'élève choisit son modèle).** On ne verrouille pas un
+seul modèle : on expose un **catalogue** de modèles (OpenAI, Anthropic, Google, Mistral, DeepSeek, +
+d'autres) et l'élève/l'app sélectionne. Techniquement c'est **une seule abstraction** — le **Vercel AI SDK**
+(`generateObject` + Zod) parle à tous les fournisseurs via un provider commun ; on ne réécrit rien par modèle.
+
+**Catalogue au lancement** (chacun activable/désactivable, prix affiché en « crédits ») :
+
+| Fournisseur | Modèle | Prix in/out (/M) | JSON | Note |
+|---|---|---|---|---|
+| OpenAI | **GPT-4o-mini** (défaut reco) | $0.15 / $0.60 | strict natif | valeur sûre, 0 invalide |
+| Google | **Gemini 2.5 Flash-Lite** | $0.10 / $0.40 | `responseSchema` | le moins cher, ~1M ctx |
+| Mistral | **Mistral Small 3.2** | $0.10 / $0.30 | JSON valide | FR natif, **UE/RGPD** |
+| DeepSeek | **DeepSeek V3** | ~$0.14 / $0.28 | JSON valide | très bon marché (API en Chine → RGPD) |
+| Anthropic | **Claude Haiku 4.5** | $1 / $5 | strict | premium, qualité rédaction |
+
+- **Défaut** : GPT-4o-mini en **Structured Outputs (`strict:true`)** — schéma garanti, répare le bug de format.
+- **Filet commun** pour les modèles à JSON non-strict (Mistral/DeepSeek) : `jsonrepair → Zod → 1 retry`
+  (réinjecte l'erreur). Appliqué uniformément via le SDK.
+- **Registre de modèles en base** (`ai_model` : provider, model_id, prix, actif, strict?) → ajouter un modèle
+  = une ligne, sans redéploiement.
+- **Phase 2 confidentialité** : auto-héberger (Ollama : Qwen/Mistral) avec **Outlines/XGrammar** (~100 % JSON).
 
 **Coût par séance** (~6k tokens in + 3k out) : **≈ 0,15 à 0,27 centime**. 100 000 séances/mois ≈ **$150-300**,
 encore divisible par le *prompt caching*. → Un système de **crédits prépayés** rend ça soutenable (§7).
@@ -170,7 +183,9 @@ Le prompt composé par le Copilote doit **activer et exploiter** ce que l'abonne
 
 ## 8. Économie : crédits prépayés (recharge)
 
-Le Copilote coûte des tokens → modèle de **crédits prépayés** (« recharger avec de l'argent »).
+**Les deux modes cohabitent** (choix de l'élève) :
+
+**A. Crédits prépayés** (défaut, « recharger avec de l'argent ») — Dowze fournit l'IA :
 - **Ledger applicatif maison** (Postgres/Supabase) : table `credit_ledger` append-only + vue
   `user_balances`. **Stripe** seulement pour **encaisser** (Checkout/Payment Intent + **webhook idempotent**
   sur l'`event.id`).
@@ -178,10 +193,16 @@ Le Copilote coûte des tokens → modèle de **crédits prépayés** (« recharg
   et **garde-fou anti-runaway** ; **réconciliation après** avec les tokens réels (`usage` du provider).
 - Abstraire le token en **« crédit Dowze »** pour absorber la volatilité des prix et piloter la marge
   (cible ~70 % brut). Rejet à solde 0 ; plafonds req/min et tokens/req.
-- **Rate-limiting** : `@nestjs/throttler` (clé `user_id`) + Cloudflare (Supabase n'a pas de rate-limit natif).
-- Option **BYOK** (l'élève met sa clé) pour une marge SaaS prévisible et une version « gratuite » (il paie
-  son propre Copilote).
 - Solde en direct : `GET /me/balance` + Supabase Realtime.
+
+**B. BYOK — l'élève fournit sa propre clé** (gratuit pour Dowze) :
+- L'élève colle **sa clé API** (OpenAI/Google/Mistral/…) dans ses réglages ; elle est **chiffrée au repos**
+  (jamais en clair, jamais loggée) et n'est utilisée que pour **ses** appels.
+- **Pas de décrément de crédits** en BYOK (il paie son fournisseur directement). Le catalogue reste le même.
+- Sert la marge SaaS prévisible **et** une voie « gratuite » cohérente avec l'esprit commun de Dowze.
+
+**Commun aux deux** : **rate-limiting** `@nestjs/throttler` (clé `user_id`) + Cloudflare (Supabase n'a pas de
+rate-limit natif) ; plafond tokens/req ; le modèle choisi vient du **catalogue `ai_model`**.
 
 **Coût réel** : à ~0,2 centime/séance, **5 € de crédit ≈ 2 000+ séances**. Trivial pour l'élève, soutenable
 pour l'app.
