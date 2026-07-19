@@ -36,6 +36,7 @@ import { FsrsService, outcomeToRating } from '../fsrs/fsrs.service';
 import { CreditsService, creditsForUsage, estimateCredits } from './credits.service';
 import { platformKeyFor, resolveModel } from './provider';
 import { decryptSecret, encryptSecret } from './crypto.util';
+import { cosine, embedTexts, type EmbeddingConfig } from './embedding';
 import {
   EXTRACTION_SYSTEM,
   buildClosingPrompt,
@@ -329,21 +330,39 @@ export class CopiloteService {
     const mastery = await this.progression.observe(input.profileId, input.skillId, correct, nowIso);
     await this.carnet.addEntry(input.profileId, snapshot.carnetNote, input.skillId);
     await this.fsrs.rate(input.profileId, input.skillId, outcomeToRating(snapshot.outcome), nowIso);
+    const embConfig = await this.resolveEmbeddingConfig(settings);
     await this.reconcileMisconceptions(
       input.profileId,
       input.skillId,
       snapshot.errors,
       snapshot.outcome,
       nowIso,
+      embConfig,
     );
 
     return { snapshot, pMastery: mastery.pMastery, creditsSpent };
   }
 
+  /** Résout la config d'embedding de l'élève (modèle + clé déchiffrée), ou null si non activée. */
+  private async resolveEmbeddingConfig(row: SettingsRow | null): Promise<EmbeddingConfig | null> {
+    if (!row?.embeddingModelId || !row.embeddingKeyEnc || !this.env.COPILOTE_SECRET_KEY) return null;
+    const model = await this.db
+      .select()
+      .from(aiEmbeddingModel)
+      .where(eq(aiEmbeddingModel.id, row.embeddingModelId));
+    if (!model[0]) return null;
+    return {
+      provider: model[0].provider,
+      modelId: model[0].modelId,
+      apiKey: decryptSecret(row.embeddingKeyEnc, this.env.COPILOTE_SECRET_KEY),
+    };
+  }
+
   /**
    * Réconcilie les erreurs/confusions extraites avec la mémoire existante (pattern Mem0) :
-   * compétence maîtrisée → confusions actives marquées résolues ; sinon on incrémente les
-   * confusions déjà connues et on ajoute les nouvelles. Jamais un simple empilement.
+   * compétence maîtrisée → confusions actives résolues ; sinon on regroupe avec une confusion
+   * déjà connue (par le SENS si les embeddings sont activés, sinon par mots) et on incrémente,
+   * ou on en crée une nouvelle. Jamais un simple empilement.
    */
   private async reconcileMisconceptions(
     profileId: string,
@@ -351,6 +370,7 @@ export class CopiloteService {
     errors: string[],
     outcome: SessionSnapshot['outcome'],
     nowIso: string,
+    embConfig: EmbeddingConfig | null,
   ): Promise<void> {
     const now = new Date(nowIso);
 
@@ -391,12 +411,43 @@ export class CopiloteService {
       );
     const byLabel = new Map(existing.map((m) => [norm(m.label), m]));
 
-    for (const label of uniq) {
-      const hit = byLabel.get(norm(label));
+    // Embeddings des nouvelles confusions (si la mémoire sémantique est activée).
+    let vectors: number[][] | null = null;
+    if (embConfig) {
+      try {
+        vectors = await embedTexts(embConfig, uniq);
+      } catch {
+        vectors = null; // repli silencieux sur la comparaison par mots
+      }
+    }
+    const SIM_THRESHOLD = 0.72;
+
+    for (let i = 0; i < uniq.length; i++) {
+      const label = uniq[i] as string;
+      const vec = vectors?.[i] ?? null;
+
+      // 1) correspondance exacte (mots), 2) sinon par le sens (cosinus).
+      let hit = byLabel.get(norm(label)) ?? null;
+      if (!hit && vec) {
+        let bestSim = SIM_THRESHOLD;
+        for (const m of existing) {
+          if (!m.embedding || m.embedding.length === 0) continue;
+          const sim = cosine(vec, m.embedding);
+          if (sim >= bestSim) {
+            bestSim = sim;
+            hit = m;
+          }
+        }
+      }
+
       if (hit) {
         await this.db
           .update(learnerMisconceptions)
-          .set({ occurrences: hit.occurrences + 1, lastSeen: now })
+          .set({
+            occurrences: hit.occurrences + 1,
+            lastSeen: now,
+            ...(vec && (!hit.embedding || hit.embedding.length === 0) ? { embedding: vec } : {}),
+          })
           .where(eq(learnerMisconceptions.id, hit.id));
       } else {
         await this.db.insert(learnerMisconceptions).values({
@@ -406,6 +457,7 @@ export class CopiloteService {
           status: 'active',
           firstSeen: now,
           lastSeen: now,
+          embedding: vec,
         });
       }
     }

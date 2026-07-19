@@ -6,6 +6,7 @@ import {
   smallint,
   boolean,
   doublePrecision,
+  real,
   timestamp,
   primaryKey,
 } from 'drizzle-orm/pg-core';
@@ -303,6 +304,7 @@ export const learnerMisconceptions = pgTable('learner_misconceptions', {
   occurrences: integer('occurrences').notNull().default(1),
   firstSeen: timestamp('first_seen', { withTimezone: true }).notNull().defaultNow(),
   lastSeen: timestamp('last_seen', { withTimezone: true }).notNull().defaultNow(),
+  embedding: real('embedding').array(),
 });
 
 export const guardians = pgTable('guardians', {
