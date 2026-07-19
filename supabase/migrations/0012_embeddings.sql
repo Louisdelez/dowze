@@ -3,7 +3,7 @@
 -- Voir docs/10-APP-WEB/16-architecture-etat-memoire.md.
 create table if not exists public.ai_embedding_model (
   id           text primary key,
-  provider     text not null,               -- openai|google|mistral|voyage|cohere|jina|local
+  provider     text not null,               -- openai|google|mistral|voyage|cohere|jina (cloud, par clé API)
   model_id     text not null,
   label        text not null,
   price_per_m  double precision not null,    -- USD / M tokens (0 = auto-hébergé)
@@ -25,9 +25,7 @@ insert into public.ai_embedding_model
   ('openai-3-small',      'openai','text-embedding-3-small','OpenAI 3 Small',                   0.02, 1536,  8191, false, true, true, 50, 'Économique et simple.'),
   ('cohere-embed-v4',     'cohere','embed-v4.0',           'Cohere Embed v4',                   0.12, 1536,128000, false, true, true, 60, 'Très grand contexte (128k), 100+ langues.'),
   ('mistral-embed',       'mistral','mistral-embed',       'Mistral Embed (UE)',                0.10, 1024,  8192, true,  true, true, 70, 'Hébergement UE (RGPD), bon en français.'),
-  ('jina-v3',             'jina', 'jina-embeddings-v3',    'Jina v3 (UE)',                      0.02, 1024,  8192, true,  true, true, 80, 'UE (Allemagne), excellent rapport qualité/prix.'),
-  ('local-qwen3',         'local','qwen3-embedding-0.6b',  'Auto-hébergé — Qwen3 (ton serveur)',0.00, 1024, 32000, true,  true, true, 90, 'Gratuit et souverain ; nécessite le conteneur sur prod.'),
-  ('local-nomic',         'local','nomic-embed-text',      'Auto-hébergé — Nomic (ton serveur)',0.00,  768,  8192, true,  true, true, 95, 'Gratuit et souverain ; nécessite le conteneur sur prod.')
+  ('jina-v3',             'jina', 'jina-embeddings-v3',    'Jina v3 (UE)',                      0.02, 1024,  8192, true,  true, true, 80, 'UE (Allemagne), excellent rapport qualité/prix.')
 on conflict (id) do nothing;
 
 alter table public.ai_embedding_model enable row level security;

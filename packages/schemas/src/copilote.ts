@@ -72,7 +72,7 @@ export const aiModelSchema = z.object({
 });
 export type AiModel = z.infer<typeof aiModelSchema>;
 
-/** Fournisseurs d'embeddings supportés (sémantique : dédup + rappel par le sens). */
+/** Fournisseurs d'embeddings supportés (cloud, par clé API : dédup + rappel par le sens). */
 export const embeddingProviderSchema = z.enum([
   'openai',
   'google',
@@ -80,7 +80,6 @@ export const embeddingProviderSchema = z.enum([
   'voyage',
   'cohere',
   'jina',
-  'local',
 ]);
 export type EmbeddingProvider = z.infer<typeof embeddingProviderSchema>;
 

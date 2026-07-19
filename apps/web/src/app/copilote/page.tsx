@@ -70,7 +70,7 @@ export default function CopilotePage() {
 
   const selected = models.find((m) => m.id === modelId) ?? null;
   const embSelected = embModels.find((m) => m.id === embModelId) ?? null;
-  const embNeedsKey = embSelected !== null && embSelected.provider !== 'local';
+  const embNeedsKey = embSelected !== null;
 
   async function enregistrer() {
     if (!profileId) return;
@@ -236,13 +236,6 @@ export default function CopilotePage() {
                 </option>
               ))}
             </SelectField>
-
-            {embSelected?.provider === 'local' && (
-              <Note>
-                Modèle auto-hébergé : il tournera sur ton propre serveur (souveraineté totale, coût
-                nul). Le conteneur d’embeddings doit d’abord être installé côté serveur.
-              </Note>
-            )}
 
             {embNeedsKey && (
               <TextField
