@@ -7,11 +7,14 @@ import {
   getProgression,
   observe,
   createBridgeRequest,
+  importBridgeResponse,
+  addCarnetEntry,
   type NextSkillRow,
 } from '@/lib/api';
 import { useProfile } from '@/lib/use-profile';
 import { Button } from '@/components/ui/button';
 import { Card, CardTitle, CardDescription } from '@/components/ui/card';
+import { TextAreaField } from '@/components/ui/field';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/page-header';
@@ -31,6 +34,12 @@ export default function SeancePage() {
   const [copie, setCopie] = useState(false);
   const [erreur, setErreur] = useState(false);
   const [tout, setTout] = useState(false); // tout est maîtrisé
+  // Bilan de séance (l'IA rend un .json → maîtrise + carnet mis à jour).
+  const [rapportAller, setRapportAller] = useState('');
+  const [rapportReqId, setRapportReqId] = useState('');
+  const [rapportRaw, setRapportRaw] = useState('');
+  const [rapportMsg, setRapportMsg] = useState('');
+  const [rapportErr, setRapportErr] = useState('');
 
   const chargerProchaine = useCallback(async () => {
     if (!profileId) return;
@@ -90,6 +99,59 @@ export default function SeancePage() {
       setPct(Math.round(res.pMastery * 100));
     } catch {
       setErreur(true);
+    }
+  }
+
+  // Génère le `.json` ALLER à faire remplir par l'IA (format du bilan).
+  async function genererRapport() {
+    if (!skill) return;
+    setRapportErr('');
+    setRapportMsg('');
+    try {
+      const id = crypto.randomUUID();
+      setRapportReqId(id);
+      const json = await createBridgeRequest({
+        operation: 'rapport-seance',
+        requestId: id,
+        seed: skill.slug,
+      });
+      setRapportAller(JSON.stringify(json, null, 2));
+    } catch {
+      setRapportErr('Impossible de générer le bilan à demander.');
+    }
+  }
+
+  // Valide le bilan de l'IA → met à jour la maîtrise (BKT) + ajoute au carnet.
+  async function validerRapport() {
+    if (!skill || !profileId || !rapportRaw) return;
+    setRapportErr('');
+    setRapportMsg('');
+    try {
+      const res = (await importBridgeResponse({
+        raw: rapportRaw,
+        expectedRequestId: rapportReqId,
+        expectedOperation: 'rapport-seance',
+      })) as {
+        ok: boolean;
+        payload?: { report: { outcome: 'reussi' | 'a-revoir'; note: string } };
+        errors?: { path: string; message: string }[];
+      };
+      if (!res.ok || !res.payload) {
+        setRapportErr(
+          `Bilan refusé : ${(res.errors ?? []).map((e) => e.message).join(', ') || 'format invalide'}`,
+        );
+        return;
+      }
+      const { outcome, note } = res.payload.report;
+      const obs = await observe(profileId, skill.id, outcome === 'reussi');
+      setPct(Math.round(obs.pMastery * 100));
+      await addCarnetEntry(profileId, note);
+      setRapportMsg('Bilan enregistré : maîtrise mise à jour et note ajoutée à ton carnet ✓');
+      setRapportRaw('');
+      setRapportAller('');
+      setRapportReqId('');
+    } catch {
+      setRapportErr('Impossible d’enregistrer ton bilan. Réessaie dans un instant.');
     }
   }
 
@@ -196,6 +258,41 @@ export default function SeancePage() {
                     À revoir
                   </Button>
                 </div>
+              </Card>
+
+              <Card className="space-y-3">
+                <CardTitle>3 · Ou laisse ton IA faire le bilan</CardTitle>
+                <CardDescription>
+                  Demande à ton IA un bilan de la séance et colle sa réponse ici : ta maîtrise et ton
+                  carnet se mettent à jour automatiquement.
+                </CardDescription>
+                {!rapportAller ? (
+                  <Button variant="secondary" onClick={genererRapport}>
+                    Générer le bilan à demander à mon IA
+                  </Button>
+                ) : (
+                  <div className="space-y-3">
+                    <div>
+                      <p className="mb-1.5 text-sm text-muted-foreground">
+                        1. Colle ceci à ton IA (à la fin de la séance) :
+                      </p>
+                      <pre className="max-h-40 overflow-auto rounded-md bg-muted p-4 text-xs">
+                        {rapportAller}
+                      </pre>
+                    </div>
+                    <TextAreaField
+                      label="2. Colle le bilan (.json) que ton IA te renvoie"
+                      value={rapportRaw}
+                      onChange={(e) => setRapportRaw(e.target.value)}
+                      className="[&_textarea]:font-mono"
+                    />
+                    <Button onClick={validerRapport} disabled={!rapportRaw}>
+                      Valider mon bilan
+                    </Button>
+                  </div>
+                )}
+                {rapportMsg && <Note>{rapportMsg}</Note>}
+                {rapportErr && <Note tone="error">{rapportErr}</Note>}
               </Card>
             </>
           ) : (
