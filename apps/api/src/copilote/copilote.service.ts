@@ -47,6 +47,16 @@ import {
 const DEFAULT_MODEL_ID = 'gpt-4o-mini';
 const MASTERY_THRESHOLD = 0.95;
 
+/** Libellés lisibles des domaines de compétence (kind → français). */
+const DOMAIN_LABELS: Record<string, string> = {
+  savoir: 'savoir',
+  'savoir-faire': 'savoir-faire',
+  'savoir-etre': 'savoir-être',
+  'capacite-corporelle': 'capacité corporelle',
+  civique: 'civique',
+  esthetique: 'esthétique',
+};
+
 type SettingsRow = typeof copiloteSettings.$inferSelect;
 
 @Injectable()
@@ -195,8 +205,14 @@ export class CopiloteService {
     const pct = Math.round((m?.pMastery ?? 0) * 100);
     const masteredCount = mastery.filter((x) => x.pMastery >= MASTERY_THRESHOLD).length;
 
+    // Contexte précis de la compétence (description + domaine) → l'IA enseigne le bon sujet.
+    const skillRow = (await this.db.select().from(skills).where(eq(skills.id, next.id)))[0];
+    const description = skillRow?.description ?? '';
+    const domain = DOMAIN_LABELS[skillRow?.kind ?? ''] ?? (skillRow?.kind ?? '');
+
+    // Reprise SCOPÉE : la dernière note du carnet POUR CETTE compétence (pas la dernière globale).
     const entries = await this.carnet.list(profileId);
-    const lastNote = entries[0]?.note ?? null;
+    const lastNote = entries.find((e) => e.skillId === next.id)?.note ?? null;
 
     // Mémoire : erreurs/confusions récurrentes actives sur cette compétence (les plus fréquentes).
     const activeMisc = await this.db
@@ -228,6 +244,8 @@ export class CopiloteService {
 
     const prompt = buildSessionPrompt({
       title: next.title,
+      description,
+      domain,
       pct,
       masteredCount,
       lastNote,

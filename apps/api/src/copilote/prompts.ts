@@ -6,8 +6,13 @@
 
 export interface SessionPromptCtx {
   title: string;
+  /** Définition précise de la compétence (ce que c'est, niveau, critère de maîtrise). */
+  description: string;
+  /** Domaine lisible (savoir-faire, capacité corporelle…). */
+  domain: string;
   pct: number;
   masteredCount: number;
+  /** Dernière note du carnet **pour cette compétence précise** (scopée), ou null. */
   lastNote: string | null;
   /** Erreurs/confusions récurrentes à retravailler en priorité (mémoire). */
   misconceptions: string[];
@@ -17,20 +22,26 @@ export interface SessionPromptCtx {
 
 /** Le prompt du jour, à copier dans l'IA de l'élève. */
 export function buildSessionPrompt(ctx: SessionPromptCtx): string {
+  const objectif = ctx.description
+    ? `Voici EXACTEMENT ce qu'on travaille (respecte ce périmètre et ce niveau, ne dévie pas) : ${ctx.description}`
+    : `Concentre-toi précisément sur cette compétence, à son niveau scolaire.`;
+
   const reprise = ctx.lastNote
-    ? `La dernière fois, on en était là : « ${ctx.lastNote} ». Commence par une courte question pour voir ce qu'il m'en reste, puis on avance.`
-    : `C'est notre toute première séance sur cette compétence : pars du début, sans rien supposer de connu.`;
+    ? `La dernière fois, sur cette même compétence, on en était là : « ${ctx.lastNote} ». Commence par une courte question de rappel là-dessus, puis on avance.`
+    : `C'est notre toute première séance sur cette compétence : pars du tout début, sans rien supposer d'acquis.`;
 
   return [
-    `Tu es mon professeur particulier pour cette séance. On travaille une seule compétence aujourd'hui : « ${ctx.title} ».`,
+    `Tu es mon professeur particulier. On travaille UNE seule compétence, précise, aujourd'hui : « ${ctx.title} » (domaine : ${ctx.domain}).`,
+    objectif,
+    `IMPORTANT : reste strictement sur CETTE compétence, telle que définie ci-dessus. N'enseigne pas un autre sujet, ne réinterprète pas le titre différemment, et ne pars pas d'une séance précédente sur un autre thème. Si un mot du titre te semble ambigu, fie-toi à la description.`,
     reprise,
-    `Fonctionne comme un tuteur : pose-moi une question à la fois, laisse-moi chercher par moi-même, aide-moi avec des indices quand je bloque, et corrige-moi tout de suite quand je me trompe. Quand c'est utile, illustre avec un exemple concret, ou propose-moi une flashcard ou une petite question pour m'entraîner.`,
-    `Adapte ton niveau au mien : j'estime ma maîtrise à ${ctx.pct}% et j'ai déjà validé ${ctx.masteredCount} compétence(s).`,
+    `Fonctionne comme un tuteur : pose-moi une question à la fois, laisse-moi chercher par moi-même, aide-moi avec des indices quand je bloque, et corrige-moi tout de suite quand je me trompe. Quand c'est utile, illustre avec un exemple concret adapté à mon niveau, ou propose-moi une petite question d'entraînement.`,
+    `Adapte-toi à mon niveau : j'estime ma maîtrise à ${ctx.pct}% et j'ai déjà validé ${ctx.masteredCount} compétence(s).`,
     ctx.reviews.length > 0
-      ? `Pour commencer en douceur, fais-moi d'abord réviser vite fait ce que j'ai déjà vu : ${ctx.reviews.join(' ; ')}. Une ou deux questions rapides suffisent, puis on passe à la compétence du jour.`
+      ? `Pour commencer en douceur, fais-moi d'abord réviser vite fait, en une ou deux questions, ce que j'ai déjà vu : ${ctx.reviews.join(' ; ')}. Puis on passe à la compétence du jour.`
       : '',
     ctx.misconceptions.length > 0
-      ? `Lors de mes séances précédentes, j'ai encore buté sur : ${ctx.misconceptions.join(' ; ')}. Aide-moi à clarifier ces points en particulier, sans me faire la leçon.`
+      ? `J'ai encore buté sur : ${ctx.misconceptions.join(' ; ')}. Aide-moi à clarifier ces points en particulier.`
       : '',
     `À la fin, je te demanderai un court bilan de la séance : garde donc en tête, au fil de l'échange, ce que je réussis vraiment et ce sur quoi je bute.`,
   ]

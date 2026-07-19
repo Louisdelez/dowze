@@ -37,6 +37,7 @@ function toSkill(row: SkillRow, edges: readonly PrereqRow[]): Skill {
     description: row.description,
     kind: row.kind as Skill['kind'],
     depth: row.depth,
+    order: row.curriculumOrder ?? undefined,
     prerequisites: edges.filter((e) => e.skillId === row.id).map((e) => e.prerequisiteId),
     isRoot: row.isRoot,
     epistemicStatus: row.epistemicStatus as Skill['epistemicStatus'],

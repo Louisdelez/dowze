@@ -48,6 +48,7 @@ export const skills = pgTable('skills', {
   halfLifeYears: doublePrecision('half_life_years'),
   masteryThreshold: doublePrecision('mastery_threshold').notNull().default(0.95),
   sources: text('sources').array().notNull().default([]),
+  curriculumOrder: integer('curriculum_order'),
 });
 
 export const prerequisites = pgTable(

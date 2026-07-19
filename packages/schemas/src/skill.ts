@@ -34,6 +34,11 @@ export const skillSchema = z.object({
   depth: z.number().int().nonnegative(),
   /** Prérequis directs (ids de compétences). Vide pour une racine. */
   prerequisites: z.array(uuidSchema).default([]),
+  /**
+   * Ordre de cursus : à profondeur égale, quelle compétence prescrire d'abord
+   * (progression pédagogique voulue). Plus petit = plus tôt. Optionnel.
+   */
+  order: z.number().int().optional(),
   isRoot: z.boolean().default(false),
   epistemicStatus: epistemicStatusSchema.default('etabli'),
   /** Demi-vie du savoir en années (null = stable). Sert à programmer la révision. */
