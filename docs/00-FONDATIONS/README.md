@@ -11,6 +11,7 @@ Ce dossier répond à : *Qu'est-ce que Dowze, pourquoi, et selon quelles lois fo
 | [03-principes-fondateurs.md](03-principes-fondateurs.md) | Les 12 principes « constitutionnels » qui gouvernent toute décision de conception. |
 | [04-manifeste.md](04-manifeste.md) | Le texte d'intention, court et incarné. |
 | [05-glossaire.md](05-glossaire.md) | Tous les termes propres à Dowze, définis. |
+| [06-jusquou-dowze-temmene.md](06-jusquou-dowze-temmene.md) | **Le savoir sans plafond** : jusqu'où un élève peut aller (preuves 2025-2026), pourquoi la *méthode* fait le professeur, et les 2 seules vraies frontières. |
 
 **Suite logique :** une fois les fondations lues, allez au [Diagnostic](../01-DIAGNOSTIC/) pour comprendre
 *pourquoi* ce système est nécessaire, ou directement à l'[Architecture](../03-ARCHITECTURE/) pour le *comment*.
