@@ -1,0 +1,240 @@
+openapi: 3.1.0
+info:
+  title: Dowze — API Plateforme de Plugins
+  version: "1.0.0"
+  description: >
+    Contrat public `/v1/` de la plateforme de plugins Dowze (P1 : registre & scopes).
+    **Politique de dépréciation N/N-1** : une nouvelle version majeure (`/v2/`) ne retire une
+    version précédente qu'après une période de chevauchement documentée ; `/v1/` reste servie
+    tant que `/v2/` n'est pas stable. Les plugins déclarent l'`apiVersion` qu'ils ciblent dans
+    leur manifest. Auth : `Authorization: Bearer <JWT Supabase>` sur toutes les routes.
+servers:
+  - url: https://api.dowze.ch
+security:
+  - bearerAuth: []
+tags:
+  - name: plugins
+    description: Registre, activation par utilisateur, scopes.
+  - name: ai
+    description: IA/RAG scopée (compose/ingest) — l'IA de Dowze orchestre, le coach reste l'IA de l'élève.
+paths:
+  /v1/plugins:
+    get:
+      tags: [plugins]
+      summary: Catalogue des plugins installables
+      responses:
+        "200":
+          description: Liste des plugins (statut active/deprecated)
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/PluginRegistryEntry" }
+  /v1/plugins/mine/{profileId}:
+    get:
+      tags: [plugins]
+      summary: Catalogue enrichi de l'état d'activation d'un profil
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+      responses:
+        "200":
+          description: Catalogue + activation du profil
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/PluginCatalogueItem" }
+  /v1/plugins/{pluginId}/activate:
+    post:
+      tags: [plugins]
+      summary: Activer un plugin pour un profil (octroi de scopes + config)
+      parameters:
+        - $ref: "#/components/parameters/PluginId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ActivatePluginBody" }
+      responses:
+        "201":
+          description: Plugin activé
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PluginCatalogueItem" }
+        "400": { description: Scopes non déclarés / requis manquants / config invalide }
+        "404": { description: Plugin inconnu }
+        "409": { description: Plugin non installable ou version du cœur insuffisante }
+  /v1/plugins/{pluginId}/deactivate:
+    post:
+      tags: [plugins]
+      summary: Désactiver (révoquer) un plugin pour un profil
+      parameters:
+        - $ref: "#/components/parameters/PluginId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [profileId]
+              properties:
+                profileId: { type: string, format: uuid }
+      responses:
+        "201": { description: Plugin désactivé }
+  /v1/ai/compose:
+    post:
+      tags: [ai]
+      summary: "Contexte plugin → prompt lisible (scope ai:infer, déterministe, sans coût)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [profileId, sourceApp, title]
+              properties:
+                profileId: { type: string, format: uuid }
+                sourceApp: { type: string }
+                title: { type: string }
+                goal: { type: string }
+                level: { type: string }
+                context:
+                  type: array
+                  items:
+                    type: object
+                    properties: { label: { type: string }, value: { type: string } }
+                instructions: { type: string }
+      responses:
+        "201":
+          description: Prompt + closingPrompt
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { prompt: { type: string }, closingPrompt: { type: string } }
+        "403": { description: Scope ai:infer non accordé }
+  /v1/ai/ingest:
+    post:
+      tags: [ai]
+      summary: "Résumé texte + champs → snapshot structuré (scope ai:infer, crédits/BYOK réutilisés)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [profileId, sourceApp, summary, fields]
+              properties:
+                profileId: { type: string, format: uuid }
+                sourceApp: { type: string }
+                summary: { type: string }
+                fields:
+                  type: array
+                  items:
+                    type: object
+                    required: [key, type]
+                    properties:
+                      key: { type: string }
+                      type: { type: string, enum: [string, number, integer, boolean, stringArray] }
+                      description: { type: string }
+                      optional: { type: boolean }
+                modelId: { type: string }
+      responses:
+        "201":
+          description: Snapshot structuré + crédits dépensés
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  snapshot: { type: object, additionalProperties: true }
+                  creditsSpent: { type: number }
+        "402": { description: Crédits insuffisants (mode crédits) }
+        "403": { description: Scope ai:infer non accordé }
+  /v1/plugins/{pluginId}/scope-check/{profileId}:
+    get:
+      tags: [plugins]
+      summary: Démonstration du middleware de scopes (requiert calendar:read accordé)
+      parameters:
+        - $ref: "#/components/parameters/PluginId"
+        - $ref: "#/components/parameters/ProfileId"
+      responses:
+        "200": { description: Scope accordé }
+        "403": { description: Plugin non activé ou scope non accordé }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    ProfileId:
+      name: profileId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    PluginId:
+      name: pluginId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+  schemas:
+    PluginScope:
+      type: string
+      enum: [profile:read, calendar:read, calendar:write, ai:infer, health:write, xp:write]
+    PluginContributes:
+      type: object
+      properties:
+        calendarEntryTypes:
+          type: array
+          items:
+            type: object
+            properties:
+              type: { type: string }
+              label: { type: string }
+              color: { type: string }
+              icon: { type: string, description: nom d'icône Lucide }
+        navTiles:
+          type: array
+          items:
+            type: object
+            properties:
+              label: { type: string }
+              href: { type: string }
+              icon: { type: string }
+    PluginRegistryEntry:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        slug: { type: string }
+        name: { type: string }
+        subdomain: { type: string }
+        description: { type: string }
+        status: { type: string, enum: [draft, active, deprecated, disabled] }
+        manifestVersion: { type: string }
+        apiVersion: { type: string }
+        minCoreVersion: { type: string }
+        scopesRequested: { type: array, items: { $ref: "#/components/schemas/PluginScope" } }
+        scopesOptional: { type: array, items: { $ref: "#/components/schemas/PluginScope" } }
+        contributes: { $ref: "#/components/schemas/PluginContributes" }
+        subscribes: { type: array, items: { type: string } }
+        configSchema: { type: object, additionalProperties: true }
+    PluginCatalogueItem:
+      allOf:
+        - $ref: "#/components/schemas/PluginRegistryEntry"
+        - type: object
+          properties:
+            activation:
+              nullable: true
+              type: object
+              properties:
+                enabled: { type: boolean }
+                grantedScopes: { type: array, items: { $ref: "#/components/schemas/PluginScope" } }
+                config: { type: object, additionalProperties: true }
+    ActivatePluginBody:
+      type: object
+      required: [profileId]
+      properties:
+        profileId: { type: string, format: uuid }
+        grantedScopes: { type: array, items: { $ref: "#/components/schemas/PluginScope" } }
+        config: { type: object, additionalProperties: true }

@@ -8,10 +8,15 @@ import {
   observe,
   composeSession,
   ingestSummary,
+  generateCourseSheet,
+  closeCourse,
   type NextSkillRow,
   type IngestResult,
 } from '@/lib/api';
+import type { CourseSheet } from '@dowze/schemas';
+import { CourseSheetView } from '@/components/course/course-sheet';
 import { useProfile } from '@/lib/use-profile';
+import { useSessionTimer } from '@/lib/session-timer';
 import { Button } from '@/components/ui/button';
 import { Card, CardTitle, CardDescription } from '@/components/ui/card';
 import { TextAreaField } from '@/components/ui/field';
@@ -27,6 +32,8 @@ const SEUIL = 95; // seuil de maîtrise (p(L) ≥ 0,95)
 
 export default function SeancePage() {
   const { profileId, ready, signedIn } = useProfile();
+  const startTimer = useSessionTimer((s) => s.start);
+  const stopTimer = useSessionTimer((s) => s.stop);
   const [skill, setSkill] = useState<NextSkillRow | null>(null);
   const [pct, setPct] = useState(0);
   const [charge, setCharge] = useState(false);
@@ -42,6 +49,13 @@ export default function SeancePage() {
   const [ingesting, setIngesting] = useState(false);
   const [bilan, setBilan] = useState<IngestResult | null>(null);
   const [bilanErr, setBilanErr] = useState('');
+  // Mode AUTO (défaut) : l'IA de Dowze donne le cours en app (feuille A4). MANUEL : l'ancien copier-coller.
+  const [mode, setMode] = useState<'auto' | 'manuel'>('auto');
+  const [sheet, setSheet] = useState<CourseSheet | null>(null);
+  const [genning, setGenning] = useState(false);
+  const [genErr, setGenErr] = useState('');
+  const [clot, setClot] = useState(false);
+  const [fini, setFini] = useState<{ outcome: string; pMastery: number } | null>(null);
 
   const chargerProchaine = useCallback(async () => {
     if (!profileId) return;
@@ -52,6 +66,9 @@ export default function SeancePage() {
     setResume('');
     setBilan(null);
     setBilanErr('');
+    setSheet(null);
+    setFini(null);
+    setGenErr('');
     try {
       const [next, mastery] = await Promise.all([
         getNextSkill(profileId),
@@ -86,10 +103,63 @@ export default function SeancePage() {
       const res = await composeSession(profileId);
       setPrompt(res.prompt);
       setClosing(res.closingPrompt);
+      // Lance le minuteur de séance (45 min) dès que le prompt est prêt.
+      startTimer(45);
     } catch {
       setErreur(true);
     } finally {
       setComposing(false);
+    }
+  }
+
+  /** Messages d'erreur IA : 402 (crédits) et 503 (modèle) sont différenciés, jamais de fuite technique. */
+  function messageErreurIA(e: unknown, fallback: string): string {
+    const msg = e instanceof Error ? e.message : '';
+    if (msg.includes('402')) {
+      return 'Crédits insuffisants pour ton Copilote. Recharge ton solde ou passe en « ta propre clé » dans les réglages du Copilote.';
+    }
+    if (msg.includes('503')) {
+      return "Le modèle choisi n'est pas disponible pour l'instant. Choisis-en un autre dans les réglages du Copilote.";
+    }
+    return fallback;
+  }
+
+  // AUTO (défaut) · L'IA de Dowze GÉNÈRE le cours (feuille A4, rendue en app) + lance le minuteur.
+  async function lancerCours() {
+    if (!profileId) return;
+    setGenErr('');
+    setGenning(true);
+    try {
+      const res = await generateCourseSheet(profileId);
+      if (res) {
+        setSheet(res.sheet);
+        startTimer(45);
+      } else {
+        setGenErr('Rien à travailler pour le moment.');
+      }
+    } catch (e) {
+      setGenErr(messageErreurIA(e, 'Impossible de générer le cours. Réessaie, ou passe en mode manuel.'));
+    } finally {
+      setGenning(false);
+    }
+  }
+
+  // Clôture du cours natif : l'app a dérivé l'outcome des réponses → Dowze recalcule la maîtrise (BKT+FSRS+carnet).
+  // Relance l'erreur : la feuille ne doit se verrouiller qu'après un enregistrement RÉUSSI.
+  async function terminerCours(outcome: 'maitrise' | 'progres' | 'bloque', note: string) {
+    if (!skill || !profileId) return;
+    setClot(true);
+    setGenErr('');
+    try {
+      const res = await closeCourse(profileId, skill.id, outcome, note);
+      setPct(Math.round(res.pMastery * 100));
+      setFini({ outcome, pMastery: res.pMastery });
+      stopTimer();
+    } catch (e) {
+      setGenErr(messageErreurIA(e, 'La maîtrise n’a pas pu être enregistrée. Réessaie.'));
+      throw e;
+    } finally {
+      setClot(false);
     }
   }
 
@@ -151,7 +221,17 @@ export default function SeancePage() {
     <div className="space-y-6">
       <PageHeader
         title="Ma séance"
-        subtitle="Copie le prompt du jour dans ton IA, apprends, puis recolle ton résumé : ta progression se met à jour toute seule."
+        action={
+          // Masqué pendant un cours en cours : basculer démonterait la feuille → réponses perdues.
+          sheet && !fini ? undefined : (
+            <button
+              onClick={() => setMode((m) => (m === 'auto' ? 'manuel' : 'auto'))}
+              className="rounded-full border border-border px-3 py-1 text-xs font-semibold text-muted-foreground transition hover:bg-muted"
+            >
+              {mode === 'auto' ? 'Mode manuel' : 'Cours Dowze'}
+            </button>
+          )
+        }
       />
 
       {ready && !signedIn && (
@@ -181,11 +261,11 @@ export default function SeancePage() {
       {signedIn && !charge && tout && (
         <EmptyState
           icon={<IconBadgeCheck />}
-          title="Tout est maîtrisé pour l’instant 🎉"
+          title="Tout est maîtrisé pour l’instant !"
           description="Tu as atteint la frontière de ton parcours actuel. De nouvelles compétences arrivent à mesure que le cursus grandit."
           action={
-            <Link href="/progression">
-              <Button variant="secondary">Voir ma progression</Button>
+            <Link href="/resultats">
+              <Button variant="secondary">Voir mes résultats</Button>
             </Link>
           }
         />
@@ -210,6 +290,49 @@ export default function SeancePage() {
           </Card>
 
           {!maitrise ? (
+            mode === 'auto' ? (
+              // AUTO (défaut) : l'IA de Dowze donne le cours en app (feuille A4 à modules).
+              !sheet ? (
+                <Card className="space-y-3">
+                  <CardTitle>Ton cours du jour</CardTitle>
+                  <Button onClick={lancerCours} disabled={genning} className="gap-2">
+                    {genning ? 'Dowze prépare ton cours…' : 'Démarrer le cours'}
+                    <IconArrowRight />
+                  </Button>
+                  {genErr && <Note tone="error">{genErr}</Note>}
+                </Card>
+              ) : (
+                <>
+                  <CourseSheetView sheet={sheet} onComplete={terminerCours} busy={clot} />
+                  {fini && (
+                    <>
+                      <Note>
+                        <span className="font-medium">
+                          {fini.outcome === 'maitrise'
+                            ? 'Bravo — bien maîtrisé !'
+                            : fini.outcome === 'progres'
+                              ? 'Beau progrès, on continue.'
+                              : 'On y retravaillera, c’est noté.'}
+                        </span>{' '}
+                        Maîtrise de {skill.title} : {Math.round(fini.pMastery * 100)}%.
+                      </Note>
+                      <Button
+                        onClick={() => {
+                          setSheet(null);
+                          setFini(null);
+                          setGenErr('');
+                        }}
+                        className="gap-2"
+                      >
+                        Nouvelle séance
+                        <IconArrowRight />
+                      </Button>
+                    </>
+                  )}
+                  {genErr && <Note tone="error">{genErr}</Note>}
+                </>
+              )
+            ) : (
             <>
               <Card className="space-y-3">
                 <CardTitle>1 · Copie ton prompt dans ton IA</CardTitle>
@@ -226,7 +349,7 @@ export default function SeancePage() {
                   <div className="space-y-2">
                     <div className="flex justify-end">
                       <Button variant="utility" onClick={copier}>
-                        {copie ? 'Copié ✓' : 'Copier'}
+                        {copie ? 'Copié !' : 'Copier'}
                       </Button>
                     </div>
                     <pre className="max-h-72 overflow-auto whitespace-pre-wrap rounded-md bg-muted p-4 text-sm">
@@ -252,7 +375,7 @@ export default function SeancePage() {
                     <>
                       <div className="flex justify-end">
                         <Button variant="utility" onClick={copierBilan}>
-                          {copieBilan ? 'Copié ✓' : 'Copier le prompt de bilan'}
+                          {copieBilan ? 'Copié !' : 'Copier le prompt de bilan'}
                         </Button>
                       </div>
                       <pre className="max-h-56 overflow-auto whitespace-pre-wrap rounded-md bg-surface p-3 text-sm">
@@ -313,6 +436,7 @@ export default function SeancePage() {
                 </div>
               </Card>
             </>
+            )
           ) : (
             <Card className="space-y-3">
               <div className="flex items-center gap-3">

@@ -132,6 +132,7 @@ export const copiloteSettingsViewSchema = z.object({
   hasByokKey: z.boolean(),
   embeddingModelId: z.string().nullable(),
   hasEmbeddingKey: z.boolean(),
+  lowcostModelId: z.string().nullable(), // modèle LowCost pour la traduction (null = réutilise l'IA principale)
 });
 export type CopiloteSettingsView = z.infer<typeof copiloteSettingsViewSchema>;
 
@@ -145,6 +146,7 @@ export const updateSettingsSchema = z
     byokApiKey: z.string().max(300).nullable().optional(),
     embeddingModelId: z.string().nullable().optional(),
     embeddingApiKey: z.string().max(300).nullable().optional(),
+    lowcostModelId: z.string().nullable().optional(),
   })
   .strict();
 export type UpdateSettings = z.infer<typeof updateSettingsSchema>;

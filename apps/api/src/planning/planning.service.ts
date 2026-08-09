@@ -1,12 +1,22 @@
 import { randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
-import { computeWeeklyPlanning, nextPrescribedSkill, type PlanningOutput } from '@dowze/core';
-import type { Slot } from '@dowze/schemas';
+import { computeWeeklyPlanning, dailyBudget, nextPrescribedSkill, type PlanningOutput } from '@dowze/core';
+import type { DailyBudgetView, Slot } from '@dowze/schemas';
 import { DB, type Database } from '../db/drizzle.module';
-import { availabilitySlots, sm2Cards, masteryStates, planningEntries } from '../db/schema';
+import { availabilitySlots, electives, sm2Cards, masteryStates, planningEntries, profiles } from '../db/schema';
 import { SkillGraphService } from '../skill-graph/skill-graph.service';
 import { buildPlanningItems } from './planning-items';
+
+function ageFromBirth(birth: string | null): number | null {
+  if (!birth) return null;
+  const b = new Date(birth);
+  const now = new Date();
+  let age = now.getFullYear() - b.getFullYear();
+  const m = now.getMonth() - b.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < b.getDate())) age--;
+  return age;
+}
 
 @Injectable()
 export class PlanningService {
@@ -73,5 +83,13 @@ export class PlanningService {
       );
     }
     return output;
+  }
+
+  /** Répartition quotidienne conseillée du temps (langue le matin, passion plafonnée). */
+  async dailyBudget(profileId: string): Promise<DailyBudgetView> {
+    const p = (await this.db.select().from(profiles).where(eq(profiles.id, profileId)))[0];
+    const hasSecondary =
+      (await this.db.select().from(electives).where(eq(electives.profileId, profileId))).length > 0;
+    return dailyBudget(ageFromBirth(p?.birthDate ?? null), hasSecondary);
   }
 }

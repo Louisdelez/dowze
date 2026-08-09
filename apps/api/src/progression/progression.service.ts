@@ -1,9 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { and, eq } from 'drizzle-orm';
-import { initialMastery, updateMastery, nextPrescribedSkill, buildSkillMap } from '@dowze/core';
+import { initialMastery, updateMastery, nextPrescribedSkill, learnableSkills, buildSkillMap } from '@dowze/core';
 import { bktParamsSchema, type BktParams, type MasteryState, type Skill } from '@dowze/schemas';
 import { DB, type Database } from '../db/drizzle.module';
-import { masteryStates } from '../db/schema';
+import { masteryStates, specializations } from '../db/schema';
+import { disciplineOf } from '../results/ranks';
 import { SkillGraphService } from '../skill-graph/skill-graph.service';
 
 const DEFAULT_BKT: BktParams = bktParamsSchema.parse({});
@@ -27,6 +28,15 @@ export class ProgressionService {
     @Inject(DB) private readonly db: Database,
     private readonly graph: SkillGraphService,
   ) {}
+
+  /** Les disciplines de spécialisation choisies par l'élève (le « pic » de son profil en T). */
+  async chosenDisciplines(profileId: string): Promise<Set<string>> {
+    const rows = await this.db
+      .select()
+      .from(specializations)
+      .where(eq(specializations.profileId, profileId));
+    return new Set(rows.map((s) => s.discipline));
+  }
 
   /** Tous les états de maîtrise d'un profil. */
   async getMastery(profileId: string): Promise<MasteryState[]> {
@@ -55,7 +65,19 @@ export class ProgressionService {
         .filter((m) => m.pMastery >= (map.get(m.skillId)?.masteryThreshold ?? DEFAULT_THRESHOLD))
         .map((m) => m.skillId),
     );
-    const next: Skill | null = nextPrescribedSkill(skills, masteredIds);
+
+    // Biais de spécialisation : si l'élève a choisi des voies, on prescrit en priorité une compétence
+    // apprenable de l'une de ces disciplines (la spé oriente le contenu). Sinon, prescription par défaut.
+    const chosen = await this.chosenDisciplines(profileId);
+    let next: Skill | null = null;
+    if (chosen.size > 0) {
+      const ord = (s: Skill) => s.order ?? Number.MAX_SAFE_INTEGER;
+      const preferred = learnableSkills(skills, masteredIds)
+        .filter((s) => chosen.has(disciplineOf(s.slug)))
+        .sort((a, b) => a.depth - b.depth || ord(a) - ord(b) || a.slug.localeCompare(b.slug));
+      next = preferred[0] ?? null;
+    }
+    if (!next) next = nextPrescribedSkill(skills, masteredIds);
     return next ? { id: next.id, slug: next.slug, title: next.title, depth: next.depth } : null;
   }
 
@@ -66,35 +88,40 @@ export class ProgressionService {
     correct: boolean,
     nowIso: string,
   ): Promise<MasteryState> {
-    const existing = await this.db
-      .select()
-      .from(masteryStates)
-      .where(and(eq(masteryStates.profileId, profileId), eq(masteryStates.skillId, skillId)));
+    // TRANSACTION + verrou de ligne : le calcul BKT est un read-modify-write côté Node — deux observations
+    // concurrentes (double clôture, ingest + pont IA…) se perdaient l'une l'autre (audit 08-2026).
+    return this.db.transaction(async (tx) => {
+      const existing = await tx
+        .select()
+        .from(masteryStates)
+        .where(and(eq(masteryStates.profileId, profileId), eq(masteryStates.skillId, skillId)))
+        .for('update');
 
-    const current = existing[0] ? toState(existing[0]) : initialMastery(skillId, DEFAULT_BKT);
-    const next = updateMastery(current, DEFAULT_BKT, correct, nowIso);
+      const current = existing[0] ? toState(existing[0]) : initialMastery(skillId, DEFAULT_BKT);
+      const next = updateMastery(current, DEFAULT_BKT, correct, nowIso);
 
-    await this.db
-      .insert(masteryStates)
-      .values({
-        profileId,
-        skillId,
-        pMastery: next.pMastery,
-        attempts: next.attempts,
-        correct: next.correct,
-        lastUpdated: new Date(nowIso),
-      })
-      .onConflictDoUpdate({
-        target: [masteryStates.profileId, masteryStates.skillId],
-        set: {
+      await tx
+        .insert(masteryStates)
+        .values({
+          profileId,
+          skillId,
           pMastery: next.pMastery,
           attempts: next.attempts,
           correct: next.correct,
           lastUpdated: new Date(nowIso),
-        },
-      });
+        })
+        .onConflictDoUpdate({
+          target: [masteryStates.profileId, masteryStates.skillId],
+          set: {
+            pMastery: next.pMastery,
+            attempts: next.attempts,
+            correct: next.correct,
+            lastUpdated: new Date(nowIso),
+          },
+        });
 
-    return next;
+      return next;
+    });
   }
 
   /**

@@ -10,6 +10,12 @@
 > et qui *extrait* l'état structuré du résumé — l'app recalcule ensuite la maîtrise elle-même. Le mécanisme
 > `.json` ([pont](10-pont-json.md)) reste **interne/auteur**, jamais montré à l'élève. Ce document-ci se
 > concentre sur le *contenu* pédagogique des prompts et du carnet.
+>
+> 🔀 **Statut (08-2026) : ce « prompt à copier » est le MODE MANUEL.** Le mode par **défaut** est désormais le
+> **[cours natif Dowze](30-cours-natif-feuille-modules.md)** : l'IA de Dowze (Copilote + RAG + agents École)
+> **donne** le cours en app, sous forme de feuille A4 à modules — aucun copier-coller, rien ne sort. La
+> bibliothèque de prompts ci-dessous reste la **base pédagogique commune** (mêmes gestes : cours, quiz,
+> révision, bilan) ET l'écran du mode manuel pour qui garde son propre chatbot.
 
 ---
 
@@ -64,7 +70,10 @@ Bonnes pratiques (prompt engineering) :
 Les LLM sont **sans état** : ce qui ressemble à de la « mémoire » dans ChatGPT, c'est l'app qui **réinjecte
 l'historique** à chaque requête. Donc :
 
-> **La base de données de Dowze EST la mémoire. L'IA est un exécuteur jetable.**
+> **La base de données de Dowze EST la mémoire.** L'**IA de tutorat** (externe) est un exécuteur jetable
+> sans mémoire ; mais l'**IA de Dowze** (le Copilote, interne) est le **moteur** qui lit cette mémoire
+> (dernière note, erreurs récurrentes, révisions dues) et la réinjecte — voir
+> [L'IA de Dowze](23-ia-de-dowze-le-moteur.md).
 
 Pattern retenu : **fenêtre courte + résumé canonique (le carnet de bord)**. L'app maintient un résumé
 compact de la progression et l'injecte dans chaque prompt. Le carnet contient : objectif, compétences

@@ -15,11 +15,18 @@
 
 ---
 
-## Pourquoi ce choix (et pas l'API)
+## Pourquoi ce choix à l'origine (comparatif historique)
 
-| | Pont `.json` (choisi) | Connexion API (écartée) |
+> ⭐ **RÉVISION 2026.** Ce comparatif justifiait le `.json` comme **stratégie IA de l'app**. Ce n'est plus le
+> cas : l'app a désormais son **IA interne (le Copilote, par API)**, à coût réel. Le `.json` n'est plus le
+> mécanisme élève — c'est un **outil d'auteur** (École générative) et un **repli hors-ligne**. Le tableau
+> ci-dessous reste utile pour comprendre *pourquoi* on ne demande pas à l'élève de brancher une clé API à son
+> abonnement grand public — mais « coût 0 € » ne décrit **plus** l'app dans son ensemble. Voir
+> [L'IA de Dowze, le moteur](23-ia-de-dowze-le-moteur.md).
+
+| | Pont `.json` (outil d'auteur / repli) | Connexion API (le Copilote l'utilise) |
 |---|------------------------|--------------------------|
-| Coût IA pour l'intra | **0 €** | payant (ou clé à gérer) |
+| Coût IA pour l'intra | **0 €** (mais périmètre auteur/repli seulement) | payant (crédits) ou clé BYOK |
 | Compatible abonnement grand public | ✅ Claude Pro, ChatGPT Plus… | ❌ l'abonnement web n'a pas d'API |
 | Couplage | **nul** (les deux côtés indépendants) | fort |
 | Vie privée | l'élève **voit et contrôle** le fichier | tout transite par un serveur |

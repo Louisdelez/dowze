@@ -1,7 +1,14 @@
 # Modèle économique : gratuit à l'usage, durable, non capturable
 
-> *Comment financer une infrastructure éducative mondiale **sans publicité, sans revente de données, et
-> sans frais pour l'apprenant** — pour toujours.*
+> *Comment financer une infrastructure éducative mondiale **sans publicité, sans revente de données** — le
+> **cœur gratuit pour l'apprenant**.*
+>
+> ⭐ **RÉVISION 2026.** Une **ligne de coût ET de revenu** est apparue : l'IA interne (le **Copilote**) a un
+> **coût d'inférence réel** (~0,2 ct/séance) monétisé en **crédits prépayés** (marge cible ~70 %) **ou
+> gratuit en BYOK** (l'élève met sa clé). Donc « aucun frais, coût LLM décroissant vers zéro » est à
+> **nuancer** : le **cœur** (graphe, suivi, carnet, validation par les pairs, BYO-AI de tutorat) reste
+> gratuit ; le **Copilote** est un confort **payant ou gratuit selon le mode**. Détail :
+> [L'IA de Dowze §7](../10-APP-WEB/23-ia-de-dowze-le-moteur.md).
 
 ---
 

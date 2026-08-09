@@ -27,6 +27,11 @@ export class CacheService {
     await this.redis.set(key, JSON.stringify(value), 'EX', ttlSec);
   }
 
+  /** Invalide une clé (ex. feuille de cours après une clôture : la maîtrise a changé). */
+  async del(key: string): Promise<void> {
+    await this.redis.del(key);
+  }
+
   /** Lit le cache ; en cas de miss, charge via `loader`, écrit, puis renvoie. */
   async cacheAside<T>(key: string, ttlSec: number, loader: () => Promise<T>): Promise<T> {
     const hit = await this.getJson<T>(key);

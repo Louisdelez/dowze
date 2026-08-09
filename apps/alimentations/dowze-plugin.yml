@@ -1,0 +1,32 @@
+# Manifeste déclaratif — Dowze Alimentation (reflété par le registre, seedé en migration 0048).
+# Garde-fous PRODUIT : régularité + meal-prep uniquement. JAMAIS de comptage calorique ni de conseil
+# médical. Pas de scope health:write.
+slug: alimentations
+name: Dowze Alimentation
+subdomain: alimentations.dowze.ch
+description: Une alimentation régulière et planifiée — repas à heures stables et meal-prep. Jamais de comptage.
+manifestVersion: "1"
+apiVersion: v1
+minCoreVersion: "3.0.0"
+scopesRequested:
+  - profile:read
+  - calendar:read
+  - calendar:write
+scopesOptional:
+  - ai:infer
+contributes:
+  calendarEntryTypes:
+    - type: alimentation.meal
+      label: Repas
+      color: amber
+      icon: utensils
+    - type: alimentation.prep
+      label: Meal-prep
+      color: amber
+      icon: chef-hat
+subscribes: []
+configSchema:
+  type: object
+  properties:
+    mealsPerDay: { type: integer, minimum: 1, maximum: 5, default: 3 }
+    prepPerWeek: { type: integer, minimum: 0, maximum: 3, default: 1 }

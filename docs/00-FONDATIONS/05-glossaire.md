@@ -169,8 +169,29 @@ l'Atlas.
 
 **Open Badges 3.0** — Standard de credential numérique (1EdTech, 2024), désormais bâti sur les VC du W3C.
 
-**RAG** — *Retrieval-Augmented Generation* : technique ancrant les réponses d'un LLM dans des sources
-vérifiées (anti-hallucination).
+**RAG** — *Retrieval-Augmented Generation* : ancrer la génération d'un LLM sur une source **récupérée**
+(anti-hallucination). Le « **RAG Dowze** » en est une forme **structurée / GraphRAG** : la récupération se
+fait sur le **graphe de compétences + l'état de l'élève**, pas sur des documents. Voir
+[L'IA de Dowze](../10-APP-WEB/23-ia-de-dowze-le-moteur.md).
+
+**Copilote** — l'**IA interne de Dowze** (par API, multi-fournisseurs), le moteur indispensable : compose
+les prompts, transforme le bilan de séance (texte→état), et sous-tend toutes les features IA. À distinguer
+de l'**IA de tutorat** (externe, l'abonnement de l'élève, qui tient la conversation).
+
+**Crédits Dowze / BYOK** — deux façons de payer le Copilote : **crédits prépayés** (achetés) ou **BYOK**
+(*Bring Your Own Key* : l'élève met sa propre clé API, chiffrée — gratuit).
+
+**Dossier élève** — modèle d'apprenant (*Open Learner Model*) que le Copilote extrait de la présentation
+de l'élève, validé par lui (garde-fous anti-invention).
+
+**Placement adaptatif** — le test d'évaluation d'entrée : estimation continue du niveau (staircase type Elo),
+questions générées + corrigées par le Copilote, montée au-dessus du référentiel pour le haut potentiel.
+
+**FSRS** — *Free Spaced Repetition Scheduler* : planificateur de révision espacée (remplace SM-2 ; défaut
+d'Anki depuis 2024). Décide **quand** revoir une compétence.
+
+**Mémoire des erreurs (misconceptions)** — les confusions récurrentes d'un élève, extraites des bilans,
+regroupées **par le sens** (embeddings) et réinjectées dans les séances suivantes (pattern Mem0-style).
 
 **VC** — *Verifiable Credentials* (W3C, modèle 2.0, standard mai 2025) : attestation signée
 cryptographiquement, vérifiable sans recontacter l'émetteur. Socle technique du Passeport.

@@ -25,18 +25,33 @@ système communautaire). Sources : [bibliographie](../09-ANNEXES/01-bibliographi
 | [13-frontend.md](13-frontend.md) | **Frontend** : Next.js + Tailwind + shadcn, design system `getdesign notion`, UI/UX épurée, a11y, perf, PWA. |
 | [14-backend.md](14-backend.md) | **Backend** : NestJS modulaire sur Supabase, Drizzle, validation `.json`, Redis/BullMQ, Realtime, sécurité, fichiers courts. |
 | [15-copilote-orchestrateur.md](15-copilote-orchestrateur.md) | ⭐ **RÉVISION 2026 — l'IA interne « Copilote »** (par API, à crédits) : compose les prompts lisibles et transforme le résumé de séance (texte) en état structuré. Supprime le `.json` côté élève. Modèle, schémas, FSRS, crédits prépayés. **À lire avec [10-pont-json](10-pont-json.md).** |
+| [16-architecture-etat-memoire.md](16-architecture-etat-memoire.md) | **L'état & la mémoire** : ce que Dowze est vraiment (RAG/agents/mémoire fait proprement) — graphe, maîtrise (BKT), mémoire des confusions (Mem0-style), révision espacée (FSRS), dédup sémantique par embeddings. |
+| [17-seance-et-minuteur.md](17-seance-et-minuteur.md) | **La séance de 45 min & le minuteur** : pourquoi 45 min (science), déroulé minuté (barre du haut + alarme → bilan → pause), non-punitif, adaptation à l'âge. |
+| [18-tests-et-examens.md](18-tests-et-examens.md) | **Tests, examens & modules d'exercices** : se tester pour apprendre (effet-test), **formatif ≠ certifiant**, modules (QCM 3 options, cloze, flashcards…), test hebdo cumulatif + examen trimestriel, garde-fous IA. |
+| [19-onboarding-profil-placement.md](19-onboarding-profil-placement.md) | **Onboarding** : inscription minimale, profil (photo/pseudo/**date de naissance** — plus de case « mineur »), présentation → **dossier élève** par l'IA (anti-invention), **test de placement** adaptatif, RGPD/mineurs. |
+| [20-expeditions.md](20-expeditions.md) | **Les Expéditions** : apprentissage par projet (*Gold Standard PBL*), 5 phases (Étincelle→Question→Défi→Acte→Trace) guidées par l'IA, **3 expéditions prescrites** puis choix libre, évaluation authentique (rubrique + Trace + **pairs**), 7 règles du guidage IA. |
+| [21-seance-vs-expeditions.md](21-seance-vs-expeditions.md) | **« Ma séance » vs « Expéditions »** : deux modes complémentaires — muscler une compétence (séance) vs relier/appliquer/créer (projet). |
+| [22-resultats-bulletin.md](22-resultats-bulletin.md) | **« Mes résultats » (bulletin sans note)** : maîtrise par palier (4 niveaux nommés) + croissance + prochaine étape, côté **élève ET parent** ; « Pronote sain » (pas de moyenne/rang/rouge). |
+| [23-ia-de-dowze-le-moteur.md](23-ia-de-dowze-le-moteur.md) | ⭐ **LE RÉCIT CENTRAL — l'IA de Dowze, le moteur** : ITS moderne *AI-native* / **RAG structuré (GraphRAG)** sur le graphe. Les **deux IA**, l'indispensabilité, l'ancrage anti-dévaluation, les garde-fous (existants **et manquants**), le coût réel. **À lire en premier.** |
+| [24-progression-rangs-saut-specialisation.md](24-progression-rangs-saut-specialisation.md) | **Progression compétitive** : barre de rangs (Fer→Dowzer Suprême), RR (examens trimestriels + tests hebdo + niveau requis + accord parental), **Saut de Rang** (piscine intensive 28 j, seuil 80 %), moteur de spécialisation. |
+| [25-niveau-xp.md](25-niveau-xp.md) | **Niveau & XP** (façon jeu vidéo, distinct du rang) : courbe quadratique, sources d'XP (login/temps/tests/validations), cap quotidien, personnel et monotone (pas de classement). |
+| [26-social-classes-moderation-traduction.md](26-social-classes-moderation-traduction.md) | **ÉCHANGER** : amis, MP, groupes, **Ma Classe** (classes assignées niveau>langue>âge), **traduction temps réel** (cache communautaire, LowCost, bandeau), **modération** stricte non-punitive. ⚠ 2 exigences redessinées pour rester légales (immuabilité, flag public). |
+| [30-cours-natif-feuille-modules.md](30-cours-natif-feuille-modules.md) | ⭐ **Le cours NATIF Dowze (nouveau défaut)** : l'IA de Dowze (Copilote + RAG + agents École) **donne** le cours en app, en **feuille A4 de modules** pédagogiques réutilisables (fiche, exemple résolu, QCM à distracteurs=misconceptions, exercices…). Fondé sur Rosenshine + GRR + 6 stratégies. L'ancien « prompt à copier dans ChatGPT/Claude » devient un **mode manuel masqué**. Audit : ~80 % de briques existantes (`generateStructured`, `compose`, `applyProgress`, `ExerciseCard`, `runProject`). |
 
 ---
 
 ## L'idée d'architecture, en une phrase
 
-> **L'application est une *machine à états* + un *générateur de prompts*. Sa base de données EST la mémoire.
-> L'IA externe n'est qu'un exécuteur sans état, jetable et interchangeable.**
+> ⭐ **RÉVISION 2026.** **L'application est une *machine à états* + un *générateur de prompts* qui pilote
+> désormais SA PROPRE IA interne (le Copilote), indispensable.** Sa base de données EST la mémoire. L'IA
+> **de tutorat** (externe) reste un exécuteur sans état, jetable ; l'IA **de Dowze** (interne) est le
+> **moteur**. Récit complet : **[23-ia-de-dowze-le-moteur](23-ia-de-dowze-le-moteur.md)**.
 
 Conséquences directes (toutes étayées par la recherche) :
 
-1. **L'élève garde SON abonnement IA** (modèle « BYO-AI » / Bring Your Own AI). Le coût LLM pour la
-   plateforme tend vers **zéro**. C'est exactement la promesse « il suffit d'un abonnement IA ».
+1. **L'élève garde SON abonnement IA pour le TUTORAT** (BYO-AI, pour la conversation). Mais **le Copilote
+   interne a un coût réel** (~0,2 ct/séance, crédits **ou** BYOK) — le « coût LLM ≈ zéro » n'est **plus
+   vrai** ; seul le **cœur** (graphe, suivi, carnet, validation par les pairs) reste gratuit.
 2. **Le structuré vit dans l'app, pas dans l'IA.** Un LLM seul invente des programmes incohérents (avec
    trous et hallucinations) ; donc la **carte des compétences, le niveau, la progression** sont des données
    de l'app. L'IA *enseigne sur cette carte*, elle ne la dessine pas. (C'est la

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Post, UseGuards } from '@nestjs/common';
 import { z } from 'zod';
 import { parseOr400 } from '../common/validate-body';
 import { SupabaseAuthGuard } from '../auth/supabase-auth.guard';
@@ -14,6 +14,8 @@ const consentBody = z.object({
   status: z.enum(['en-attente', 'accorde', 'refuse']),
 });
 
+// Le suivi de progression du responsable passe désormais par /results/child/:accountId
+// (bulletin sans note). Ce module ne gère plus que le responsable légal + le consentement.
 @Controller('parental')
 @UseGuards(SupabaseAuthGuard)
 export class ParentalController {
@@ -29,10 +31,5 @@ export class ParentalController {
   setConsent(@Body() body: unknown) {
     const input = parseOr400(consentBody, body);
     return this.service.setConsent(input.guardianId, input.status, new Date().toISOString());
-  }
-
-  @Get('summary/:minorAccountId')
-  summary(@Param('minorAccountId') minorAccountId: string) {
-    return this.service.summary(minorAccountId);
   }
 }

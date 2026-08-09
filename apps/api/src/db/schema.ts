@@ -8,8 +8,18 @@ import {
   doublePrecision,
   real,
   timestamp,
+  date,
+  jsonb,
   primaryKey,
+  customType,
 } from 'drizzle-orm/pg-core';
+
+/** Colonne binaire Postgres (`bytea`) — lue/écrite en Buffer Node. */
+const bytea = customType<{ data: Buffer; driver: Buffer }>({
+  dataType() {
+    return 'bytea';
+  },
+});
 
 /**
  * Schéma Drizzle — miroir typé d'un sous-ensemble des tables Postgres
@@ -23,6 +33,8 @@ export const accounts = pgTable('accounts', {
   email: text('email').notNull().unique(),
   role: text('role').notNull().default('eleve'),
   isMinor: boolean('is_minor').notNull().default(false),
+  isTeacher: boolean('is_teacher').notNull().default(false),
+  activationStatus: text('activation_status').notNull().default('active'), // active | pending_parent
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -30,10 +42,149 @@ export const profiles = pgTable('profiles', {
   id: uuid('id').primaryKey().defaultRandom(),
   accountId: uuid('account_id').notNull(),
   displayName: text('display_name').notNull(),
+  tag: text('tag'), // discriminateur d'ami : pseudo affiché = displayName#tag (type Discord)
   locale: text('locale').notNull(),
   timezone: text('timezone').notNull(),
   phase: text('phase').notNull().default('tronc-commun'),
+  birthDate: date('birth_date'),
+  photoUrl: text('photo_url'),
+  // Compagnon perso (« pet ») choisi par l'utilisateur : { url, size, hidden }.
+  companion: jsonb('companion'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// « Maison » du compagnon (jeu isométrique) : pièce choisie + meubles placés (grille iso).
+export const petRoom = pgTable('pet_room', {
+  profileId: uuid('profile_id').primaryKey(),
+  room: text('room').notNull().default('chambre'),
+  items: jsonb('items').notNull().default('[]'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Tamagotchi du compagnon : état de soin par profil (jauges + timestamps de décroissance).
+export const petCare = pgTable('pet_care', {
+  profileId: uuid('profile_id').primaryKey(),
+  satiety: integer('satiety').notNull().default(80),
+  happiness: integer('happiness').notNull().default(80),
+  energy: integer('energy').notNull().default(80),
+  hygiene: integer('hygiene').notNull().default(80),
+  health: integer('health').notNull().default(90),
+  gold: integer('gold').notNull().default(300),
+  owned: jsonb('owned').notNull().default('["plante","tapis","chaise","lampe","fleur"]'),
+  bornAt: timestamp('born_at', { withTimezone: true }).notNull().defaultNow(),
+  lastTick: timestamp('last_tick', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Tamagotchi PAR compagnon (agents/abeilles) : jauges + décroissance temps réel, comme le pet principal mais par agent.
+// Le principal (isPrimary) garde son état dans `petCare` (avec gold/stock) ; cette table couvre TOUS les autres compagnons.
+export const companionCare = pgTable('companion_care', {
+  agentId: uuid('agent_id').primaryKey(),
+  satiety: integer('satiety').notNull().default(80),
+  happiness: integer('happiness').notNull().default(80),
+  energy: integer('energy').notNull().default(80),
+  hygiene: integer('hygiene').notNull().default(80),
+  health: integer('health').notNull().default(90),
+  bornAt: timestamp('born_at', { withTimezone: true }).notNull().defaultNow(),
+  lastTick: timestamp('last_tick', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Bibliothèque de pets importés (validés + servis par l'API) : plusieurs par profil, nommés.
+export const companionPets = pgTable('companion_pets', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  profileId: uuid('profile_id').notNull(),
+  name: text('name'),
+  mime: text('mime').notNull(),
+  bytes: bytea('bytes').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Compagnons-agents : plusieurs compagnons par profil (« famille » dans la Maison + open-spaces).
+// Mode PNJ (répliques scriptées) d'abord ; mode agent (IA/RAG) plus tard. Le principal (is_primary) est non supprimable.
+export const companionAgents = pgTable('companion_agents', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  profileId: uuid('profile_id').notNull(),
+  name: text('name').notNull(),
+  skinUrl: text('skin_url'),
+  size: integer('size').notNull().default(96),
+  personality: jsonb('personality'), // { tone, traits[], description, emoji? } — pilote les répliques PNJ
+  role: text('role'), // libellé humain lisible (ex. « Directeur technique »)
+  roleKey: text('role_key'), // clé du catalogue de rôles (ex. 'cto', 'dev-back', 'enseignant')
+  space: text('space').notNull().default('home'), // 'home' (Maison + Tamagotchi) | id d'open-space
+  // Salle DANS l'espace. Maison : 'chambre' (chambre perso du compagnon) | 'salon' | 'cuisine' | 'bureau' | 'jardin' | 'plage'.
+  // Open-space : 'travail:N' (workspace, capacité 100 → déborde en travail:1, 2…) | 'toilettes' | 'cantine' | 'repos' | 'garage'.
+  room: text('room').notNull().default('chambre'),
+  pos: jsonb('pos'), // { c, r }
+  isPrimary: boolean('is_primary').notNull().default(false),
+  mode: text('mode').notNull().default('pnj'), // 'pnj' | 'agent' | 'relay'
+  // Cycle de vie / efficacité (« jardinage de la ruche »).
+  useCount: integer('use_count').notNull().default(0), // nb de mobilisations
+  lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
+  qualityEma: real('quality_ema'), // qualité glissante 0..1 (EMA), null tant que non évalué
+  ratingCount: integer('rating_count').notNull().default(0),
+  protected: boolean('protected').notNull().default(false), // exempt de prune/merge (épinglé)
+  status: text('status').notNull().default('active'), // 'active' | 'retired' (soft-delete) | 'merged'
+  mergedInto: uuid('merged_into'), // si fusionnée : id de la survivante
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Espaces de travail : la Maison ('home') est implicite ; les open-spaces sont nommables.
+export const companionSpaces = pgTable('companion_spaces', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  profileId: uuid('profile_id').notNull(),
+  name: text('name').notNull(),
+  // Open-space = organisation : type + mission + template de rôles + propriétaire (user vs service Dowze).
+  type: text('type').notNull().default('custom'), // company | saas | school | custom
+  mission: text('mission'),
+  template: text('template'),
+  ownerKind: text('owner_kind').notNull().default('user'), // user | service
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// P3 — base de connaissances propre à un open-space = organisation (RAG scopé par `space`).
+// `embedding_vec` (vector(1024)) est géré en RAW SQL (pgvector), pas déclaré ici.
+export const companionSpaceKnowledge = pgTable('companion_space_knowledge', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  profileId: uuid('profile_id').notNull(),
+  space: text('space').notNull(),
+  title: text('title').notNull(),
+  content: text('content').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Mémoire de conversation des compagnons-agents (le compagnon se souvient).
+export const companionMessages = pgTable('companion_messages', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  profileId: uuid('profile_id').notNull(),
+  agentId: uuid('agent_id').notNull(),
+  sender: text('sender').notNull(), // 'me' | 'agent'
+  text: text('text').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Journal des fusions d'abeilles (traçabilité du « jardinage de la ruche »).
+export const companionAgentMerges = pgTable('companion_agent_merges', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  profileId: uuid('profile_id').notNull(),
+  survivorId: uuid('survivor_id').notNull(),
+  absorbedId: uuid('absorbed_id').notNull(),
+  reason: text('reason'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Relais Claude Code / Codex : jetons Bearer que l'utilisateur colle dans SON Claude Code (serveur MCP Dowze).
+// Le relais parle à Dowze via l'abonnement de l'utilisateur (100 % CGU) : c'est ML qui se connecte à nous, pas l'inverse.
+export const companionRelayTokens = pgTable('companion_relay_tokens', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  profileId: uuid('profile_id').notNull(),
+  tokenHash: text('token_hash').notNull().unique(), // sha256(token) — le token en clair n'est montré qu'une fois
+  label: text('label'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
 });
 
 export const skills = pgTable('skills', {
@@ -44,11 +195,13 @@ export const skills = pgTable('skills', {
   kind: text('kind').notNull(),
   depth: integer('depth').notNull(),
   isRoot: boolean('is_root').notNull().default(false),
+  rank: integer('rank'),
   epistemicStatus: text('epistemic_status').notNull().default('etabli'),
   halfLifeYears: doublePrecision('half_life_years'),
   masteryThreshold: doublePrecision('mastery_threshold').notNull().default(0.95),
   sources: text('sources').array().notNull().default([]),
   curriculumOrder: integer('curriculum_order'),
+  embedding: real('embedding').array(),
 });
 
 export const prerequisites = pgTable(
@@ -71,6 +224,20 @@ export const masteryStates = pgTable(
     lastUpdated: timestamp('last_updated', { withTimezone: true }),
   },
   (t) => ({ pk: primaryKey({ columns: [t.profileId, t.skillId] }) }),
+);
+
+/** Idempotence des clôtures de cours natif : UNE clôture par (profil, compétence, jour) — le double-clic
+ *  ou le retry réseau ne doit plus produire une double observation BKT + double FSRS (audit 08-2026). */
+export const courseClosures = pgTable(
+  'course_closures',
+  {
+    profileId: uuid('profile_id').notNull(),
+    skillId: uuid('skill_id').notNull(),
+    closureDate: date('closure_date').notNull(),
+    outcome: text('outcome').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.profileId, t.skillId, t.closureDate] }) }),
 );
 
 export const sm2Cards = pgTable(
@@ -163,6 +330,11 @@ export const classes = pgTable('classes', {
   type: text('type').notNull(),
   cycle: text('cycle').notNull().default('trimestre'),
   status: text('status').notNull().default('active'),
+  level: integer('level').notNull().default(1), // rang/niveau (learner_rank.rank)
+  primaryLang: text('primary_lang').notNull().default('fr'),
+  isMultilingual: boolean('is_multilingual').notNull().default(false),
+  schoolYear: integer('school_year').notNull().default(0),
+  targetLang: text('target_lang'), // langue cible pour les classes de langue (type='language'), sinon null
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -172,6 +344,8 @@ export const memberships = pgTable(
     classeId: uuid('classe_id').notNull(),
     profileId: uuid('profile_id').notNull(),
     role: text('role').notNull().default('membre'),
+    schoolYear: integer('school_year').notNull().default(0),
+    assignmentReason: text('assignment_reason').notNull().default(''),
     joinedAt: timestamp('joined_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({ pk: primaryKey({ columns: [t.classeId, t.profileId] }) }),
@@ -218,6 +392,7 @@ export const carnetEntries = pgTable('carnet_entries', {
   skillId: uuid('skill_id'),
   note: text('note').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  embedding: real('embedding').array(),
 });
 
 export const aiModel = pgTable('ai_model', {
@@ -260,6 +435,7 @@ export const copiloteSettings = pgTable('copilote_settings', {
   embeddingModelId: text('embedding_model_id'),
   embeddingProvider: text('embedding_provider'),
   embeddingKeyEnc: text('embedding_key_enc'),
+  lowcostModelId: text('lowcost_model_id'), // modèle LowCost pour la traduction (null = réutilise l'IA principale)
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -310,11 +486,18 @@ export const learnerMisconceptions = pgTable('learner_misconceptions', {
 
 export const guardians = pgTable('guardians', {
   id: uuid('id').primaryKey().defaultRandom(),
-  minorAccountId: uuid('minor_account_id').notNull(),
-  email: text('email').notNull(),
+  minorAccountId: uuid('minor_account_id').notNull(), // compte "supervisé" (enfant/mineur/adulte lié)
+  email: text('email').notNull(), // email du parent / contact de confiance
   consentStatus: text('consent_status').notNull().default('en-attente'),
   consentAt: timestamp('consent_at', { withTimezone: true }),
   hasDashboardAccount: boolean('has_dashboard_account').notNull().default(false),
+  supervised: boolean('supervised').notNull().default(false), // mode supervisé (validation parentale de chaque message/ami)
+  guardianAccountId: uuid('guardian_account_id'), // le compte du parent une fois lié (auto-liaison)
+  tier: text('tier').notNull().default('mineur'), // enfant | mineur | majeur
+  childConfirmedAt: timestamp('child_confirmed_at', { withTimezone: true }),
+  parentConfirmedAt: timestamp('parent_confirmed_at', { withTimezone: true }),
+  inviteToken: text('invite_token'),
+  inviteExpiresAt: timestamp('invite_expires_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -348,4 +531,487 @@ export const parentalAlerts = pgTable('parental_alerts', {
   humanValidated: boolean('human_validated').notNull().default(false),
   sentAt: timestamp('sent_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Dossier élève : modèle d'apprenant extrait de la présentation (Open Learner Model).
+export const learnerDossiers = pgTable('learner_dossiers', {
+  profileId: uuid('profile_id').primaryKey(),
+  rawPresentation: text('raw_presentation').notNull().default(''),
+  structured: jsonb('structured').notNull(),
+  validated: boolean('validated').notNull().default(false),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Test de placement adaptatif : état de la session (historique + bornes) en jsonb.
+export const placementSessions = pgTable('placement_sessions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  profileId: uuid('profile_id').notNull(),
+  state: jsonb('state').notNull(),
+  status: text('status').notNull().default('en-cours'),
+  entrySkillId: uuid('entry_skill_id'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Items d'exercices générés (cache réutilisable).
+export const exerciseItems = pgTable('exercise_items', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  skillId: uuid('skill_id').notNull(),
+  type: text('type').notNull(),
+  payload: jsonb('payload').notNull(),
+  sourceRef: text('source_ref').notNull().default(''),
+  difficulty: integer('difficulty'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Tests de révision (hebdo / trimestriel) + tentatives (formatif, sans note de maîtrise).
+export const tests = pgTable('tests', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  profileId: uuid('profile_id').notNull(),
+  kind: text('kind').notNull().default('weekly'),
+  items: jsonb('items').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const testAttempts = pgTable('test_attempts', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  testId: uuid('test_id').notNull(),
+  profileId: uuid('profile_id').notNull(),
+  total: integer('total').notNull().default(0),
+  correct: integer('correct').notNull().default(0),
+  submittedAt: timestamp('submitted_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Expéditions guidées par élève + notes de phase (guidage IA + bilan).
+export const learnerExpeditions = pgTable('learner_expeditions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  profileId: uuid('profile_id').notNull(),
+  title: text('title').notNull(),
+  grandeQuestion: text('grande_question').notNull(),
+  produit: text('produit').notNull().default(''),
+  phase: text('phase').notNull().default('etincelle'),
+  status: text('status').notNull().default('en-cours'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const expeditionPhaseNotes = pgTable('expedition_phase_notes', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  learnerExpeditionId: uuid('learner_expedition_id').notNull(),
+  phase: text('phase').notNull(),
+  guidance: jsonb('guidance'),
+  bilan: text('bilan'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Progression de rang « compétitive » : le rang courant est un état (montée acceptée), + choix élève/parent.
+export const learnerRank = pgTable('learner_rank', {
+  profileId: uuid('profile_id').primaryKey(),
+  rank: smallint('rank').notNull().default(1),
+  rrPoints: doublePrecision('rr_points').notNull().default(0),
+  rankStartedAt: timestamp('rank_started_at', { withTimezone: true }).notNull().defaultNow(),
+  studentChoice: text('student_choice'),
+  parentChoice: text('parent_choice'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// « Saut de Rang » : mois intensif pour franchir un rang plus vite (éligibilité + programme 28 j + 80 %).
+export const rankJumps = pgTable('rank_jumps', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  profileId: uuid('profile_id').notNull(),
+  fromRank: smallint('from_rank').notNull(),
+  targetRank: smallint('target_rank').notNull(),
+  status: text('status').notNull().default('in-progress'),
+  eligibilityScore: smallint('eligibility_score').notNull().default(0),
+  currentDay: smallint('current_day').notNull().default(1),
+  plan: jsonb('plan').notNull(),
+  lastDayAt: timestamp('last_day_at', { withTimezone: true }),
+  startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
+  decidedAt: timestamp('decided_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Spécialisation : directions choisies par l'élève (réversible, plusieurs possibles).
+export const specializations = pgTable('specializations', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  profileId: uuid('profile_id').notNull(),
+  discipline: text('discipline').notNull(),
+  status: text('status').notNull().default('active'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// B1 : plan de spécialisation (jalons/projets généré par l'IA). B4 : badges. A4 : re-tests espacés.
+export const specializationPlans = pgTable('specialization_plans', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  profileId: uuid('profile_id').notNull(),
+  discipline: text('discipline').notNull(),
+  distalGoal: text('distal_goal').notNull().default(''),
+  milestones: jsonb('milestones').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const learnerBadges = pgTable('learner_badges', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  profileId: uuid('profile_id').notNull(),
+  name: text('name').notNull(),
+  discipline: text('discipline').notNull().default(''),
+  criteria: text('criteria').notNull().default(''),
+  milestoneId: text('milestone_id'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const retentionCheckpoints = pgTable('retention_checkpoints', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  profileId: uuid('profile_id').notNull(),
+  rank: smallint('rank').notNull(),
+  scheduledAt: timestamp('scheduled_at', { withTimezone: true }).notNull(),
+  status: text('status').notNull().default('due'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// A1 : pré-tests above-level. A3 : check-ins bien-être. (C1 = colonne rr_points ajoutée à learnerRank.)
+export const rankJumpPretests = pgTable(
+  'rank_jump_pretests',
+  {
+    profileId: uuid('profile_id').notNull(),
+    targetRank: smallint('target_rank').notNull(),
+    score: doublePrecision('score').notNull().default(0),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.profileId, t.targetRank] }) }),
+);
+
+export const wellbeingCheckins = pgTable('wellbeing_checkins', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  profileId: uuid('profile_id').notNull(),
+  kind: text('kind').notNull(),
+  score: doublePrecision('score').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Niveau & XP (engagement, monotone). Validation par les pairs (sujets + évaluations).
+export const learnerXp = pgTable('learner_xp', {
+  profileId: uuid('profile_id').primaryKey(),
+  xp: integer('xp').notNull().default(0),
+  streak: integer('streak').notNull().default(0),
+  lastLoginDate: date('last_login_date'),
+  xpToday: integer('xp_today').notNull().default(0),
+  activeSecondsToday: integer('active_seconds_today').notNull().default(0),
+  today: date('today'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const validationSubjects = pgTable('validation_subjects', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  profileId: uuid('profile_id').notNull(),
+  title: text('title').notNull(),
+  description: text('description').notNull().default(''),
+  evidenceUrl: text('evidence_url'),
+  format: text('format').notNull().default('visio'),
+  status: text('status').notNull().default('open'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  validatedAt: timestamp('validated_at', { withTimezone: true }),
+});
+
+export const validationReviews = pgTable('validation_reviews', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  subjectId: uuid('subject_id').notNull(),
+  reviewerId: uuid('reviewer_id').notNull(),
+  validated: boolean('validated').notNull(),
+  stars: smallint('stars').notNull(),
+  comment: text('comment').notNull().default(''),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Profs agréés : demande d'accréditation (vérification humaine).
+export const teacherApplications = pgTable('teacher_applications', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  accountId: uuid('account_id').notNull(),
+  background: text('background').notNull(),
+  whereTeaching: text('where_teaching').notNull().default(''),
+  status: text('status').notNull().default('pending'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// ============ Système ÉCHANGER — Phase A : amis + messagerie (doc 26) ============
+// Amitié symétrique, une seule ligne par paire (user_low < user_high).
+export const friendships = pgTable(
+  'friendships',
+  {
+    userLow: uuid('user_low').notNull(),
+    userHigh: uuid('user_high').notNull(),
+    requestedBy: uuid('requested_by').notNull(),
+    status: text('status').notNull().default('pending'), // pending | accepted | blocked
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.userLow, t.userHigh] }) }),
+);
+
+export const conversations = pgTable('conversations', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  type: text('type').notNull(), // direct | group | class_channel
+  classId: uuid('class_id'),
+  name: text('name'),
+  createdBy: uuid('created_by'),
+  lastMessageAt: timestamp('last_message_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const conversationParticipants = pgTable(
+  'conversation_participants',
+  {
+    conversationId: uuid('conversation_id').notNull(),
+    profileId: uuid('profile_id').notNull(),
+    role: text('role').notNull().default('member'), // member | admin
+    lastReadMessageId: uuid('last_read_message_id'),
+    joinedAt: timestamp('joined_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.conversationId, t.profileId] }) }),
+);
+
+// Nommée chat_messages pour ne pas entrer en collision avec l'ancienne table `messages`
+// (design community channels/messages). Voir doc 26.
+export const chatMessages = pgTable('chat_messages', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  conversationId: uuid('conversation_id').notNull(),
+  senderId: uuid('sender_id').notNull(),
+  body: text('body').notNull().default(''),
+  kind: text('kind').notNull().default('text'), // text | image | file | subject_share
+  meta: jsonb('meta'),
+  status: text('status').notNull().default('active'), // active | anonymized
+  holdState: text('hold_state').notNull().default('clear'), // clear | held_out (mode supervisé)
+  auditHash: text('audit_hash'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// ============ Système ÉCHANGER — Phase D : protections (doc 26 §7) ============
+export const blocks = pgTable(
+  'blocks',
+  {
+    blockerId: uuid('blocker_id').notNull(),
+    blockedId: uuid('blocked_id').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.blockerId, t.blockedId] }) }),
+);
+
+export const userReports = pgTable('user_reports', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  reporterId: uuid('reporter_id').notNull(),
+  reportedId: uuid('reported_id').notNull(),
+  reason: text('reason').notNull(),
+  conversationId: uuid('conversation_id'),
+  status: text('status').notNull().default('open'), // open | reviewing | resolved
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+  resolverId: uuid('resolver_id'),
+});
+
+export const resetRequests = pgTable('reset_requests', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  profileId: uuid('profile_id').notNull(),
+  scope: text('scope').notNull().default('messages'), // messages | account
+  requestedBy: text('requested_by').notNull(), // self | parent
+  requesterRef: text('requester_ref').notNull().default(''),
+  status: text('status').notNull().default('pending_moderator'), // pending_parent | pending_moderator | approved | rejected
+  parentApprovedAt: timestamp('parent_approved_at', { withTimezone: true }),
+  moderatorId: uuid('moderator_id'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+});
+
+export const supervisionItems = pgTable('supervision_items', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  childProfileId: uuid('child_profile_id').notNull(),
+  childAccountId: uuid('child_account_id').notNull(),
+  direction: text('direction').notNull(), // in | out
+  kind: text('kind').notNull(), // message | friend_request
+  messageId: uuid('message_id'),
+  friendTargetId: uuid('friend_target_id'),
+  status: text('status').notNull().default('pending'), // pending | approved | rejected
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+});
+
+// ============ Cours de langue « Parler » (migration 0041) ============
+export const learnerLanguages = pgTable(
+  'learner_languages',
+  {
+    profileId: uuid('profile_id').notNull(),
+    lang: text('lang').notNull(),
+    status: text('status').notNull().default('active'), // active | maintenance
+    level: real('level').notNull().default(0), // 0→5 ≈ A1=1..C1=5, suivi PAR LANGUE
+    reasonPitch: text('reason_pitch').notNull().default(''),
+    streak: integer('streak').notNull().default(0),
+    lastPracticeDate: date('last_practice_date'),
+    startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.profileId, t.lang] }) }),
+);
+
+export const languageActivity = pgTable('language_activity', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  profileId: uuid('profile_id').notNull(),
+  lang: text('lang').notNull(),
+  activityDate: date('activity_date').notNull(),
+  kind: text('kind').notNull().default('session'), // session | maintenance
+  minutes: integer('minutes').notNull().default(0),
+  score: real('score'),
+  summary: text('summary').notNull().default(''),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// ============ Cours secondaire « Ma passion » (migration 0042) ============
+export const electives = pgTable('electives', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  profileId: uuid('profile_id').notNull().unique(),
+  label: text('label').notNull(),
+  disciplineHint: text('discipline_hint').notNull().default(''),
+  mode: text('mode').notNull().default('plaisir'), // plaisir | pro
+  status: text('status').notNull().default('active'), // active | change_pending
+  chosenAt: timestamp('chosen_at', { withTimezone: true }).notNull().defaultNow(),
+  commitUntil: timestamp('commit_until', { withTimezone: true }),
+  changeTarget: text('change_target'),
+  changeProposedAt: timestamp('change_proposed_at', { withTimezone: true }),
+  changeConfirmAt: timestamp('change_confirm_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const electiveDiscovery = pgTable('elective_discovery', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  profileId: uuid('profile_id').notNull(),
+  round: integer('round').notNull().default(1),
+  disciplines: jsonb('disciplines').notNull(),
+  currentIndex: integer('current_index').notNull().default(0),
+  weekStartedAt: timestamp('week_started_at', { withTimezone: true }).notNull().defaultNow(),
+  status: text('status').notNull().default('active'), // active | done
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const electiveJournal = pgTable('elective_journal', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  profileId: uuid('profile_id').notNull(),
+  discoveryId: uuid('discovery_id'),
+  discipline: text('discipline').notNull(),
+  entryDate: date('entry_date').notNull(),
+  did: text('did').notNull().default(''),
+  liked: text('liked').notNull().default(''),
+  disliked: text('disliked').notNull().default(''),
+  intensity: smallint('intensity').notNull().default(3),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const electivePlans = pgTable('elective_plans', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  profileId: uuid('profile_id').notNull(),
+  label: text('label').notNull(),
+  distalGoal: text('distal_goal').notNull().default(''),
+  paths: jsonb('paths').notNull().default([]),
+  baseRate: text('base_rate').notNull().default(''),
+  milestones: jsonb('milestones').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// ============ Planning — profil de disponibilité + vacances (migration 0044) ============
+export const learnerSchedule = pgTable('learner_schedule', {
+  profileId: uuid('profile_id').primaryKey(),
+  preset: text('preset').notNull().default('leger'),
+  activeDays: integer('active_days').array().notNull().default([1, 2, 3, 4, 5]),
+  dayStartMin: integer('day_start_min').notNull().default(480),
+  dayEndMin: integer('day_end_min').notNull().default(1080),
+  intensity: text('intensity').notNull().default('moyen'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const scheduleVacations = pgTable('schedule_vacations', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  profileId: uuid('profile_id').notNull(),
+  startDate: date('start_date').notNull(),
+  endDate: date('end_date').notNull(),
+  label: text('label').notNull().default('Vacances'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// ============ Système ÉCHANGER — Phase D+ : IA de modération (doc 26 §7.3) ============
+export const aiModerationFlags = pgTable('ai_moderation_flags', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  messageId: uuid('message_id').notNull(),
+  authorId: uuid('author_id').notNull(),
+  conversationId: uuid('conversation_id').notNull(),
+  category: text('category').notNull(),
+  reason: text('reason').notNull(),
+  severity: text('severity').notNull().default('moyen'),
+  status: text('status').notNull().default('open'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+  resolverId: uuid('resolver_id'),
+});
+
+// ============ Plateforme de PLUGINS (P1) — registre & activation (cf. docs/12-PLUGINS) ============
+export const pluginRegistry = pgTable('plugin_registry', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  slug: text('slug').notNull().unique(),
+  name: text('name').notNull(),
+  subdomain: text('subdomain').notNull().unique(),
+  description: text('description').notNull().default(''),
+  status: text('status').notNull().default('draft'), // draft|active|deprecated|disabled
+  manifestVersion: text('manifest_version').notNull().default('1'),
+  apiVersion: text('api_version').notNull().default('v1'),
+  minCoreVersion: text('min_core_version').notNull().default('3.0.0'),
+  scopesRequested: text('scopes_requested').array().notNull().default([]),
+  scopesOptional: text('scopes_optional').array().notNull().default([]),
+  contributes: jsonb('contributes').notNull().default({}),
+  subscribes: text('subscribes').array().notNull().default([]),
+  configSchema: jsonb('config_schema').notNull().default({}),
+  clientSecretHash: text('client_secret_hash'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const userPluginActivation = pgTable('user_plugin_activation', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  profileId: uuid('profile_id').notNull(),
+  pluginId: uuid('plugin_id').notNull(),
+  enabled: boolean('enabled').notNull().default(true),
+  grantedScopes: text('granted_scopes').array().notNull().default([]),
+  config: jsonb('config').notNull().default({}),
+  activatedAt: timestamp('activated_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// ============ Contribution au planning (P2) — activités récurrentes & entrées ponctuelles ============
+export const recurringCommitments = pgTable('recurring_commitments', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  profileId: uuid('profile_id').notNull(),
+  sourceApp: text('source_app').notNull(),
+  sourceRef: text('source_ref').notNull(),
+  type: text('type').notNull(),
+  title: text('title').notNull(),
+  frequencyPerWeek: integer('frequency_per_week').notNull().default(3),
+  durationMin: integer('duration_min').notNull().default(50),
+  intensity: text('intensity').notNull().default('moderee'),
+  hardConstraints: jsonb('hard_constraints').notNull().default({}),
+  softPreferences: jsonb('soft_preferences').notNull().default({}),
+  priority: integer('priority').notNull().default(50),
+  missPolicy: jsonb('miss_policy').notNull().default({ catchUp: true, windowDays: 3 }),
+  adherenceMetric: text('adherence_metric').notNull().default('rolling-regularity'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const calendarEntries = pgTable('calendar_entries', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  profileId: uuid('profile_id').notNull(),
+  sourceApp: text('source_app').notNull(),
+  sourceRef: text('source_ref').notNull(),
+  entryType: text('entry_type').notNull(),
+  title: text('title').notNull(),
+  startAt: timestamp('start_at', { withTimezone: true }).notNull(),
+  durationMin: integer('duration_min').notNull().default(60),
+  scope: text('scope').notNull().default('calendar:write'),
+  status: text('status').notNull().default('confirmed'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });

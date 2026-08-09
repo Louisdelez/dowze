@@ -10,14 +10,16 @@ import {
   ServiceUnavailableException,
   UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { z } from 'zod';
 import {
   composeRequestSchema,
+  courseCloseRequestSchema,
   ingestRequestSchema,
   updateSettingsSchema,
 } from '@dowze/schemas';
 import { parseOr400 } from '../common/validate-body';
-import { SupabaseAuthGuard } from '../auth/supabase-auth.guard';
+import { SupabaseAuthGuard, safeEqual } from '../auth/supabase-auth.guard';
 import { ENV } from '../config/config.module';
 import type { Env } from '../config/env';
 import { CopiloteService } from './copilote.service';
@@ -73,8 +75,24 @@ export class CopiloteController {
     return this.copilote.compose(profileId);
   }
 
+  /** Cours NATIF : l'IA de Dowze génère la feuille A4 à modules (rendue en app). `null` si tout maîtrisé. */
+  @Post('cours')
+  @Throttle({ default: { ttl: 60_000, limit: 6 } }) // coûteux (LLM) — le cache absorbe les réouvertures
+  cours(@Body() body: unknown) {
+    const { profileId } = parseOr400(composeRequestSchema, body);
+    return this.copilote.runCourse(profileId);
+  }
+
+  /** Clôture du cours natif : idempotente (1/jour/compétence) → Dowze recalcule la maîtrise (BKT+FSRS+carnet). */
+  @Post('cours/cloture')
+  closeCourse(@Body() body: unknown) {
+    const { profileId, skillId, outcome, note } = parseOr400(courseCloseRequestSchema, body);
+    return this.copilote.closeCourse(profileId, skillId, outcome, note);
+  }
+
   /** Ingère le résumé de séance (texte) → snapshot → BKT + carnet. */
   @Post('ingest')
+  @Throttle({ default: { ttl: 60_000, limit: 10 } }) // coûteux (LLM)
   ingest(@Body() body: unknown) {
     return this.copilote.ingest(parseOr400(ingestRequestSchema, body));
   }
@@ -95,7 +113,8 @@ export class CopiloteController {
     if (!this.env.COPILOTE_ADMIN_TOKEN) {
       throw new ServiceUnavailableException('Octroi de crédits désactivé (Stripe non configuré).');
     }
-    if (token !== this.env.COPILOTE_ADMIN_TOKEN) throw new ForbiddenException();
+    // Comparaison en temps constant (pas d'oracle temporel sur le secret).
+    if (!token || !safeEqual(token, this.env.COPILOTE_ADMIN_TOKEN)) throw new ForbiddenException();
     const { profileId, credits, reason, ref } = parseOr400(grantSchema, body);
     const balance = await this.credits.grant(profileId, credits, reason, ref);
     return { profileId, balance };

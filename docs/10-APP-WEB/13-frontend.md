@@ -2,6 +2,12 @@
 
 > *L'interface : moderne, **simple, épurée, ergonomique**. Stack de production, design system Notion-like,
 > code modulaire à fichiers courts. Vue d'ensemble : [stack de production](12-stack-production.md).*
+>
+> ⭐ **RÉVISION 2026 — écrans réels** : au-delà des pages initiales, l'app comprend désormais `/presentation`
+> (dossier élève), `/placement` (test d'entrée + minuteur), `/seance` (prompt lisible + minuteur 45 min +
+> coller un **résumé texte**), `/tests`, `/expeditions`, `/resultats` (bulletin sans note), `/profil`
+> (photo/naissance/code de suivi), `/copilote` (choix du modèle + crédits/BYOK), `/parent` (suivi). Les
+> appels IA passent par l'**IA interne (Copilote)**, plus par un `.json` côté élève.
 
 ---
 

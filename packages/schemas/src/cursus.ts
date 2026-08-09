@@ -55,3 +55,45 @@ export type ModuleEclair = z.infer<typeof moduleEclairSchema>;
 /** Phase du parcours : tronc commun (prescrit) puis spécialisation (choisie). */
 export const cursusPhaseSchema = z.enum(['tronc-commun', 'specialisation']);
 export type CursusPhase = z.infer<typeof cursusPhaseSchema>;
+
+// --- Expéditions GUIDÉES par l'IA (proposition + guidage par phase) ---
+
+/** Une proposition d'expédition générée par l'IA (titre + grande question). */
+export const expeditionProposalSchema = z
+  .object({
+    titre: z.string().describe('Un titre accrocheur, court.'),
+    grandeQuestion: z.string().describe('Une grande question OUVERTE, non googlable, faisable, éthique.'),
+    produit: z.string().describe('Ce que l’élève PRODUIRA (audience réelle) — l’Acte.'),
+    apprentissage: z.string().describe('Ce que l’élève apprendra en la menant.'),
+  })
+  .strict();
+export type ExpeditionProposal = z.infer<typeof expeditionProposalSchema>;
+
+/** Lot de 3 propositions différenciées (choix borné, esprit SDT). */
+export const expeditionProposalsSchema = z
+  .object({ propositions: z.array(expeditionProposalSchema).length(3) })
+  .strict();
+export type ExpeditionProposals = z.infer<typeof expeditionProposalsSchema>;
+
+/** Guidage d'une phase : explication + prompt à coller + pistes de départ. */
+export const phaseGuidanceSchema = z
+  .object({
+    explication: z.string().describe('Ce qu’est cette phase et comment l’aborder, en langage simple.'),
+    prompt: z.string().describe('Le prompt à coller dans l’IA-prof de l’élève pour cette phase.'),
+    pistes: z
+      .array(z.string())
+      .describe('Pistes de départ concrètes (où/comment chercher, 1res leads ; SIFT au Défi).'),
+  })
+  .strict();
+export type PhaseGuidance = z.infer<typeof phaseGuidanceSchema>;
+
+/** Une expédition PAR ÉLÈVE, telle que renvoyée par l'API. */
+export const learnerExpeditionSchema = z.object({
+  id: uuidSchema,
+  title: z.string(),
+  grandeQuestion: z.string(),
+  produit: z.string().default(''),
+  phase: expeditionPhaseSchema,
+  status: expeditionStatusSchema,
+});
+export type LearnerExpedition = z.infer<typeof learnerExpeditionSchema>;

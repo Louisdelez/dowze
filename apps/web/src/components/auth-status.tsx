@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSession } from '@/lib/session';
-import { getSupabase } from '@/lib/supabase';
+import { globalLogout } from '@/lib/supabase';
 
 export function AuthStatus() {
   const { displayName, clear } = useSession();
@@ -25,13 +25,18 @@ export function AuthStatus() {
   }
 
   async function logout() {
-    await getSupabase().auth.signOut();
+    await globalLogout(); // révoque le refresh token + purge le cookie de session .dowze.ch
     clear();
   }
 
   return (
     <span className="flex items-center gap-2 text-sm">
-      <span className="text-muted-foreground">{displayName}</span>
+      <Link
+        href="/profil"
+        className="rounded-md px-2 py-1 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+      >
+        {displayName}
+      </Link>
       <button onClick={logout} className="rounded-md px-2 py-1 text-xs hover:bg-muted">
         Se déconnecter
       </button>

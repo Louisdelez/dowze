@@ -1,0 +1,31 @@
+# Manifeste déclaratif — Dowze Sports (reflété par le registre, seedé en migration 0048).
+slug: sports
+name: Dowze Sports
+subdomain: sports.dowze.ch
+description: La pratique d'un sport — entraînements réguliers et matchs, intégrés au planning.
+manifestVersion: "1"
+apiVersion: v1
+minCoreVersion: "3.0.0"
+scopesRequested:
+  - profile:read
+  - calendar:read
+  - calendar:write
+scopesOptional:
+  - ai:infer
+  - xp:write
+contributes:
+  calendarEntryTypes:
+    - type: sports.training
+      label: Entraînement
+      color: sky
+      icon: zap
+    - type: sports.event # match = date fixe = contrainte dure
+      label: Match
+      color: sky
+      icon: trophy
+subscribes: []
+configSchema:
+  type: object
+  properties:
+    discipline: { type: string, default: course }
+    frequencyPerWeek: { type: integer, minimum: 1, maximum: 6, default: 3 }

@@ -37,35 +37,40 @@ function rowToCard(row: Row): FsrsCard {
 export class FsrsService {
   constructor(@Inject(DB) private readonly db: Database) {}
 
-  /** Enregistre une révision (note FSRS) et reprogramme la carte. */
+  /** Enregistre une révision (note FSRS) et reprogramme la carte.
+   *  Transaction + verrou de ligne : le rescheduling est un read-modify-write — deux notes concurrentes
+   *  faisaient sauter l'intervalle de deux crans ou se perdaient (audit 08-2026). */
   async rate(profileId: string, skillId: string, rating: Grade, nowIso: string): Promise<void> {
     const now = new Date(nowIso);
-    const existing = await this.db
-      .select()
-      .from(fsrsCards)
-      .where(and(eq(fsrsCards.profileId, profileId), eq(fsrsCards.skillId, skillId)));
+    await this.db.transaction(async (tx) => {
+      const existing = await tx
+        .select()
+        .from(fsrsCards)
+        .where(and(eq(fsrsCards.profileId, profileId), eq(fsrsCards.skillId, skillId)))
+        .for('update');
 
-    const card = existing[0] ? rowToCard(existing[0]) : createEmptyCard(now);
-    const { card: next } = scheduler.next(card, now, rating);
+      const card = existing[0] ? rowToCard(existing[0]) : createEmptyCard(now);
+      const { card: next } = scheduler.next(card, now, rating);
 
-    const values = {
-      profileId,
-      skillId,
-      due: next.due,
-      stability: next.stability,
-      difficulty: next.difficulty,
-      elapsedDays: Math.round(next.elapsed_days),
-      scheduledDays: Math.round(next.scheduled_days),
-      reps: next.reps,
-      lapses: next.lapses,
-      state: next.state as number,
-      lastReview: next.last_review ?? now,
-    };
+      const values = {
+        profileId,
+        skillId,
+        due: next.due,
+        stability: next.stability,
+        difficulty: next.difficulty,
+        elapsedDays: Math.round(next.elapsed_days),
+        scheduledDays: Math.round(next.scheduled_days),
+        reps: next.reps,
+        lapses: next.lapses,
+        state: next.state as number,
+        lastReview: next.last_review ?? now,
+      };
 
-    await this.db
-      .insert(fsrsCards)
-      .values(values)
-      .onConflictDoUpdate({ target: [fsrsCards.profileId, fsrsCards.skillId], set: values });
+      await tx
+        .insert(fsrsCards)
+        .values(values)
+        .onConflictDoUpdate({ target: [fsrsCards.profileId, fsrsCards.skillId], set: values });
+    });
   }
 
   /** Compétences dues à réviser (échéance passée), les plus en retard d'abord. */

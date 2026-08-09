@@ -81,8 +81,8 @@ export default function BridgePage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Le pont .json"
-        subtitle="Sans API : l’app génère un fichier .json à coller dans ton IA ; tu colles sa réponse, l’app la valide strictement."
+        title="Atelier de génération (outil d’auteur)"
+        subtitle="Générer des cours, grilles, expéditions ou une ossature de compétences, puis les persister au graphe (École générative). Outil d’auteur — l’élève, lui, apprend via le Copilote."
       />
 
       <Card className="space-y-4">

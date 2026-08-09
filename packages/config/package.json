@@ -1,0 +1,12 @@
+{
+  "name": "@dowze/config",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Configurations partagées Dowze (TypeScript de base) pour les apps et plugins.",
+  "files": [
+    "tsconfig"
+  ],
+  "exports": {
+    "./tsconfig/base.json": "./tsconfig/base.json"
+  }
+}

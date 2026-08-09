@@ -15,20 +15,18 @@ function NavLink({
   onNavigate?: () => void;
 }) {
   const Icon = item.icon;
+  const cls = cn(
+    'flex items-center gap-3 rounded-md px-3 py-2 text-sm transition',
+    active ? 'bg-muted font-medium text-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+  );
+  const inner = (<><Icon className={active ? 'text-accent' : ''} />{item.label}</>);
+  // Lien EXTERNE (ex. « Mes apps » → infra.dowze.ch, le store) : ancre classique.
+  if (item.href.startsWith('http')) {
+    return <a href={item.href} onClick={onNavigate} className={cls}>{inner}</a>;
+  }
   return (
-    <Link
-      href={item.href}
-      onClick={onNavigate}
-      aria-current={active ? 'page' : undefined}
-      className={cn(
-        'flex items-center gap-3 rounded-md px-3 py-2 text-sm transition',
-        active
-          ? 'bg-muted font-medium text-foreground'
-          : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-      )}
-    >
-      <Icon className={active ? 'text-accent' : ''} />
-      {item.label}
+    <Link href={item.href} onClick={onNavigate} aria-current={active ? 'page' : undefined} className={cls}>
+      {inner}
     </Link>
   );
 }

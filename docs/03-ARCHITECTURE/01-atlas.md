@@ -65,6 +65,20 @@ L'Atlas est une **carte qu'on n'a jamais fini d'explorer, et qui grandit pendant
   **Guildes** (couche 4) entretiennent les branches qui les concernent — mise à jour **continue**, pas un
   programme refait tous les dix ans. C'est la réponse directe à la faille de l'obsolescence.
 
+> ✅ **État d'implémentation (07-2026) — le graphe grandit vraiment.** « La carte grandit pendant qu'on
+> l'explore » n'est plus qu'une intention : quand un élève atteint le **bord** du graphe (il maîtrise une
+> compétence-frontière que rien ne prolonge), l'Atlas **s'étend automatiquement** — le Copilote génère la
+> compétence suivante, validée par la **loi de clôture** puis persistée (module `skill-generation`, voir
+> [l'école générative](09-ecole-generative.md#comment-lossature-se-génère-sans-main-humaine)). La *frontière
+> personnelle* (lisière ZPD) est calculée par `progression.nextPrescribed()` ; l'extension au bord par
+> `skill-generation.growForLearner()`, et le **voisinage amont** (« je veux apprendre X » → cible + chaîne
+> de prérequis manquante) par `growTowardGoal()`. La **couche épistémique est active** (rang ISCED
+> explicite `skills.rank` ; demi-vie par domaine ; statut `emergent` sur le front de recherche ; sources
+> par nœud) et l'Atlas est **densifié à 11 disciplines** (les 6 académiques + Arts, Citoyenneté, Corps,
+> Langues, Métiers). La génération est **ancrée et vérifiée** (≥1 source réelle + passe adversariale
+> anti-hallucination). **Encore en feuille de route :** l'entretien communautaire (Guildes) et la montée
+> en densité de chaque branche (aujourd'hui amorcée puis étendue à la demande par la génération vivante).
+
 ### Universel mais pas uniforme
 La même carte mondiale, mais chaque culture/langue peut l'**enrichir** de ses propres branches
 (artisanats, langues, savoirs locaux, histoire régionale). Le multilinguisme est radical : les langues

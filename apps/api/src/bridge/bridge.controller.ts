@@ -1,6 +1,7 @@
-import { BadRequestException, Body, Controller, Post } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Post, UseGuards } from '@nestjs/common';
 import { z } from 'zod';
 import { bridgeOperationSchema } from '@dowze/schemas';
+import { SupabaseAuthGuard } from '../auth/supabase-auth.guard';
 import { GenerationService } from './generation.service';
 import { ImportService } from './import.service';
 
@@ -24,6 +25,7 @@ function parseOr400<T>(schema: z.ZodType<T>, body: unknown): T {
 }
 
 @Controller('bridge')
+@UseGuards(SupabaseAuthGuard)
 export class BridgeController {
   constructor(
     private readonly generation: GenerationService,

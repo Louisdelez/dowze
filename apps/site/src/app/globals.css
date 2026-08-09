@@ -1,0 +1,22 @@
+@import 'tailwindcss';
+
+/* Palette Supreme : rouge / noir / blanc. */
+@theme {
+  --color-dowze-red: #e4002b;
+}
+
+:root { color-scheme: light; }
+html, body { height: 100%; }
+body { margin: 0; -webkit-font-smoothing: antialiased; }
+
+/* Logo « box » façon Supreme : boîte rouge, texte blanc italique lourd. */
+.box-logo {
+  display: inline-block;
+  background: #e4002b;
+  color: #fff;
+  font-style: italic;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  padding: 0.14em 0.5em 0.12em;
+  line-height: 1;
+}

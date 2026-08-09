@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { desc, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import { nextPrescribedSkill } from '@dowze/core';
 import { DB, type Database } from '../db/drizzle.module';
 import { carnetEntries, masteryStates } from '../db/schema';
@@ -27,6 +27,20 @@ export class CarnetService {
       .from(carnetEntries)
       .where(eq(carnetEntries.profileId, profileId))
       .orderBy(desc(carnetEntries.createdAt));
+  }
+
+  /** La DERNIÈRE note pour UNE compétence — requête scopée `LIMIT 1` (audit perf 08-2026 : `compose`
+   *  chargeait TOUT le carnet, embeddings compris, juste pour trouver cette note). */
+  async lastNoteFor(profileId: string, skillId: string): Promise<string | null> {
+    const row = (
+      await this.db
+        .select({ note: carnetEntries.note })
+        .from(carnetEntries)
+        .where(and(eq(carnetEntries.profileId, profileId), eq(carnetEntries.skillId, skillId)))
+        .orderBy(desc(carnetEntries.createdAt))
+        .limit(1)
+    )[0];
+    return row?.note ?? null;
   }
 
   /** Le prompt de reprise contextualisé (état entre sessions). */

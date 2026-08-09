@@ -1,10 +1,13 @@
 import { Module } from '@nestjs/common';
-import { ExpeditionsService } from './expeditions.service';
-import { ExpeditionsController } from './expeditions.controller';
+import { CopiloteModule } from '../copilote/copilote.module';
+import { GuidedExpeditionsService } from './guided-expeditions.service';
+import { GuidedExpeditionsController } from './guided-expeditions.controller';
 
+// Le catalogue global d'expéditions (ancien ExpeditionsController/Service) a été retiré :
+// remplacé par les expéditions guidées PAR ÉLÈVE (/expeditions/guided/*).
 @Module({
-  providers: [ExpeditionsService],
-  controllers: [ExpeditionsController],
-  exports: [ExpeditionsService],
+  imports: [CopiloteModule],
+  providers: [GuidedExpeditionsService],
+  controllers: [GuidedExpeditionsController],
 })
 export class ExpeditionsModule {}

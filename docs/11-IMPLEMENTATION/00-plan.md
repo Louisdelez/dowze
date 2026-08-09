@@ -91,7 +91,12 @@ passent**, les fichiers respectent la limite de taille, la doc du module est à 
   Détail : [14-backend](../10-APP-WEB/14-backend.md).
 - **Données** : Supabase (Postgres + Auth + RLS + Realtime + Storage), local d'abord. Détail :
   [12-stack-production](../10-APP-WEB/12-stack-production.md).
-- **Pas d'appel LLM serveur** : l'IA est externe, échange par fichier [`.json`](../10-APP-WEB/10-pont-json.md).
+- ⭐ **RÉVISION 2026 — le serveur APPELLE bien un LLM.** L'invariant « pas d'appel LLM serveur » est
+  **caduc** : l'IA interne de Dowze (le **Copilote**) appelle des LLM par API (multi-fournisseurs,
+  `generateStructured`), gère un **ledger de crédits** et chiffre les **clés BYOK**. Modules réels :
+  `copilote`, `onboarding`, `placement`, `exercises`, `tests`, `expeditions`, `results`, `fsrs`. Le pont
+  [`.json`](../10-APP-WEB/10-pont-json.md) n'est plus le mécanisme élève — c'est un **outil d'auteur**. Voir
+  [L'IA de Dowze, le moteur](../10-APP-WEB/23-ia-de-dowze-le-moteur.md).
 
 ---
 

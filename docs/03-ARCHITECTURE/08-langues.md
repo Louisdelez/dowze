@@ -5,6 +5,11 @@
 > se réinventent — on ne les apprend plus *contre* la barrière (l'IA la franchit), mais **pour penser
 > autrement, accéder à une culture de l'intérieur et créer du lien humain**.*
 
+> **✅ IMPLÉMENTÉ (2026-07-22).** Cette vision est désormais un vrai cours dans l'app : un **cours de langue
+> « Parler »** quotidien, centré communication (tuteur IA vocal, TBLT, une langue à la fois, maintenance des
+> anciennes, classes « langue cible only » entre pairs). Détail d'implémentation :
+> [`10-APP-WEB/28-cours-de-langue.md`](../10-APP-WEB/28-cours-de-langue.md).
+
 ---
 
 ## 1. La langue maternelle (L1) — la fondation absolue

@@ -1,10 +1,11 @@
 import { Global, Module } from '@nestjs/common';
 import { SupabaseAuthGuard } from './supabase-auth.guard';
+import { OwnershipService } from './ownership.service';
 
-/** Rend la garde JWT injectable partout (la config ENV est globale). */
+/** Rend la garde JWT (+ autorisation de propriété des profils) injectable partout. */
 @Global()
 @Module({
-  providers: [SupabaseAuthGuard],
-  exports: [SupabaseAuthGuard],
+  providers: [SupabaseAuthGuard, OwnershipService],
+  exports: [SupabaseAuthGuard, OwnershipService],
 })
 export class AuthModule {}

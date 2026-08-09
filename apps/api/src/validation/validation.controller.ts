@@ -1,52 +1,64 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { z } from 'zod';
+import { peerReviewInputSchema } from '@dowze/schemas';
 import { parseOr400 } from '../common/validate-body';
+import { SupabaseAuthGuard } from '../auth/supabase-auth.guard';
 import { ValidationService } from './validation.service';
 
-const selfBody = z.object({
-  profileId: z.string().uuid(),
-  skillId: z.string().uuid(),
-  verdicts: z
-    .array(
-      z.object({
-        criterionId: z.string().min(1),
-        met: z.boolean(),
-        comment: z.string().default(''),
-      }),
-    )
-    .default([]),
-});
-
-const peerBody = z.object({
-  reviewerId: z.string().uuid(),
-  learnerId: z.string().uuid(),
-  skillId: z.string().uuid(),
-  passed: z.boolean(),
+const uuid = z.string().uuid();
+const createBody = z.object({
+  title: z.string().min(1).max(160),
+  description: z.string().max(2000).default(''),
+  evidenceUrl: z.string().url().nullable().default(null),
+  format: z.enum(['visio', 'video']).default('visio'),
 });
 
 @Controller('validation')
+@UseGuards(SupabaseAuthGuard)
 export class ValidationController {
   constructor(private readonly service: ValidationService) {}
 
-  @Get('rubric/:skillId')
-  rubric(@Param('skillId') skillId: string) {
-    return this.service.getRubric(skillId);
+  /** Mes sujets + sujets à évaluer + éligibilité + badges. */
+  @Get(':profileId')
+  view(@Param('profileId') profileId: string) {
+    return this.service.view(uuid.parse(profileId));
   }
 
-  @Post('self')
-  self(@Body() body: unknown) {
-    const input = parseOr400(selfBody, body);
-    return this.service.selfValidate(input.profileId, input.skillId, input.verdicts);
+  /** Créer un sujet à valider (titre + description). */
+  @Post(':profileId/subject')
+  create(@Param('profileId') profileId: string, @Body() body: unknown) {
+    const input = parseOr400(createBody, body);
+    return this.service.createSubject(uuid.parse(profileId), input);
   }
 
-  @Post('peer')
-  peer(@Body() body: unknown) {
-    const input = parseOr400(peerBody, body);
-    return this.service.peerReview(input.reviewerId, input.learnerId, input.skillId, input.passed);
+  /** Évaluer le sujet d'un pair (validé + étoiles + commentaire). */
+  @Post(':profileId/review/:subjectId')
+  review(
+    @Param('profileId') profileId: string,
+    @Param('subjectId') subjectId: string,
+    @Body() body: unknown,
+  ) {
+    const input = parseOr400(peerReviewInputSchema, body);
+    return this.service.review(uuid.parse(profileId), uuid.parse(subjectId), input);
   }
 
-  @Get('badge/:skillId/:learnerId')
-  badge(@Param('skillId') skillId: string, @Param('learnerId') learnerId: string) {
-    return this.service.badge(skillId, learnerId);
+  /** Page communautaire : tous les sujets à évaluer, avec recherche + tri. */
+  @Get(':profileId/community')
+  community(
+    @Param('profileId') profileId: string,
+    @Query('q') q = '',
+    @Query('sort') sort = 'recent',
+  ) {
+    return this.service.community(uuid.parse(profileId), q, sort === 'level' ? 'level' : 'recent');
   }
+
+  /** Un sujet précis (lien de partage). */
+  @Get(':profileId/subject/:subjectId')
+  subject(@Param('profileId') profileId: string, @Param('subjectId') subjectId: string) {
+    return this.service.getSubject(uuid.parse(profileId), uuid.parse(subjectId));
+  }
+
+  // Pas d'endpoint « devenir prof/modo/staff » : les rôles staff sont attribués manuellement
+  // (au cas par cas), jamais via l'application (décision produit). Le statut prof agréé, quand il est
+  // accordé manuellement (accounts.is_teacher = true), continue de valider un sujet en une fois.
 }

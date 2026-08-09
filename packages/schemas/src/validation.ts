@@ -54,3 +54,53 @@ export const validationSchema = z.object({
   createdAtIso: isoDateTimeSchema,
 });
 export type Validation = z.infer<typeof validationSchema>;
+
+// ─── Refonte 2026 : VALIDATION PAR EXPOSÉ ORAL évalué par les pairs (remplace la grille/auto-validation) ───
+
+/** Un sujet à valider, créé par l'élève (titre + description) — pas de menu de compétences. */
+export const validationSubjectSchema = z.object({
+  id: uuidSchema,
+  title: z.string().min(1).max(160),
+  description: z.string().max(2000).default(''),
+  evidenceUrl: z.string().url().nullable().default(null),
+  format: z.enum(['visio', 'video']),
+  status: z.enum(['open', 'validated']),
+  reviewCount: z.number().int(),
+  avgStars: z.number(),
+  mine: z.boolean(),
+  /** L'évaluateur courant a déjà évalué ce sujet. */
+  reviewedByMe: z.boolean(),
+  /** Auteur (pour la page communautaire : filtrer/trier par niveau). */
+  authorName: z.string().default(''),
+  authorLevel: z.number().int().default(0),
+  createdAtIso: isoDateTimeSchema,
+});
+export type ValidationSubject = z.infer<typeof validationSubjectSchema>;
+
+/** L'évaluation d'un pair : validé + étoiles + commentaire (obligatoire). */
+export const peerReviewInputSchema = z.object({
+  validated: z.boolean(),
+  stars: z.number().int().min(1).max(5),
+  comment: z.string().min(1).max(2000),
+});
+export type PeerReviewInput = z.infer<typeof peerReviewInputSchema>;
+
+/** Vue complète de la page « Validation ». */
+export const peerValidationViewSchema = z.object({
+  /** Mes sujets (créés par moi). */
+  mySubjects: z.array(validationSubjectSchema),
+  /** Sujets d'autres élèves que je peux évaluer (si éligible). */
+  toReview: z.array(validationSubjectSchema),
+  /** Suis-je éligible pour évaluer autrui (niveau + ancienneté) ? */
+  canReview: z.boolean(),
+  /** Suis-je un prof agréé (validation en une fois) ? */
+  isTeacher: z.boolean(),
+  /** Combien il me faut de niveau / jours (message d'éligibilité). */
+  reviewGateMessage: z.string().nullable(),
+  /** Badges obtenus (sujets validés). */
+  badges: z.array(z.object({ id: z.string(), name: z.string(), criteria: z.string(), dateIso: z.string() })),
+  /** Seuil de validation (nb d'évaluateurs, moyenne d'étoiles). */
+  requiredReviews: z.number().int(),
+  requiredAvgStars: z.number(),
+});
+export type PeerValidationView = z.infer<typeof peerValidationViewSchema>;

@@ -10,29 +10,38 @@ Tu as deux fenêtres : **l'intra Dowze** (le portail web qui pilote) et **ton IA
 enseigne). Mode copier-coller : l'intra te donne les prompts, tu les colles dans ton IA, tu recolles le
 résultat.
 
----
-
-## Étape 0 — Tu crées ton compte (2 min)
-
-E-mail / Google, un pseudo, et **une seule question** : *quelle IA utilises-tu ?* → tu choisis. C'est tout.
-➡️ Tu arrives sur ton **tableau de bord**, avec un bouton **« Commencer ».**
-
-> ❌ Ce qu'on **ne** te demande **pas** : « qu'est-ce que tu veux apprendre ? ». Tu es un élève, pas un
-> professeur — ce n'est pas à toi de savoir le programme.
+> 🔎 **Le détail de l'entrée** (inscription, profil, présentation, dossier élève, test de placement) est
+> dans [onboarding, profil & placement](19-onboarding-profil-placement.md). Ci-dessous, la vue d'ensemble.
 
 ---
 
-## Étape 1 — Le diagnostic (l'intra te place sur le tronc commun)
+## Étape 0 — Tu crées ton compte, ton profil et tu te présentes
+
+**Inscription minimale** : e-mail + mot de passe, c'est tout. Après validation de ton e-mail, tu complètes
+ton **profil** (photo, pseudo, **date de naissance**) — c'est la date de naissance, et non une case à
+cocher, qui gère le statut mineur et le consentement parental (&lt; 15 ans en France).
+
+Puis tu **te présentes** : un formulaire libre (« parle-nous de toi : passions, hobbies, rêves, ce que tu
+veux apprendre »). L'IA de Dowze en fait ton **dossier élève** — comme un prof qui apprend à te connaître —
+que **tu valides**. Il servira à personnaliser tes exemples et à te motiver.
+
+> ❌ Ce qu'on **ne** te demande **pas** : « qu'est-ce que tu veux apprendre *en programme* ? ». Tu es un
+> élève, pas un professeur — ce n'est pas à toi de savoir le programme. On te demande **qui tu es**, pas ce
+> que tu dois étudier.
+
+---
+
+## Étape 1 — Le test de placement (l'intra te place sur le tronc commun)
 
 L'intra t'explique : *« Tu vas suivre un parcours complet d'éducation générale, comme à l'école. Pour
 commencer au bon endroit, on situe d'abord ton niveau — aucune mauvaise réponse. »*
 
-Elle te donne un **prompt de diagnostic** à coller dans ton IA. L'IA te pose des questions ciblées (sur les
-domaines du tronc commun : langue, maths, sciences, etc.) pour voir **ce que tu maîtrises déjà**. À la fin,
-elle produit un bloc résultat que tu **recolles dans l'intra**.
+Tu passes un **test de placement adaptatif** court et **sans stress** : chaque question s'ajuste à tes
+réponses (comme une recherche binaire), et on s'arrête dès qu'on a situé ton niveau. Un adulte diplômé ne
+commence pas en maternelle ; un débutant peut même le sauter et démarrer au niveau 1.
 
 ➡️ L'intra te **place** sur la carte du tronc commun : elle sait ce que tu maîtrises déjà (on le valide,
-tu ne le refais pas) et où tu dois commencer.
+tu ne le refais pas) et **où** tu dois commencer. Détail : [le test de placement](19-onboarding-profil-placement.md#5-le-test-de-placement--situer-le-bon-niveau-maternelle--master).
 
 ---
 
@@ -52,29 +61,34 @@ simplement : *« Voici où tu en es. Prochaine étape : [telle Expédition]. »*
 
 ---
 
-## Étape 3 — Tu apprends (l'Expédition, avec ton IA)
+## Étape 3 — Tu apprends (ta séance, avec ton IA)
 
-L'intra te donne un **fichier `.json`** (l'« ALLER ») qui contient le prompt de l'Expédition (déjà rempli
-avec ton niveau et la grande question du moment), **le format exact de la réponse attendue, et un exemple** :
+> ⭐ **RÉVISION 2026** — le va-et-vient `.json` **côté élève** est supprimé : c'est désormais le
+> **[Copilote](15-copilote-orchestrateur.md)** (petite IA interne à Dowze) qui compose un **prompt lisible**
+> et qui **structure ton résumé de séance**. Tu ne manipules plus jamais de `.json`. Ci-dessous, le principe
+> reste le même (copier-coller), mais avec du **texte clair**.
 
-> 📋 *« Copier »* / 💾 *« Télécharger le .json »*
+L'intra te donne le **prompt du jour** (déjà rempli avec ta compétence, ton niveau, ta mémoire de
+progression). Ta **séance dure 45 minutes**, avec un **minuteur** dans la barre du haut et une **alarme** à
+la fin → puis un **bilan** et une **pause** ([la séance & le minuteur](17-seance-et-minuteur.md)).
 
-Tu le **donnes à ton IA** (tu colles le contenu, ou tu uploades le fichier). Là, **ton IA devient ton
-prof** : elle lance l'**Étincelle** (la grande idée), te fait formuler ta **Question**, **te pose des
-questions** au lieu de donner les réponses, te corrige, adapte le niveau. Tu avances dans le défi
-(recherche, données, raisonnement) vers l'**Acte** : produire quelque chose de réel. Au fil de l'Expédition,
-tu exerces des **aptitudes durables** (esprit critique…) et tu appliques des **concepts-clés** (preuve,
-causalité…) — sans que ce soit « une matière ».
+Tu **colles le prompt dans ton IA**. Là, **ton IA devient ton prof** : elle t'accueille, **te pose des
+questions** au lieu de donner les réponses, te corrige, adapte le niveau — sur **une compétence précise**.
+À la fin, tu colles le **prompt de bilan** ; ton IA écrit un résumé sincère que tu **recolles dans
+l'intra**, où le Copilote le transforme en progression.
 
-> Pas d'API : le lien intra ↔ IA passe par ce **fichier `.json`** que tu fais voyager à la main. Détail :
-> [le pont `.json`](10-pont-json.md).
+> Sur du plus long cours, ce n'est plus une séance mais une **[Expédition](20-expeditions.md)** : un projet
+> guidé (Étincelle → Question → Défi → Acte → Trace) autour d'une grande question. Différence détaillée :
+> [Ma séance vs Expéditions](21-seance-vs-expeditions.md).
 
 ---
 
 ## Étape 4 — Tu valides (par paliers, sans QCM, non-bloquant)
 
-À la fin, ton IA produit le **`.json` RETOUR** (au format demandé) ; tu le **réimportes dans l'intra**, qui
-le lit et met à jour ta progression. La validation se fait **par paliers** (modèle École 42, pas de QCM) :
+Le [Copilote](15-copilote-orchestrateur.md) a mis à jour ta progression à partir de ton résumé. La
+validation d'une **compétence**, elle, se fait **par paliers** (modèle École 42, pas de QCM) — à ne pas
+confondre avec les [tests & examens](18-tests-et-examens.md), qui servent à **réviser** et **ne valident
+rien** :
 
 1. **Auto-validation** (instantanée) : tu coches une **checklist factuelle** (« mon livrable existe », « je
    peux l'expliquer »). → ça **débloque tout de suite** la compétence suivante. **Tu n'attends personne.**

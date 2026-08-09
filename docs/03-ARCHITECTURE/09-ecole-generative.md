@@ -1,5 +1,18 @@
 # L'école générative : stocker des règles, pas du contenu
 
+> ⭐ **RÉVISION 2026.** La génération se fait désormais par **trois voies** : (1) l'**authoring** hors-ligne
+> via le pont [`.json`](../10-APP-WEB/10-pont-json.md) (générer une ossature de cours/compétences → la
+> **persister au graphe** après validation par la loi de clôture) ; (2) le **runtime — contenu** via l'**IA
+> interne, le Copilote** (`generateStructured`) qui génère exercices, tests, questions de placement,
+> propositions d'expédition **à la demande**, ancrés sur le graphe ; (3) ✅ **runtime — ossature (génération
+> vivante de nœuds, livrée 07-2026)** : quand un élève atteint le **bord** du graphe, l'Atlas **s'étend tout
+> seul** — le Copilote génère la ou les compétences suivantes, elles sont **validées par la loi de clôture
+> puis persistées** (module `apps/api/src/skill-generation/`, endpoints `POST /skills/grow/:profileId` et
+> `GET /skills/next-or-grow/:profileId`). C'est la génération paresseuse (point 1 plus bas) **réellement
+> branchée en production** : le graphe n'est plus figé, il pousse là où on l'explore. Le principe ci-dessous
+> reste vrai ; seul le *mécanisme* a gagné les voies runtime. Voir
+> [L'IA de Dowze](../10-APP-WEB/23-ia-de-dowze-le-moteur.md).
+>
 > *Le principe le plus structurant du projet. Une école traditionnelle **stocke du contenu** (programmes,
 > cours, manuels) — et ce contenu est **périmé même quand on le met à jour**, parce qu'on le met à jour
 > tous les 5-10 ans alors que le monde change en mois. Dowze fait l'inverse : il **ne stocke pas le
@@ -113,6 +126,19 @@ faisable et fiable *à condition* de remplacer l'expert humain par une pile de v
    à une compétence, l'IA génère **juste le voisinage local** (ses prérequis). Le graphe **émerge chemin
    par chemin** (modèle `iText2KG` : génération incrémentale pilotée par un blueprint qui est littéralement
    un `.json`).
+   > ✅ **Implémenté (07-2026).** La croissance **par le bord aval** est en production :
+   > `SkillGenerationService.growForLearner()` détecte qu'un élève a maîtrisé une **feuille-frontière**
+   > (compétence qu'aucune autre n'a pour prérequis), demande au Copilote (`generateNextSkills`,
+   > `generateObject` + schéma strict) la ou les compétences **suivantes** — profondeur = frontière + 1,
+   > même discipline, niveau situé dans la description (licence → recherche) — puis **réutilise
+   > `SkillGraphService.ingest()` qui valide la loi de clôture AVANT d'écrire** (une extension incohérente
+   > est rejetée, jamais persistée). `nextOrGrow()` enchaîne : s'il n'y a plus rien d'apprenant, il fait
+   > pousser puis re-prescrit → le parcours devient **sans fin**. **Voisinage amont aussi livré (07-2026)** :
+   > `growTowardGoal()` (`POST /skills/toward-goal`) fabrique la compétence-CIBLE d'un objectif libre PLUS
+   > la chaîne de prérequis qui la relie aux acquis de l'élève — le « je veux apprendre X » absent du graphe.
+   > **Ancrage en place** : chaque nœud généré exige ≥1 source réelle, passe une **vérification adversariale**
+   > (points 2 & 4) et porte rang ISCED + statut épistémique. *Reste :* le consensus multi-passes (générer
+   > 3-5 fois, ne garder que les arêtes convergentes) pour les zones sensibles.
 2. **Génération séparée de la validation** (leçon clé) : le **LLM génère** (créatif), un **validateur
    déterministe filtre** (le `.json` de règles encode des contraintes vérifiables : graphe sans cycle =
    DAG, schéma respecté, chaque arête citée à une source…). *Ce qui passe le validateur est cohérent par

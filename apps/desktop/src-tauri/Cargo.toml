@@ -1,0 +1,46 @@
+[package]
+name = "dowze-desktop"
+version = "0.1.0"
+description = "Dowze Académie — application de bureau (Tauri) avec outils locaux (recherche web, etc.)"
+authors = ["Dowze"]
+edition = "2021"
+rust-version = "1.77"
+
+# La lib porte toute la logique (commandes/outils) ; le binaire l'appelle.
+[lib]
+name = "dowze_desktop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+# Binaire HELPER des sous-process CEF (multi-process Chromium). Compilé seulement avec `--features cef-panel`.
+[[bin]]
+name = "dowze_cef_helper"
+path = "src/bin/dowze_cef_helper.rs"
+
+[dependencies]
+# `unstable` = multiwebview (2e webview dockée dans la fenêtre = panneau IA ChatGPT/Claude, en PUR Tauri).
+tauri = { version = "2", features = ["unstable"] }
+tauri-plugin-opener = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# Client HTTP pour les outils (Wikipedia, SearXNG…) — rustls pour éviter la dépendance OpenSSL système.
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "gzip"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+scraper = "0.20"
+urlencoding = "2"
+# Panneau IA = vrai Chromium embarqué (CEF). Optionnel : activé par la feature `cef-panel` (nécessite CEF_PATH).
+# Crate maintenu par l'équipe Tauri (github.com/tauri-apps/cef-rs).
+cef = { version = "151", features = ["build-util"], optional = true }
+raw-window-handle = { version = "0.6", optional = true }
+# Linux : on arrange les 2 webviews WebKitGTK côte à côte via GTK (le multiwebview Tauri n'applique pas la
+# géométrie sur WebKitGTK). Même version 0.18 que Tauri. `gdkx11` reste optionnel (ancienne piste CEF).
+[target.'cfg(target_os = "linux")'.dependencies]
+gtk = "0.18"
+gdkx11 = { version = "0.18", optional = true }
+
+[features]
+# Build par défaut = INCHANGÉ (pas de CEF). Le panneau IA CEF se construit avec `--features cef-panel`.
+default = []
+cef-panel = ["dep:cef", "dep:raw-window-handle", "dep:gdkx11"]
