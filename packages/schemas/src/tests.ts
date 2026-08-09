@@ -35,9 +35,7 @@ export const submitTestRequestSchema = z
   .object({
     testId: uuidSchema,
     profileId: uuidSchema,
-    results: z
-      .array(z.object({ skillId: uuidSchema, correct: z.boolean() }).strict())
-      .min(1),
+    results: z.array(z.object({ skillId: uuidSchema, correct: z.boolean() }).strict()).min(1),
   })
   .strict();
 export type SubmitTestRequest = z.infer<typeof submitTestRequestSchema>;

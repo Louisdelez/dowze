@@ -38,7 +38,11 @@ export default function CommunauteValidationPage() {
       <EmptyState
         title="Connecte-toi"
         description="Les évaluations de la communauté sont réservées aux membres."
-        action={<Link href="/connexion" className="text-accent underline-offset-2 hover:underline">Se connecter</Link>}
+        action={
+          <Link href="/connexion" className="text-accent underline-offset-2 hover:underline">
+            Se connecter
+          </Link>
+        }
       />
     );
   }
@@ -49,15 +53,26 @@ export default function CommunauteValidationPage() {
         title="Évaluer la communauté"
         subtitle="Choisis un sujet à évaluer — en écoutant les autres expliquer, tu apprends toi aussi (inspiré de 42/Epitech)."
       />
-      <Link href="/validation" className="text-sm text-accent underline-offset-2 hover:underline">← Retour à mes validations</Link>
+      <Link href="/validation" className="text-sm text-accent underline-offset-2 hover:underline">
+        ← Retour à mes validations
+      </Link>
 
       {!canReview ? (
         <Note tone="info">{gate}</Note>
       ) : (
         <>
           <Card className="space-y-3">
-            <TextField label="Rechercher un sujet" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Titre, description, auteur…" />
-            <SelectField label="Trier par" value={sort} onChange={(e) => setSort(e.target.value as 'recent' | 'level')}>
+            <TextField
+              label="Rechercher un sujet"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Titre, description, auteur…"
+            />
+            <SelectField
+              label="Trier par"
+              value={sort}
+              onChange={(e) => setSort(e.target.value as 'recent' | 'level')}
+            >
               <option value="recent">Plus récents</option>
               <option value="level">Niveau de l'auteur (élevé d'abord)</option>
             </SelectField>
@@ -68,7 +83,15 @@ export default function CommunauteValidationPage() {
           ) : (
             <div className="space-y-3">
               {subjects.map((s) =>
-                profileId ? <ReviewRow key={s.id} s={s} profileId={profileId} onReviewed={charger} showAuthor /> : null,
+                profileId ? (
+                  <ReviewRow
+                    key={s.id}
+                    s={s}
+                    profileId={profileId}
+                    onReviewed={charger}
+                    showAuthor
+                  />
+                ) : null,
               )}
             </div>
           )}

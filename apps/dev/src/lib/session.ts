@@ -8,7 +8,9 @@ function secret(): string {
   const s = process.env.DEV_AUTH_SECRET;
   // En PRODUCTION, on refuse le secret par défaut (sinon sessions ET jetons de partage seraient forgeables).
   if (process.env.NODE_ENV === 'production' && (!s || s.length < 16)) {
-    throw new Error('DEV_AUTH_SECRET manquant ou trop court : refus de démarrer avec un secret par défaut.');
+    throw new Error(
+      'DEV_AUTH_SECRET manquant ou trop court : refus de démarrer avec un secret par défaut.',
+    );
   }
   return s || 'dev-insecure-secret-change-me';
 }
@@ -48,7 +50,13 @@ export function b64urlDecode(s: string): string {
 
 /** Signe une donnée en HMAC-SHA256 (base64url). Réutilisable (jetons de partage). */
 export async function hmac(data: string): Promise<string> {
-  const key = await crypto.subtle.importKey('raw', enc.encode(secret()), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const key = await crypto.subtle.importKey(
+    'raw',
+    enc.encode(secret()),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
   const sig = await crypto.subtle.sign('HMAC', key, enc.encode(data));
   return b64urlFromBytes(new Uint8Array(sig));
 }

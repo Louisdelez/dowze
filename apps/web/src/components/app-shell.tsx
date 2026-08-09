@@ -19,11 +19,22 @@ import { isDesktop } from '@/lib/desktop';
  *   chaque service (Académie…) s'ouvre à l'intérieur.
  * - Web : inchangé (pages publiques centrées, pages d'app avec barre latérale).
  */
-export function AppShell({ children, initialHost = '', forceHub = false }: { children: ReactNode; initialHost?: string; forceHub?: boolean }) {
+export function AppShell({
+  children,
+  initialHost = '',
+  forceHub = false,
+}: {
+  children: ReactNode;
+  initialHost?: string;
+  forceHub?: boolean;
+}) {
   const pathname = usePathname();
   const [desktop, setDesktop] = useState(false);
   const [host, setHost] = useState(initialHost);
-  useEffect(() => { setDesktop(isDesktop()); if (!host) setHost(window.location.host); }, [host]);
+  useEffect(() => {
+    setDesktop(isDesktop());
+    if (!host) setHost(window.location.host);
+  }, [host]);
 
   const p = pathname.replace(/\/+$/, '') || '/';
   // CHROME PAR DOMAINE = quel service t'affiche la page. Le compagnon est le MÊME partout mais s'intègre
@@ -53,14 +64,20 @@ export function AppShell({ children, initialHost = '', forceHub = false }: { chi
     if (p === '/compagnon') {
       inner = <div className="min-w-0 flex-1 overflow-hidden bg-surface">{children}</div>; // compagnon plein écran
     } else {
-      inner = <div className="min-w-0 flex-1 overflow-y-auto bg-surface"><main className="mx-auto w-full max-w-3xl px-6 py-10">{children}</main></div>;
+      inner = (
+        <div className="min-w-0 flex-1 overflow-y-auto bg-surface">
+          <main className="mx-auto w-full max-w-3xl px-6 py-10">{children}</main>
+        </div>
+      );
     }
   } else if (isPublic) {
     inner = (
       <div className="min-h-dvh w-full">
         <header className="sticky top-0 z-40 border-b border-border bg-surface/90 backdrop-blur">
           <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-3">
-            <Link href="/" className="text-lg font-bold tracking-tight">Dowze</Link>
+            <Link href="/" className="text-lg font-bold tracking-tight">
+              Dowze
+            </Link>
             <AuthStatus />
           </div>
         </header>
@@ -72,11 +89,15 @@ export function AppShell({ children, initialHost = '', forceHub = false }: { chi
     // En desktop, le service scrolle À L'INTÉRIEUR (la fenêtre a déjà la barre de titre) ; sur web, scroll de la fenêtre.
     const svcHeight = isFull
       ? `${desktop ? 'h-full' : 'h-dvh'} overflow-hidden`
-      : desktop ? 'h-full min-h-0' : 'min-h-dvh';
+      : desktop
+        ? 'h-full min-h-0'
+        : 'min-h-dvh';
     inner = (
       <div className={`w-full md:grid md:grid-cols-[260px_1fr] ${svcHeight}`}>
         {/* Barre latérale du SERVICE (Académie) */}
-        <aside className={`sticky top-0 hidden ${desktop ? 'h-full' : 'h-dvh'} border-r border-border bg-surface md:block`}>
+        <aside
+          className={`sticky top-0 hidden ${desktop ? 'h-full' : 'h-dvh'} border-r border-border bg-surface md:block`}
+        >
           <SidebarNav />
         </aside>
 
@@ -90,20 +111,36 @@ export function AppShell({ children, initialHost = '', forceHub = false }: { chi
           </div>
         )}
 
-        <div className={`flex min-w-0 flex-col ${isFull ? `${desktop ? 'h-full' : 'h-dvh'} overflow-hidden` : desktop ? 'h-full min-h-0 overflow-y-auto' : ''}`}>
+        <div
+          className={`flex min-w-0 flex-col ${isFull ? `${desktop ? 'h-full' : 'h-dvh'} overflow-hidden` : desktop ? 'h-full min-h-0 overflow-y-auto' : ''}`}
+        >
           <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border bg-surface/90 px-4 py-3 backdrop-blur md:hidden">
-            <button onClick={() => setOpen(true)} aria-label="Ouvrir le menu" className="rounded-md p-1.5 hover:bg-muted"><IconMenu /></button>
+            <button
+              onClick={() => setOpen(true)}
+              aria-label="Ouvrir le menu"
+              className="rounded-md p-1.5 hover:bg-muted"
+            >
+              <IconMenu />
+            </button>
             <SessionTimer />
-            <div className="flex items-center gap-3"><XpBar /><AuthStatus /></div>
+            <div className="flex items-center gap-3">
+              <XpBar />
+              <AuthStatus />
+            </div>
           </header>
           <header className="sticky top-0 z-20 hidden h-14 items-center justify-between border-b border-border bg-surface/80 px-8 backdrop-blur md:flex">
             <SessionTimer />
-            <div className="flex items-center gap-4"><XpBar /><AuthStatus /></div>
+            <div className="flex items-center gap-4">
+              <XpBar />
+              <AuthStatus />
+            </div>
           </header>
           {isFull ? (
             <main className="min-h-0 flex-1 overflow-hidden">{children}</main>
           ) : (
-            <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-8 md:px-8 md:py-10">{children}</main>
+            <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-8 md:px-8 md:py-10">
+              {children}
+            </main>
           )}
         </div>
       </div>

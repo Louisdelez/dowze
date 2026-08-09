@@ -64,7 +64,11 @@ export default function TestsPage() {
       <EmptyState
         title="Connecte-toi"
         description="Les tests de révision sont personnels."
-        action={<Link href="/connexion" className="text-accent underline-offset-2 hover:underline">Se connecter</Link>}
+        action={
+          <Link href="/connexion" className="text-accent underline-offset-2 hover:underline">
+            Se connecter
+          </Link>
+        }
       />
     );
   }
@@ -82,8 +86,8 @@ export default function TestsPage() {
       {!test && (
         <Card className="space-y-4">
           <CardDescription>
-            Un test reprend ce que tu as vu et ce qui est dû à réviser, thèmes mélangés. Feedback immédiat,
-            sans stress, sans chrono.
+            Un test reprend ce que tu as vu et ce qui est dû à réviser, thèmes mélangés. Feedback
+            immédiat, sans stress, sans chrono.
           </CardDescription>
           {erreur && <Note tone="error">{erreur}</Note>}
           <div className="flex flex-wrap gap-3">
@@ -100,13 +104,22 @@ export default function TestsPage() {
       {test && score && (
         <Card className="space-y-3">
           <CardTitle>C'est fait — bravo d'avoir révisé !</CardTitle>
-          <Progress value={score.total > 0 ? Math.round((score.correct / score.total) * 100) : 0} label="Réussite" />
+          <Progress
+            value={score.total > 0 ? Math.round((score.correct / score.total) * 100) : 0}
+            label="Réussite"
+          />
           <p className="text-sm text-muted-foreground">
-            {score.correct}/{score.total} — l'important n'est pas le score, mais de t'être entraîné. Ta mémoire
-            en profite déjà, et Dowze sait mieux quoi te faire réviser.
+            {score.correct}/{score.total} — l'important n'est pas le score, mais de t'être entraîné.
+            Ta mémoire en profite déjà, et Dowze sait mieux quoi te faire réviser.
           </p>
           <div>
-            <Button variant="secondary" onClick={() => { setTest(null); setScore(null); }}>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setTest(null);
+                setScore(null);
+              }}
+            >
               Refaire un test
             </Button>
           </div>
@@ -123,7 +136,11 @@ export default function TestsPage() {
           ))}
           {erreur && <Note tone="error">{erreur}</Note>}
           <Button onClick={terminer} disabled={enCours || !allAnswered}>
-            {enCours ? 'Enregistrement…' : allAnswered ? 'Terminer le test' : 'Réponds à toutes les questions'}
+            {enCours
+              ? 'Enregistrement…'
+              : allAnswered
+                ? 'Terminer le test'
+                : 'Réponds à toutes les questions'}
           </Button>
         </div>
       )}
@@ -135,7 +152,9 @@ export default function TestsPage() {
 
 function lisible(e: unknown): string {
   const msg = String(e instanceof Error ? e.message : e);
-  if (msg.includes('402')) return 'Il faut des crédits (ou ta propre clé) pour générer un test. Va dans « Mon Copilote ».';
-  if (msg.includes('503')) return "Le modèle n'a pas répondu. Réessaie, ou choisis un autre modèle dans « Mon Copilote ».";
+  if (msg.includes('402'))
+    return 'Il faut des crédits (ou ta propre clé) pour générer un test. Va dans « Mon Copilote ».';
+  if (msg.includes('503'))
+    return "Le modèle n'a pas répondu. Réessaie, ou choisis un autre modèle dans « Mon Copilote ».";
   return msg;
 }

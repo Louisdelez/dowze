@@ -29,7 +29,9 @@ export class HiveScheduler implements OnModuleInit, OnModuleDestroy {
         QUEUE_HIVE_MAINTAIN,
         async () => {
           const r = await this.companion.nightlyMaintenanceAll();
-          logger.info(`Ruche — maintenance nocturne : ${r.profiles} profils, ${r.embedded} indexées, ${r.retired} retirées`);
+          logger.info(
+            `Ruche — maintenance nocturne : ${r.profiles} profils, ${r.embedded} indexées, ${r.retired} retirées`,
+          );
           return { ok: true };
         },
         { connection },

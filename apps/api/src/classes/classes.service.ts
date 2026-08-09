@@ -49,13 +49,16 @@ export class ClassesService {
   }
 
   private async rankOf(profileId: string): Promise<number> {
-    const r = (await this.db.select().from(learnerRank).where(eq(learnerRank.profileId, profileId)))[0];
+    const r = (
+      await this.db.select().from(learnerRank).where(eq(learnerRank.profileId, profileId))
+    )[0];
     return r?.rank ?? 1;
   }
 
   /** (Ré)assigne toutes les classes de l'année scolaire — réservé aux modérateurs. */
   async assignAll(actorProfileId: string, schoolYear: number): Promise<AssignResult> {
-    if (!(await this.isModerator(actorProfileId))) throw new ForbiddenException('réservé aux modérateurs');
+    if (!(await this.isModerator(actorProfileId)))
+      throw new ForbiddenException('réservé aux modérateurs');
 
     // Candidats : tous les profils + leur rang + langue + âge.
     const allProfiles = await this.db.select().from(profiles);
@@ -73,11 +76,16 @@ export class ClassesService {
     const old = await this.db.select().from(classes).where(eq(classes.schoolYear, schoolYear));
     if (old.length > 0) {
       const oldIds = old.map((c) => c.id);
-      const oldConvs = await this.db.select().from(conversations).where(inArray(conversations.classId, oldIds));
+      const oldConvs = await this.db
+        .select()
+        .from(conversations)
+        .where(inArray(conversations.classId, oldIds));
       const convIds = oldConvs.map((c) => c.id);
       if (convIds.length > 0) {
         await this.db.delete(chatMessages).where(inArray(chatMessages.conversationId, convIds));
-        await this.db.delete(conversationParticipants).where(inArray(conversationParticipants.conversationId, convIds));
+        await this.db
+          .delete(conversationParticipants)
+          .where(inArray(conversationParticipants.conversationId, convIds));
         await this.db.delete(conversations).where(inArray(conversations.id, convIds));
       }
       await this.db.delete(memberships).where(inArray(memberships.classeId, oldIds));
@@ -116,19 +124,37 @@ export class ClassesService {
           .returning()
       )[0];
       for (const pid of a.memberIds) {
-        await this.db.insert(memberships).values({
-          classeId: cls.id,
-          profileId: pid,
-          schoolYear,
-          assignmentReason: a.reason,
-        }).onConflictDoNothing();
-        if (chan) await this.db.insert(conversationParticipants).values({ conversationId: chan.id, profileId: pid }).onConflictDoNothing();
+        await this.db
+          .insert(memberships)
+          .values({
+            classeId: cls.id,
+            profileId: pid,
+            schoolYear,
+            assignmentReason: a.reason,
+          })
+          .onConflictDoNothing();
+        if (chan)
+          await this.db
+            .insert(conversationParticipants)
+            .values({ conversationId: chan.id, profileId: pid })
+            .onConflictDoNothing();
       }
-      resultClasses.push({ name, level: a.level, lang: a.lang, isMultilingual: a.isMultilingual, size: a.memberIds.length, reason: a.reason });
+      resultClasses.push({
+        name,
+        level: a.level,
+        lang: a.lang,
+        isMultilingual: a.isMultilingual,
+        size: a.memberIds.length,
+        reason: a.reason,
+      });
       i++;
     }
 
-    return { created: resultClasses.length, totalLearners: candidates.length, classes: resultClasses };
+    return {
+      created: resultClasses.length,
+      totalLearners: candidates.length,
+      classes: resultClasses,
+    };
   }
 
   /** Ajoute un apprenant à une classe (membre + participant au canal). */
@@ -164,9 +190,16 @@ export class ClassesService {
     const existing = await this.db
       .select()
       .from(classes)
-      .where(and(eq(classes.schoolYear, schoolYear), eq(classes.level, level), eq(classes.primaryLang, lang)));
+      .where(
+        and(
+          eq(classes.schoolYear, schoolYear),
+          eq(classes.level, level),
+          eq(classes.primaryLang, lang),
+        ),
+      );
     for (const c of existing) {
-      const count = (await this.db.select().from(memberships).where(eq(memberships.classeId, c.id))).length;
+      const count = (await this.db.select().from(memberships).where(eq(memberships.classeId, c.id)))
+        .length;
       if (count < MAX_SIZE) {
         await this.join(c.id, profileId, schoolYear);
         return c.id;
@@ -206,13 +239,20 @@ export class ClassesService {
     let mine = await this.db
       .select()
       .from(memberships)
-      .where(and(eq(memberships.profileId, profileId), eq(memberships.schoolYear, CURRENT_SCHOOL_YEAR)));
+      .where(
+        and(eq(memberships.profileId, profileId), eq(memberships.schoolYear, CURRENT_SCHOOL_YEAR)),
+      );
     if (mine.length === 0) {
       await this.assignOne(profileId, CURRENT_SCHOOL_YEAR);
       mine = await this.db
         .select()
         .from(memberships)
-        .where(and(eq(memberships.profileId, profileId), eq(memberships.schoolYear, CURRENT_SCHOOL_YEAR)));
+        .where(
+          and(
+            eq(memberships.profileId, profileId),
+            eq(memberships.schoolYear, CURRENT_SCHOOL_YEAR),
+          ),
+        );
     }
     const m = mine[0];
     const empty: MyClassView = {
@@ -237,9 +277,16 @@ export class ClassesService {
         .where(and(eq(conversations.classId, cls.id), eq(conversations.type, 'class_channel')))
     )[0];
 
-    const memberRows = await this.db.select().from(memberships).where(eq(memberships.classeId, cls.id));
+    const memberRows = await this.db
+      .select()
+      .from(memberships)
+      .where(eq(memberships.classeId, cls.id));
     const members = await Promise.all(
-      memberRows.map(async (mr) => ({ profileId: mr.profileId, name: await this.nameOf(mr.profileId), level: await this.rankOf(mr.profileId) })),
+      memberRows.map(async (mr) => ({
+        profileId: mr.profileId,
+        name: await this.nameOf(mr.profileId),
+        level: await this.rankOf(mr.profileId),
+      })),
     );
 
     return {

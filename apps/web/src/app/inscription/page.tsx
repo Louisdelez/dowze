@@ -43,7 +43,10 @@ export default function InscriptionPage() {
   const showGuardian = age !== null; // champ affiché pour tout le monde (optionnel pour les majeurs)
 
   // Libellé + aide selon le palier (wording issu de la recherche : « contact de confiance » pour les majeurs).
-  const guardianLabel = tier === 'majeur' ? 'E-mail d’un contact de confiance (facultatif)' : 'E-mail d’un parent / responsable';
+  const guardianLabel =
+    tier === 'majeur'
+      ? 'E-mail d’un contact de confiance (facultatif)'
+      : 'E-mail d’un parent / responsable';
   const guardianHint =
     tier === 'enfant'
       ? 'Obligatoire en dessous de 13 ans. Ton parent recevra un e-mail et devra valider ton compte avant que tu puisses tout utiliser.'
@@ -126,7 +129,11 @@ export default function InscriptionPage() {
         <Button
           onClick={inscrire}
           disabled={
-            enCours || !email || !password || !displayName || (guardianRequired && !guardianEmail.trim())
+            enCours ||
+            !email ||
+            !password ||
+            !displayName ||
+            (guardianRequired && !guardianEmail.trim())
           }
           className="w-full"
         >

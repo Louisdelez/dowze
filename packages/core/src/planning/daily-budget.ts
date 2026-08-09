@@ -30,10 +30,19 @@ export interface DailyBudget {
 function rawMinutes(age: number | null): { band: string; m: Record<BudgetBlockKey, number> } {
   const a = age ?? 13;
   if (a <= 11)
-    return { band: 'enfant', m: { language: 15, review: 10, courses: 60, expeditions: 40, secondary: 30 } };
+    return {
+      band: 'enfant',
+      m: { language: 15, review: 10, courses: 60, expeditions: 40, secondary: 30 },
+    };
   if (a <= 15)
-    return { band: 'ado', m: { language: 20, review: 15, courses: 105, expeditions: 60, secondary: 40 } };
-  return { band: 'ado+/adulte', m: { language: 28, review: 20, courses: 135, expeditions: 75, secondary: 50 } };
+    return {
+      band: 'ado',
+      m: { language: 20, review: 15, courses: 105, expeditions: 60, secondary: 40 },
+    };
+  return {
+    band: 'ado+/adulte',
+    m: { language: 28, review: 20, courses: 135, expeditions: 75, secondary: 50 },
+  };
 }
 
 const LABELS: Record<BudgetBlockKey, string> = {

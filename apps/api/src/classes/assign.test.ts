@@ -2,7 +2,12 @@ import { describe, it, expect } from 'vitest';
 import { assignClasses, balancedSizes, MIN_SIZE, MAX_SIZE, type Candidate } from './assign';
 
 function make(n: number, level: number, lang: string, age: number | null): Candidate[] {
-  return Array.from({ length: n }, (_, i) => ({ profileId: `${lang}-${level}-${age}-${i}`, level, lang, age }));
+  return Array.from({ length: n }, (_, i) => ({
+    profileId: `${lang}-${level}-${age}-${i}`,
+    level,
+    lang,
+    age,
+  }));
 }
 
 describe('balancedSizes', () => {
@@ -17,7 +22,9 @@ describe('assignClasses', () => {
     const cands = [...make(20, 1, 'fr', 14), ...make(20, 2, 'fr', 14)];
     const classes = assignClasses(cands);
     for (const c of classes) {
-      const levels = new Set(cands.filter((x) => c.memberIds.includes(x.profileId)).map((x) => x.level));
+      const levels = new Set(
+        cands.filter((x) => c.memberIds.includes(x.profileId)).map((x) => x.level),
+      );
       expect(levels.size).toBe(1);
     }
   });
@@ -26,7 +33,9 @@ describe('assignClasses', () => {
     const cands = make(20, 1, 'fr', 14);
     const classes = assignClasses(cands);
     expect(classes.every((c) => c.reason === 'mono-age')).toBe(true);
-    expect(classes.every((c) => c.memberIds.length >= MIN_SIZE && c.memberIds.length <= MAX_SIZE)).toBe(true);
+    expect(
+      classes.every((c) => c.memberIds.length >= MIN_SIZE && c.memberIds.length <= MAX_SIZE),
+    ).toBe(true);
   });
 
   it("l'âge n'exclut jamais : peu de monde d'âges variés reste ensemble (même langue)", () => {

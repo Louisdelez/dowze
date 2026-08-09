@@ -76,7 +76,10 @@ export function rankOfSkill(s: Skill): number {
   if (typeof s.rank === 'number' && s.rank >= 1 && s.rank <= TOP_RANK) return s.rank;
   const x = `${s.description ?? ''} ${s.title ?? ''}`.toLowerCase();
   if (/frontières|direction de recherche|post-doctorat|redéfin|repouss/.test(x)) return 9;
-  if (/état de l'art|doctorat et au-delà|recherche.{0,15}pointe|contribution.{0,25}recherche/.test(x)) return 8;
+  if (
+    /état de l'art|doctorat et au-delà|recherche.{0,15}pointe|contribution.{0,25}recherche/.test(x)
+  )
+    return 8;
   if (/doctorat/.test(x)) return 7;
   if (/master|\bm1\b|\bm2\b/.test(x)) return 6;
   if (/licence|\bl1\b|\bl2\b|\bl3\b/.test(x)) return 5;

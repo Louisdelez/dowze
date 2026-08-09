@@ -3,7 +3,8 @@ import path from 'node:path';
 import os from 'node:os';
 
 // Dessins (Paint) par utilisateur, stockés en PNG dans le volume, séparés de l'explorateur de fichiers.
-const DATA_DIR = process.env.DEV_DATA_DIR || (process.env.NODE_ENV === 'production' ? '/data' : os.tmpdir());
+const DATA_DIR =
+  process.env.DEV_DATA_DIR || (process.env.NODE_ENV === 'production' ? '/data' : os.tmpdir());
 export const DRAW_ROOT = path.join(DATA_DIR, 'draw');
 export const MAX_DRAW_BYTES = 20 * 1024 * 1024; // 20 Mo / dessin
 

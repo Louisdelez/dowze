@@ -30,7 +30,9 @@ function detectOS(): OS {
 
 export default function Home() {
   const [os, setOs] = useState<OS>('other');
-  useEffect(() => { setOs(detectOS()); }, []);
+  useEffect(() => {
+    setOs(detectOS());
+  }, []);
 
   const dl = DOWNLOADS[os];
   const available = (id: OS) => DOWNLOADS[id].href != null;
@@ -52,14 +54,31 @@ export default function Home() {
           <span className="text-dowze-red">aucun plafond.</span>
         </h1>
         <p className="mt-6 max-w-xl text-base font-medium text-black/70 sm:text-lg">
-          Apprendre, bouger, se nourrir, progresser. Dowze réunit tes services de vie autour d’un seul compagnon qui grandit avec toi.
+          Apprendre, bouger, se nourrir, progresser. Dowze réunit tes services de vie autour d’un
+          seul compagnon qui grandit avec toi.
         </p>
 
         {/* Bouton télécharger (OS auto-détecté) */}
         <div className="mt-9 flex flex-col items-center gap-4">
           {dl.href ? (
-            <a href={dl.href} className="inline-flex items-center gap-2.5 bg-dowze-red px-8 py-4 text-base font-extrabold uppercase italic tracking-tight text-white transition hover:bg-black">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v12" /><path d="M7 10l5 5 5-5" /><path d="M5 21h14" /></svg>
+            <a
+              href={dl.href}
+              className="inline-flex items-center gap-2.5 bg-dowze-red px-8 py-4 text-base font-extrabold uppercase italic tracking-tight text-white transition hover:bg-black"
+            >
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M12 3v12" />
+                <path d="M7 10l5 5 5-5" />
+                <path d="M5 21h14" />
+              </svg>
               {dl.label}
             </a>
           ) : (
@@ -73,9 +92,15 @@ export default function Home() {
             {OS_LIST.map((o) => {
               const ok = available(o.id);
               return (
-                <span key={o.id} className={`inline-flex items-center gap-1.5 border-2 px-3 py-1.5 tracking-tight ${os === o.id ? 'border-dowze-red bg-dowze-red text-white' : 'border-black/15 bg-white text-black/55'}`}>
-                  <span className={`inline-block h-1.5 w-1.5 rounded-full ${ok ? (os === o.id ? 'bg-white' : 'bg-dowze-red') : 'bg-black/25'}`} />
-                  {o.label}{!ok && ' · bientôt'}
+                <span
+                  key={o.id}
+                  className={`inline-flex items-center gap-1.5 border-2 px-3 py-1.5 tracking-tight ${os === o.id ? 'border-dowze-red bg-dowze-red text-white' : 'border-black/15 bg-white text-black/55'}`}
+                >
+                  <span
+                    className={`inline-block h-1.5 w-1.5 rounded-full ${ok ? (os === o.id ? 'bg-white' : 'bg-dowze-red') : 'bg-black/25'}`}
+                  />
+                  {o.label}
+                  {!ok && ' · bientôt'}
                 </span>
               );
             })}
@@ -87,8 +112,12 @@ export default function Home() {
       <footer className="flex items-center justify-between border-t-2 border-black px-6 py-4 text-xs font-bold uppercase italic tracking-tight text-black/60 sm:px-8">
         <span>© {2026} Dowze</span>
         <div className="flex items-center gap-4">
-          <a href="/a-propos" className="transition hover:text-dowze-red">À propos</a>
-          <a href="https://academie.dowze.ch" className="transition hover:text-dowze-red">Académie</a>
+          <a href="/a-propos" className="transition hover:text-dowze-red">
+            À propos
+          </a>
+          <a href="https://academie.dowze.ch" className="transition hover:text-dowze-red">
+            Académie
+          </a>
         </div>
       </footer>
     </div>

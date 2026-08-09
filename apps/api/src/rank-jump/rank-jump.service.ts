@@ -24,13 +24,26 @@ const EXAMS_REQUIRED = 4; // réussir ≥ 4 des 5 examens finaux (pas de compens
 const EXAM_PASS = 0.6; // un examen final est « réussi » à ≥ 60 %.
 
 /** Poids par type de jour (l'examen final pèse le plus ; le repos ne compte pas). */
-const WEIGHT: Record<RankJumpDay['type'], number> = { learn: 1, weekly: 3, expedition: 3, exam: 10, rest: 0 };
+const WEIGHT: Record<RankJumpDay['type'], number> = {
+  learn: 1,
+  weekly: 3,
+  expedition: 3,
+  exam: 10,
+  rest: 0,
+};
 
 /** Programme des 28 jours (4 semaines) — avec un jour de repos/semaine (garde-fou anti-burnout). */
 function buildPlan(): RankJumpDay[] {
   const days: RankJumpDay[] = [];
   const push = (type: RankJumpDay['type'], label: string) =>
-    days.push({ day: days.length + 1, type, label, weight: WEIGHT[type], done: false, score: null });
+    days.push({
+      day: days.length + 1,
+      type,
+      label,
+      weight: WEIGHT[type],
+      done: false,
+      score: null,
+    });
   // Semaines 1 à 3 : cours + test quotidien, repos le mercredi, gros test le samedi, expédition-éclair le dimanche.
   for (let w = 1; w <= 3; w++) {
     push('learn', 'Cours accéléré + test du jour (lundi)');
@@ -59,7 +72,9 @@ export class RankJumpService {
 
   /** Rang courant (état stocké) de l'élève ; 1 par défaut. */
   private async currentRank(profileId: string): Promise<number> {
-    const row = (await this.db.select().from(learnerRank).where(eq(learnerRank.profileId, profileId)))[0];
+    const row = (
+      await this.db.select().from(learnerRank).where(eq(learnerRank.profileId, profileId))
+    )[0];
     return row?.rank ?? 1;
   }
 
@@ -92,7 +107,10 @@ export class RankJumpService {
   private async hasGuardian(profileId: string): Promise<boolean> {
     const prof = (await this.db.select().from(profiles).where(eq(profiles.id, profileId)))[0];
     if (!prof) return false;
-    const g = await this.db.select().from(guardians).where(eq(guardians.minorAccountId, prof.accountId));
+    const g = await this.db
+      .select()
+      .from(guardians)
+      .where(eq(guardians.minorAccountId, prof.accountId));
     return g.length > 0;
   }
 
@@ -108,7 +126,9 @@ export class RankJumpService {
       await this.db
         .select()
         .from(rankJumpPretests)
-        .where(and(eq(rankJumpPretests.profileId, profileId), eq(rankJumpPretests.targetRank, target)))
+        .where(
+          and(eq(rankJumpPretests.profileId, profileId), eq(rankJumpPretests.targetRank, target)),
+        )
     )[0];
     const pretestScore = pretestRow ? pretestRow.score : null;
     const pretestNeeded = !atTop && pretestScore === null;
@@ -124,9 +144,13 @@ export class RankJumpService {
     const blockers: string[] = [];
     if (atTop) blockers.push('Tu es déjà au rang le plus haut — il n’y a rien au-dessus à sauter.');
     if (mastery < 0.7)
-      blockers.push('Il faut d’abord presque boucler ton rang actuel : sauter avec des lacunes serait risqué.');
+      blockers.push(
+        'Il faut d’abord presque boucler ton rang actuel : sauter avec des lacunes serait risqué.',
+      );
     if (pretestScore !== null && pretestScore < 0.4)
-      blockers.push('Le pré-test montre un écart trop grand avec le rang visé — un mois ne suffirait pas. Continue ton rang, puis retente.');
+      blockers.push(
+        'Le pré-test montre un écart trop grand avec le rang visé — un mois ne suffirait pas. Continue ton rang, puis retente.',
+      );
 
     const canStart =
       !atTop && mastery >= 0.7 && pretestScore !== null && pretestScore >= 0.4 && score >= 60;
@@ -153,7 +177,10 @@ export class RankJumpService {
   }
 
   /** A3 — bien-être : note de soutien (jamais un diagnostic) + WHO-5 dû pendant le mois intensif. */
-  private async wellbeing(profileId: string, jumpActive: boolean): Promise<{ note: string | null; who5Due: boolean }> {
+  private async wellbeing(
+    profileId: string,
+    jumpActive: boolean,
+  ): Promise<{ note: string | null; who5Due: boolean }> {
     if (!jumpActive) return { note: null, who5Due: false };
     const recent = await this.db
       .select()
@@ -161,11 +188,14 @@ export class RankJumpService {
       .where(eq(wellbeingCheckins.profileId, profileId))
       .orderBy(desc(wellbeingCheckins.createdAt));
     const day = 24 * 60 * 60 * 1000;
-    const moods = recent.filter((r) => r.kind === 'mood' && Date.now() - r.createdAt.getTime() < 2 * day);
+    const moods = recent.filter(
+      (r) => r.kind === 'mood' && Date.now() - r.createdAt.getTime() < 2 * day,
+    );
     const lastWho5 = recent.find((r) => r.kind === 'who5');
     const who5Due = !lastWho5 || Date.now() - lastWho5.createdAt.getTime() > 7 * day;
     const avgMood = moods.length ? moods.reduce((a, r) => a + r.score, 0) / moods.length : null;
-    const lowWho5 = lastWho5 && Date.now() - lastWho5.createdAt.getTime() < 7 * day && lastWho5.score <= 50;
+    const lowWho5 =
+      lastWho5 && Date.now() - lastWho5.createdAt.getTime() < 7 * day && lastWho5.score <= 50;
     let note: string | null = null;
     if ((avgMood !== null && avgMood <= 2) || lowWho5) {
       note =
@@ -187,7 +217,12 @@ export class RankJumpService {
     const items: ExerciseItem[] = [];
     for (const s of targetSkills) {
       try {
-        const res = await this.exercises.generate({ profileId, skillId: s.id, type: 'qcm', count: 2 });
+        const res = await this.exercises.generate({
+          profileId,
+          skillId: s.id,
+          type: 'qcm',
+          count: 2,
+        });
         items.push(...res.items);
       } catch {
         // on ignore une compétence dont la génération échoue
@@ -213,13 +248,17 @@ export class RankJumpService {
 
   /** A3 — check-in humeur quotidien (1-5). */
   async checkinMood(profileId: string, mood: number): Promise<RankJumpView> {
-    await this.db.insert(wellbeingCheckins).values({ profileId, kind: 'mood', score: Math.max(1, Math.min(5, mood)) });
+    await this.db
+      .insert(wellbeingCheckins)
+      .values({ profileId, kind: 'mood', score: Math.max(1, Math.min(5, mood)) });
     return this.view(profileId);
   }
 
   /** A3 — WHO-5 hebdo (score 0-100). */
   async submitWho5(profileId: string, score: number): Promise<RankJumpView> {
-    await this.db.insert(wellbeingCheckins).values({ profileId, kind: 'who5', score: Math.max(0, Math.min(100, score)) });
+    await this.db
+      .insert(wellbeingCheckins)
+      .values({ profileId, kind: 'who5', score: Math.max(0, Math.min(100, score)) });
     return this.view(profileId);
   }
 
@@ -238,10 +277,15 @@ export class RankJumpService {
   private toState(row: typeof rankJumps.$inferSelect, hasParent: boolean): RankJumpState {
     const plan = row.plan as RankJumpDay[];
     const totalWeight = plan.reduce((a, d) => a + d.weight, 0) || 1;
-    const earned = plan.reduce((a, d) => a + (d.done && d.score != null ? d.score * d.weight : 0), 0);
+    const earned = plan.reduce(
+      (a, d) => a + (d.done && d.score != null ? d.score * d.weight : 0),
+      0,
+    );
     const provisionalScore = earned / totalWeight;
     const finalScore = provisionalScore; // même formule : les jours non faits comptent 0.
-    const examsPassed = plan.filter((d) => d.type === 'exam' && d.done && (d.score ?? 0) >= EXAM_PASS).length;
+    const examsPassed = plan.filter(
+      (d) => d.type === 'exam' && d.done && (d.score ?? 0) >= EXAM_PASS,
+    ).length;
     const today = plan.find((d) => d.day === row.currentDay) ?? null;
     // Cadence : une tâche par jour réel (≥ 20 h entre deux tâches).
     const sinceLast = row.lastDayAt ? Date.now() - row.lastDayAt.getTime() : Infinity;
@@ -277,13 +321,18 @@ export class RankJumpService {
   /** Démarre un saut (si éligible). Si compte mineur : en attente de la confirmation du responsable. */
   async start(profileId: string): Promise<RankJumpView> {
     const existing = (
-      await this.db.select().from(rankJumps).where(eq(rankJumps.profileId, profileId)).orderBy(desc(rankJumps.startedAt))
+      await this.db
+        .select()
+        .from(rankJumps)
+        .where(eq(rankJumps.profileId, profileId))
+        .orderBy(desc(rankJumps.startedAt))
     )[0];
     if (existing && (existing.status === 'in-progress' || existing.status === 'pending-consent'))
       return this.view(profileId); // déjà un saut actif / en attente
 
     const v = await this.view(profileId);
-    if (!v.eligibility.canStart) throw new BadRequestException('non éligible au saut de rang pour l’instant');
+    if (!v.eligibility.canStart)
+      throw new BadRequestException('non éligible au saut de rang pour l’instant');
 
     const from = await this.currentRank(profileId);
     const target = Math.min(from + 1, TOP_RANK);
@@ -302,14 +351,18 @@ export class RankJumpService {
 
   /** Vue du saut d'un enfant (pour le responsable), par le code = accountId. */
   async viewForAccount(accountId: string): Promise<RankJumpView> {
-    const prof = (await this.db.select().from(profiles).where(eq(profiles.accountId, accountId)))[0];
+    const prof = (
+      await this.db.select().from(profiles).where(eq(profiles.accountId, accountId))
+    )[0];
     if (!prof) throw new NotFoundException('aucun élève pour ce code');
     return this.view(prof.id);
   }
 
   /** Confirmation du responsable : lance réellement le mois intensif (départ du compte à rebours). */
   async parentConsent(accountId: string): Promise<RankJumpView> {
-    const prof = (await this.db.select().from(profiles).where(eq(profiles.accountId, accountId)))[0];
+    const prof = (
+      await this.db.select().from(profiles).where(eq(profiles.accountId, accountId))
+    )[0];
     if (!prof) throw new NotFoundException('aucun élève pour ce code');
     await this.db
       .update(rankJumps)
@@ -384,11 +437,19 @@ export class RankJumpService {
 
   /** Montée de rang accélérée réussie : applique le nouveau rang, cycle remis à zéro. */
   private async promote(profileId: string, target: number): Promise<void> {
-    const existing = (await this.db.select().from(learnerRank).where(eq(learnerRank.profileId, profileId)))[0];
+    const existing = (
+      await this.db.select().from(learnerRank).where(eq(learnerRank.profileId, profileId))
+    )[0];
     if (existing) {
       await this.db
         .update(learnerRank)
-        .set({ rank: target, rankStartedAt: new Date(), studentChoice: null, parentChoice: null, updatedAt: new Date() })
+        .set({
+          rank: target,
+          rankStartedAt: new Date(),
+          studentChoice: null,
+          parentChoice: null,
+          updatedAt: new Date(),
+        })
         .where(eq(learnerRank.profileId, profileId));
     } else {
       await this.db.insert(learnerRank).values({ profileId, rank: target }).onConflictDoNothing();
@@ -396,35 +457,57 @@ export class RankJumpService {
     // A4 : re-tests espacés (J+7 / J+30 / J+90) pour ancrer durablement (anti-bachotage, Cepeda).
     const day = 24 * 60 * 60 * 1000;
     await this.db.insert(retentionCheckpoints).values(
-      [7, 30, 90].map((d) => ({ profileId, rank: target, scheduledAt: new Date(Date.now() + d * day) })),
+      [7, 30, 90].map((d) => ({
+        profileId,
+        rank: target,
+        scheduledAt: new Date(Date.now() + d * day),
+      })),
     );
   }
 
   /** Checkpoints de rétention dus (à réviser maintenant). */
-  async dueRetention(profileId: string): Promise<{ id: string; rankName: string; scheduledAt: string }[]> {
+  async dueRetention(
+    profileId: string,
+  ): Promise<{ id: string; rankName: string; scheduledAt: string }[]> {
     const rows = await this.db
       .select()
       .from(retentionCheckpoints)
-      .where(and(eq(retentionCheckpoints.profileId, profileId), eq(retentionCheckpoints.status, 'due')))
+      .where(
+        and(eq(retentionCheckpoints.profileId, profileId), eq(retentionCheckpoints.status, 'due')),
+      )
       .orderBy(retentionCheckpoints.scheduledAt);
     return rows
       .filter((r) => r.scheduledAt.getTime() <= Date.now())
-      .map((r) => ({ id: r.id, rankName: meta(r.rank).name, scheduledAt: r.scheduledAt.toISOString() }));
+      .map((r) => ({
+        id: r.id,
+        rankName: meta(r.rank).name,
+        scheduledAt: r.scheduledAt.toISOString(),
+      }));
   }
 
   /** Valide un re-test de rétention (réussi → espacer ; échoué → remédiation ciblée à J+3). */
   async doRetention(profileId: string, id: string, score: number): Promise<void> {
     const passed = score >= 0.85;
     if (passed) {
-      await this.db.update(retentionCheckpoints).set({ status: 'passed' }).where(eq(retentionCheckpoints.id, id));
+      await this.db
+        .update(retentionCheckpoints)
+        .set({ status: 'passed' })
+        .where(eq(retentionCheckpoints.id, id));
     } else {
       // Oubli : on marque à remédier et on replanifie un mini-checkpoint à J+3 (raccourcir l'intervalle).
-      const row = (await this.db.select().from(retentionCheckpoints).where(eq(retentionCheckpoints.id, id)))[0];
-      await this.db.update(retentionCheckpoints).set({ status: 'remediate' }).where(eq(retentionCheckpoints.id, id));
+      const row = (
+        await this.db.select().from(retentionCheckpoints).where(eq(retentionCheckpoints.id, id))
+      )[0];
+      await this.db
+        .update(retentionCheckpoints)
+        .set({ status: 'remediate' })
+        .where(eq(retentionCheckpoints.id, id));
       if (row)
-        await this.db
-          .insert(retentionCheckpoints)
-          .values({ profileId, rank: row.rank, scheduledAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000) });
+        await this.db.insert(retentionCheckpoints).values({
+          profileId,
+          rank: row.rank,
+          scheduledAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+        });
     }
   }
 }

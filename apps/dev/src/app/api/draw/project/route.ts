@@ -17,9 +17,11 @@ export async function POST(req: Request) {
   const u = await user();
   if (!u) return NextResponse.json({ error: 'non authentifié' }, { status: 401 });
   const body = await req.json().catch(() => null);
-  if (!body || !body.name || !Array.isArray(body.layers)) return NextResponse.json({ error: 'paramètres' }, { status: 400 });
+  if (!body || !body.name || !Array.isArray(body.layers))
+    return NextResponse.json({ error: 'paramètres' }, { status: 400 });
   const json = JSON.stringify({ layers: body.layers });
-  if (Buffer.byteLength(json, 'utf8') > MAX) return NextResponse.json({ error: 'Projet trop lourd.' }, { status: 413 });
+  if (Buffer.byteLength(json, 'utf8') > MAX)
+    return NextResponse.json({ error: 'Projet trop lourd.' }, { status: 413 });
   try {
     await ensureDir(u);
     await fs.writeFile(projectPath(u, body.name), json, 'utf8');

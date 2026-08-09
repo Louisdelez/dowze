@@ -6,7 +6,13 @@ import { ACADEMIE_URL, useFitnessSession } from '@/lib/session';
 
 const APPS: LauncherApp[] = [
   { slug: 'academie', name: 'Académie', url: ACADEMIE_URL, color: 'blue' },
-  { slug: 'fitness', name: 'Fitness', url: 'https://fitness.dowze.ch', color: 'emerald', current: true },
+  {
+    slug: 'fitness',
+    name: 'Fitness',
+    url: 'https://fitness.dowze.ch',
+    color: 'emerald',
+    current: true,
+  },
 ];
 
 export function Shell({ children }: { children: ReactNode }) {
@@ -19,7 +25,16 @@ export function Shell({ children }: { children: ReactNode }) {
           <a href="/" className="flex items-center gap-2 font-semibold text-foreground">
             <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent text-accent-foreground">
               {/* Lucide « dumbbell » */}
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <path d="m6.5 6.5 11 11" />
                 <path d="m21 21-1-1" />
                 <path d="m3 3 1 1" />
@@ -31,7 +46,9 @@ export function Shell({ children }: { children: ReactNode }) {
             </span>
             Dowze Fitness
           </a>
-          {displayName && <div className="ml-auto text-sm text-muted-foreground">{displayName}</div>}
+          {displayName && (
+            <div className="ml-auto text-sm text-muted-foreground">{displayName}</div>
+          )}
         </div>
       </header>
       <main className="mx-auto max-w-3xl px-4 py-6">{children}</main>

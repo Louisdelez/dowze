@@ -31,7 +31,11 @@ async function listFilesRel(absDir: string): Promise<string[]> {
   const out: string[] = [];
   async function walk(dir: string, prefix: string): Promise<void> {
     let ents: import('node:fs').Dirent[];
-    try { ents = await fs.readdir(dir, { withFileTypes: true }); } catch { return; }
+    try {
+      ents = await fs.readdir(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
     for (const e of ents) {
       const rel = prefix ? `${prefix}/${e.name}` : e.name;
       if (e.isDirectory()) await walk(path.join(dir, e.name), rel);
@@ -45,7 +49,12 @@ async function listFilesRel(absDir: string): Promise<string[]> {
 const DOS_TIME = 0;
 const DOS_DATE = 0x21; // 1980-01-01
 
-interface CentralEntry { nameBytes: Buffer; crc: number; size: number; offset: number; }
+interface CentralEntry {
+  nameBytes: Buffer;
+  crc: number;
+  size: number;
+  offset: number;
+}
 
 /** Renvoie un flux Web (ReadableStream) de l'archive ZIP du dossier `absDir`. */
 export function zipDirectoryStream(absDir: string): ReadableStream<Uint8Array> {

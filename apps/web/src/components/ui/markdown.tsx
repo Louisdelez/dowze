@@ -26,7 +26,9 @@ function DisplayMath({ latex }: { latex: string }) {
   } catch {
     return <pre className="overflow-x-auto text-sm">{latex}</pre>;
   }
-  return <div className="my-2 overflow-x-auto text-center" dangerouslySetInnerHTML={{ __html: html }} />;
+  return (
+    <div className="my-2 overflow-x-auto text-center" dangerouslySetInnerHTML={{ __html: html }} />
+  );
 }
 
 /** Inline Markdown SANS math : **gras**, *italique*, `code`. */
@@ -78,7 +80,13 @@ const isSpecial = (l: string) =>
   /^(#{1,4})\s|^\s*[-*]\s|^\s*\d+\.\s|^\s*\$\$.+\$\$\s*$|^\s*\$\$\s*$/.test(l);
 
 /** `memo` : le parsing + KaTeX sont coûteux ; le texte d'une fiche ne change jamais après génération. */
-export const Markdown = memo(function Markdown({ text, className }: { text: string; className?: string }) {
+export const Markdown = memo(function Markdown({
+  text,
+  className,
+}: {
+  text: string;
+  className?: string;
+}) {
   const lines = (text || '').replace(/\r\n/g, '\n').split('\n');
   const at = (n: number): string => lines[n] ?? '';
   const blocks: ReactNode[] = [];
@@ -95,7 +103,12 @@ export const Markdown = memo(function Markdown({ text, className }: { text: stri
     const h = /^(#{1,4})\s+(.*)$/.exec(line);
     if (h) {
       const level = h[1]!.length;
-      const cls = level <= 1 ? 'text-lg font-bold' : level === 2 ? 'text-base font-bold' : 'text-sm font-semibold';
+      const cls =
+        level <= 1
+          ? 'text-lg font-bold'
+          : level === 2
+            ? 'text-base font-bold'
+            : 'text-sm font-semibold';
       blocks.push(
         <p key={k++} className={`${cls} mt-2`}>
           {inline(h[2] ?? '', `h${k}`)}
@@ -108,7 +121,11 @@ export const Markdown = memo(function Markdown({ text, className }: { text: stri
     if (/^\s*[-*]\s+/.test(line)) {
       const items: ReactNode[] = [];
       while (i < lines.length && /^\s*[-*]\s+/.test(at(i))) {
-        items.push(<li key={items.length}>{inline(at(i).replace(/^\s*[-*]\s+/, ''), `ul${k}-${items.length}`)}</li>);
+        items.push(
+          <li key={items.length}>
+            {inline(at(i).replace(/^\s*[-*]\s+/, ''), `ul${k}-${items.length}`)}
+          </li>,
+        );
         i++;
       }
       blocks.push(
@@ -122,7 +139,11 @@ export const Markdown = memo(function Markdown({ text, className }: { text: stri
     if (/^\s*\d+\.\s+/.test(line)) {
       const items: ReactNode[] = [];
       while (i < lines.length && /^\s*\d+\.\s+/.test(at(i))) {
-        items.push(<li key={items.length}>{inline(at(i).replace(/^\s*\d+\.\s+/, ''), `ol${k}-${items.length}`)}</li>);
+        items.push(
+          <li key={items.length}>
+            {inline(at(i).replace(/^\s*\d+\.\s+/, ''), `ol${k}-${items.length}`)}
+          </li>,
+        );
         i++;
       }
       blocks.push(

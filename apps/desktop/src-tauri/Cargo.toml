@@ -5,6 +5,7 @@ description = "Dowze Académie — application de bureau (Tauri) avec outils loc
 authors = ["Dowze"]
 edition = "2021"
 rust-version = "1.77"
+default-run = "dowze-desktop"
 
 # La lib porte toute la logique (commandes/outils) ; le binaire l'appelle.
 [lib]

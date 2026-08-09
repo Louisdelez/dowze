@@ -12,7 +12,8 @@ const jost = Jost({
 
 export const metadata: Metadata = {
   title: 'Dowze — apprendre, bouger, vivre',
-  description: "L'écosystème Dowze : un seul compagnon pour toute ta vie. Apprends sans plafond, avec l'IA.",
+  description:
+    "L'écosystème Dowze : un seul compagnon pour toute ta vie. Apprends sans plafond, avec l'IA.",
   metadataBase: new URL('https://dowze.ch'),
 };
 

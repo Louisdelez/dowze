@@ -1,9 +1,21 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { and, eq } from 'drizzle-orm';
 import { SCHEDULE_PRESETS, weeklySchedule } from '@dowze/core';
-import type { BlockType, ScheduleBlock, ScheduleConfig, ScheduleView, Vacation } from '@dowze/schemas';
+import type {
+  BlockType,
+  ScheduleBlock,
+  ScheduleConfig,
+  ScheduleView,
+  Vacation,
+} from '@dowze/schemas';
 import { DB, type Database } from '../db/drizzle.module';
-import { electives, learnerLanguages, learnerSchedule, profiles, scheduleVacations } from '../db/schema';
+import {
+  electives,
+  learnerLanguages,
+  learnerSchedule,
+  profiles,
+  scheduleVacations,
+} from '../db/schema';
 import { ProgressionService } from '../progression/progression.service';
 import { FsrsService } from '../fsrs/fsrs.service';
 import { LANG_NAMES } from '../languages/geo';
@@ -50,7 +62,9 @@ export class ScheduleService {
       this.db
         .select()
         .from(learnerLanguages)
-        .where(and(eq(learnerLanguages.profileId, profileId), eq(learnerLanguages.status, 'active'))),
+        .where(
+          and(eq(learnerLanguages.profileId, profileId), eq(learnerLanguages.status, 'active')),
+        ),
       this.db.select().from(electives).where(eq(electives.profileId, profileId)),
     ]);
     const langName = langRows[0] ? (LANG_NAMES[langRows[0].lang] ?? langRows[0].lang) : null;
@@ -62,7 +76,8 @@ export class ScheduleService {
       if (b.type === 'plugin') return b;
       let label = b.label;
       if (b.type === 'langue') label = langName ?? 'Langue';
-      else if (b.type === 'revision') label = dueCount > 0 ? `Révisions (${dueCount})` : 'Révisions';
+      else if (b.type === 'revision')
+        label = dueCount > 0 ? `Révisions (${dueCount})` : 'Révisions';
       else if (b.type === 'cours') label = nextSkill?.title ?? 'Cours principaux';
       else if (b.type === 'passion') label = electiveLabel ?? 'Ma passion';
       return { ...b, label, href: BLOCK_HREF[b.type] };
@@ -70,9 +85,17 @@ export class ScheduleService {
   }
 
   private async config(profileId: string): Promise<ScheduleConfig> {
-    const row = (await this.db.select().from(learnerSchedule).where(eq(learnerSchedule.profileId, profileId)))[0];
+    const row = (
+      await this.db.select().from(learnerSchedule).where(eq(learnerSchedule.profileId, profileId))
+    )[0];
     if (!row)
-      return { preset: 'leger', activeDays: [1, 2, 3, 4, 5, 6], dayStartMin: 540, dayEndMin: 720, intensity: 'leger' };
+      return {
+        preset: 'leger',
+        activeDays: [1, 2, 3, 4, 5, 6],
+        dayStartMin: 540,
+        dayEndMin: 720,
+        intensity: 'leger',
+      };
     return {
       preset: row.preset,
       activeDays: row.activeDays,
@@ -104,7 +127,10 @@ export class ScheduleService {
       }),
     );
 
-    const vacRows = await this.db.select().from(scheduleVacations).where(eq(scheduleVacations.profileId, profileId));
+    const vacRows = await this.db
+      .select()
+      .from(scheduleVacations)
+      .where(eq(scheduleVacations.profileId, profileId));
     const vacations: Vacation[] = vacRows
       .map((v) => ({ id: v.id, startDate: v.startDate, endDate: v.endDate, label: v.label }))
       .sort((a, b) => a.startDate.localeCompare(b.startDate));
@@ -130,8 +156,10 @@ export class ScheduleService {
 
   /** Réglage fin (sur-mesure). */
   async setConfig(profileId: string, cfg: Omit<ScheduleConfig, 'preset'>): Promise<ScheduleView> {
-    if (cfg.activeDays.length === 0) throw new BadRequestException('Choisis au moins un jour actif.');
-    if (cfg.dayEndMin - cfg.dayStartMin < 30) throw new BadRequestException('La plage horaire est trop courte.');
+    if (cfg.activeDays.length === 0)
+      throw new BadRequestException('Choisis au moins un jour actif.');
+    if (cfg.dayEndMin - cfg.dayStartMin < 30)
+      throw new BadRequestException('La plage horaire est trop courte.');
     await this.save(profileId, { preset: 'sur-mesure', ...cfg });
     return this.view(profileId);
   }
@@ -161,9 +189,16 @@ export class ScheduleService {
       });
   }
 
-  async addVacation(profileId: string, startDate: string, endDate: string, label: string): Promise<ScheduleView> {
+  async addVacation(
+    profileId: string,
+    startDate: string,
+    endDate: string,
+    label: string,
+  ): Promise<ScheduleView> {
     if (endDate < startDate) throw new BadRequestException('La fin doit être après le début.');
-    await this.db.insert(scheduleVacations).values({ profileId, startDate, endDate, label: label || 'Vacances' });
+    await this.db
+      .insert(scheduleVacations)
+      .values({ profileId, startDate, endDate, label: label || 'Vacances' });
     return this.view(profileId);
   }
 

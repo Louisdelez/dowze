@@ -10,9 +10,32 @@ const SCENES: Record<string, ReactNode> = {
       <rect width="100" height="75" fill="#eef2f7" />
       <rect x="0" y="53" width="100" height="22" fill="#c9a37a" />
       <rect x="0" y="52" width="100" height="1.5" fill="#a9855f" />
-      <rect x="7" y="8" width="50" height="30" rx="1.5" fill="#2f5d50" stroke="#20423a" strokeWidth="1" />
-      <path d="M13 16 h20 M13 22 h30 M13 28 h16" stroke="#dfe9e4" strokeWidth="0.8" strokeLinecap="round" />
-      <rect x="70" y="9" width="23" height="27" rx="1" fill="#bcd8f0" stroke="#8fb4d6" strokeWidth="1.2" />
+      <rect
+        x="7"
+        y="8"
+        width="50"
+        height="30"
+        rx="1.5"
+        fill="#2f5d50"
+        stroke="#20423a"
+        strokeWidth="1"
+      />
+      <path
+        d="M13 16 h20 M13 22 h30 M13 28 h16"
+        stroke="#dfe9e4"
+        strokeWidth="0.8"
+        strokeLinecap="round"
+      />
+      <rect
+        x="70"
+        y="9"
+        width="23"
+        height="27"
+        rx="1"
+        fill="#bcd8f0"
+        stroke="#8fb4d6"
+        strokeWidth="1.2"
+      />
       <path d="M81.5 9 v27 M70 22.5 h23" stroke="#8fb4d6" strokeWidth="0.9" />
     </>
   ),
@@ -27,9 +50,19 @@ const SCENES: Record<string, ReactNode> = {
       <rect width="100" height="75" fill="url(#w-beach-sky)" />
       <circle cx="80" cy="15" r="8" fill="#ffe08a" />
       <rect x="0" y="44" width="100" height="15" fill="#3fa9d6" />
-      <path d="M0 47 q8 -2 16 0 t16 0 t16 0 t16 0 t16 0 t16 0" fill="none" stroke="#bfe6f5" strokeWidth="0.7" />
+      <path
+        d="M0 47 q8 -2 16 0 t16 0 t16 0 t16 0 t16 0 t16 0"
+        fill="none"
+        stroke="#bfe6f5"
+        strokeWidth="0.7"
+      />
       <rect x="0" y="58" width="100" height="17" fill="#f2dca0" />
-      <path d="M0 60 q8 2 16 0 t16 0 t16 0 t16 0 t16 0 t16 0" fill="none" stroke="#e6c98a" strokeWidth="0.7" />
+      <path
+        d="M0 60 q8 2 16 0 t16 0 t16 0 t16 0 t16 0 t16 0"
+        fill="none"
+        stroke="#e6c98a"
+        strokeWidth="0.7"
+      />
     </>
   ),
   piscine: (
@@ -37,7 +70,11 @@ const SCENES: Record<string, ReactNode> = {
       <rect width="100" height="75" fill="#e2f2fa" />
       <rect x="0" y="33" width="100" height="7" fill="#eef3f6" />
       <rect x="0" y="40" width="100" height="35" fill="#4fc3e8" />
-      <path d="M0 47 h100 M0 55 h100 M0 63 h100 M25 40 v35 M50 40 v35 M75 40 v35" stroke="#79d4f0" strokeWidth="0.6" />
+      <path
+        d="M0 47 h100 M0 55 h100 M0 63 h100 M25 40 v35 M50 40 v35 M75 40 v35"
+        stroke="#79d4f0"
+        strokeWidth="0.6"
+      />
     </>
   ),
   espace: (
@@ -77,8 +114,14 @@ const SCENES: Record<string, ReactNode> = {
       {[12, 34, 66, 88].map((x, i) => (
         <g key={x}>
           <rect x={x - 1} y={i % 2 ? 40 : 44} width="2" height={i % 2 ? 16 : 12} fill="#8a5a3b" />
-          <path d={`M${x - 8} ${i % 2 ? 44 : 48} L${x} ${i % 2 ? 22 : 30} L${x + 8} ${i % 2 ? 44 : 48} Z`} fill="#3f9b5a" />
-          <path d={`M${x - 6} ${i % 2 ? 36 : 40} L${x} ${i % 2 ? 20 : 28} L${x + 6} ${i % 2 ? 36 : 40} Z`} fill="#4fae67" />
+          <path
+            d={`M${x - 8} ${i % 2 ? 44 : 48} L${x} ${i % 2 ? 22 : 30} L${x + 8} ${i % 2 ? 44 : 48} Z`}
+            fill="#3f9b5a"
+          />
+          <path
+            d={`M${x - 6} ${i % 2 ? 36 : 40} L${x} ${i % 2 ? 20 : 28} L${x + 6} ${i % 2 ? 36 : 40} Z`}
+            fill="#4fae67"
+          />
         </g>
       ))}
     </>
@@ -94,7 +137,16 @@ const SCENES: Record<string, ReactNode> = {
       <rect width="100" height="75" fill="#f1e2cd" />
       <rect x="0" y="50" width="100" height="25" fill="#7a5230" />
       <rect x="0" y="49" width="100" height="1.5" fill="#5f3f24" />
-      <rect x="9" y="9" width="34" height="28" rx="1" fill="url(#w-cafe-win)" stroke="#caa877" strokeWidth="1.4" />
+      <rect
+        x="9"
+        y="9"
+        width="34"
+        height="28"
+        rx="1"
+        fill="url(#w-cafe-win)"
+        stroke="#caa877"
+        strokeWidth="1.4"
+      />
       <circle cx="35" cy="17" r="3.2" fill="#f4ecc6" />
       <path d="M26 9 v28 M9 23 h34" stroke="#caa877" strokeWidth="1" />
       <rect x="66" y="6" width="10" height="7" rx="1.5" fill="#d9b98a" />

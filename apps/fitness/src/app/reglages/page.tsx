@@ -97,14 +97,18 @@ export default function Reglages() {
               disabled={busy}
               onClick={() => reactivate({ frequencyPerWeek: n })}
               className={`h-11 w-11 rounded-lg border text-sm font-medium transition ${
-                goal === n ? 'border-accent bg-accent text-accent-foreground' : 'border-border hover:bg-muted'
+                goal === n
+                  ? 'border-accent bg-accent text-accent-foreground'
+                  : 'border-border hover:bg-muted'
               }`}
             >
               {n}×
             </button>
           ))}
         </div>
-        <p className="mt-2 text-xs text-muted-foreground">Met à jour tes séances dans le planning.</p>
+        <p className="mt-2 text-xs text-muted-foreground">
+          Met à jour tes séances dans le planning.
+        </p>
       </div>
 
       <div className="rounded-xl border border-border bg-surface p-5">
@@ -118,8 +122,8 @@ export default function Reglages() {
             className="mt-0.5 h-4 w-4 accent-emerald-600"
           />
           <span className="text-muted-foreground">
-            Autoriser l’enregistrement de mes séances (consentement explicite, révocable). Décocher retire le
-            droit correspondant.
+            Autoriser l’enregistrement de mes séances (consentement explicite, révocable). Décocher
+            retire le droit correspondant.
           </span>
         </label>
       </div>

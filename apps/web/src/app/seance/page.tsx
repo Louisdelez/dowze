@@ -138,7 +138,9 @@ export default function SeancePage() {
         setGenErr('Rien à travailler pour le moment.');
       }
     } catch (e) {
-      setGenErr(messageErreurIA(e, 'Impossible de générer le cours. Réessaie, ou passe en mode manuel.'));
+      setGenErr(
+        messageErreurIA(e, 'Impossible de générer le cours. Réessaie, ou passe en mode manuel.'),
+      );
     } finally {
       setGenning(false);
     }
@@ -333,109 +335,114 @@ export default function SeancePage() {
                 </>
               )
             ) : (
-            <>
-              <Card className="space-y-3">
-                <CardTitle>1 · Copie ton prompt dans ton IA</CardTitle>
-                <CardDescription>
-                  Le Copilote prépare un prompt clair pour cette compétence. Copie-le et colle-le
-                  dans ton assistant (ChatGPT, Claude…), puis apprends normalement.
-                </CardDescription>
-                {!prompt ? (
-                  <Button onClick={composer} disabled={composing} className="gap-2">
-                    {composing ? 'Préparation…' : 'Composer ma séance'}
-                    <IconArrowRight />
-                  </Button>
-                ) : (
-                  <div className="space-y-2">
-                    <div className="flex justify-end">
-                      <Button variant="utility" onClick={copier}>
-                        {copie ? 'Copié !' : 'Copier'}
-                      </Button>
-                    </div>
-                    <pre className="max-h-72 overflow-auto whitespace-pre-wrap rounded-md bg-muted p-4 text-sm">
-                      {prompt}
-                    </pre>
-                  </div>
-                )}
-              </Card>
-
-              <Card className="space-y-3">
-                <CardTitle>2 · Recolle ton résumé de séance</CardTitle>
-                <CardDescription>
-                  Quand tu as fini d’apprendre, demande le bilan à ton IA avec le prompt ci-dessous,
-                  puis colle sa réponse ici. Le Copilote la comprend, met à jour ta maîtrise et
-                  l’ajoute à ton carnet. Aucun format à respecter.
-                </CardDescription>
-
-                <div className="space-y-2 rounded-md border border-border bg-muted/40 p-3">
-                  <p className="text-sm font-medium">
-                    a) Demande le bilan à ton IA — copie ceci et colle-le dans ta conversation :
-                  </p>
-                  {closing ? (
-                    <>
+              <>
+                <Card className="space-y-3">
+                  <CardTitle>1 · Copie ton prompt dans ton IA</CardTitle>
+                  <CardDescription>
+                    Le Copilote prépare un prompt clair pour cette compétence. Copie-le et colle-le
+                    dans ton assistant (ChatGPT, Claude…), puis apprends normalement.
+                  </CardDescription>
+                  {!prompt ? (
+                    <Button onClick={composer} disabled={composing} className="gap-2">
+                      {composing ? 'Préparation…' : 'Composer ma séance'}
+                      <IconArrowRight />
+                    </Button>
+                  ) : (
+                    <div className="space-y-2">
                       <div className="flex justify-end">
-                        <Button variant="utility" onClick={copierBilan}>
-                          {copieBilan ? 'Copié !' : 'Copier le prompt de bilan'}
+                        <Button variant="utility" onClick={copier}>
+                          {copie ? 'Copié !' : 'Copier'}
                         </Button>
                       </div>
-                      <pre className="max-h-56 overflow-auto whitespace-pre-wrap rounded-md bg-surface p-3 text-sm">
-                        {closing}
+                      <pre className="max-h-72 overflow-auto whitespace-pre-wrap rounded-md bg-muted p-4 text-sm">
+                        {prompt}
                       </pre>
-                    </>
-                  ) : (
-                    <Button variant="secondary" onClick={composer} disabled={composing}>
-                      {composing ? 'Préparation…' : 'Préparer le prompt de bilan'}
-                    </Button>
+                    </div>
                   )}
-                </div>
+                </Card>
 
-                <TextAreaField
-                  label="b) Colle ici le résumé que ton IA t’a écrit"
-                  value={resume}
-                  onChange={(e) => setResume(e.target.value)}
-                  placeholder="Colle ici le texte du résumé…"
-                  className="[&_textarea]:min-h-32"
-                />
-                <div className="flex flex-wrap items-center gap-3">
-                  <Button onClick={enregistrer} disabled={!resume.trim() || ingesting}>
-                    {ingesting ? 'Le Copilote lit ton résumé…' : 'Enregistrer ma séance'}
-                  </Button>
-                  <Link href="/copilote" className="text-xs text-muted-foreground underline">
-                    Choisir mon IA / mon solde
-                  </Link>
-                </div>
-                {bilan && (
-                  <Note>
-                    <span className="font-medium">
-                      {bilan.snapshot.outcome === 'maitrise'
-                        ? 'Bravo — compétence bien maîtrisée !'
-                        : bilan.snapshot.outcome === 'progres'
-                          ? 'Beau progrès, on continue.'
-                          : 'On y retravaillera, c’est noté.'}
-                    </span>{' '}
-                    {bilan.snapshot.carnetNote}
-                    {bilan.snapshot.nextStep ? ` — Prochaine étape : ${bilan.snapshot.nextStep}` : ''}
-                    {bilan.creditsSpent > 0 ? ` (${bilan.creditsSpent} crédit(s) utilisé(s))` : ''}
-                  </Note>
-                )}
-                {bilanErr && <Note tone="error">{bilanErr}</Note>}
-              </Card>
+                <Card className="space-y-3">
+                  <CardTitle>2 · Recolle ton résumé de séance</CardTitle>
+                  <CardDescription>
+                    Quand tu as fini d’apprendre, demande le bilan à ton IA avec le prompt
+                    ci-dessous, puis colle sa réponse ici. Le Copilote la comprend, met à jour ta
+                    maîtrise et l’ajoute à ton carnet. Aucun format à respecter.
+                  </CardDescription>
 
-              <Card className="space-y-3">
-                <CardTitle>Note rapide (sans IA)</CardTitle>
-                <CardDescription>
-                  Tu t’es entraîné à la main ? Note honnêtement le résultat : ta maîtrise s’ajuste.
-                </CardDescription>
-                <div className="flex flex-wrap gap-2">
-                  <Button variant="secondary" onClick={() => pratiquer(true)}>
-                    J’ai réussi
-                  </Button>
-                  <Button variant="secondary" onClick={() => pratiquer(false)}>
-                    À revoir
-                  </Button>
-                </div>
-              </Card>
-            </>
+                  <div className="space-y-2 rounded-md border border-border bg-muted/40 p-3">
+                    <p className="text-sm font-medium">
+                      a) Demande le bilan à ton IA — copie ceci et colle-le dans ta conversation :
+                    </p>
+                    {closing ? (
+                      <>
+                        <div className="flex justify-end">
+                          <Button variant="utility" onClick={copierBilan}>
+                            {copieBilan ? 'Copié !' : 'Copier le prompt de bilan'}
+                          </Button>
+                        </div>
+                        <pre className="max-h-56 overflow-auto whitespace-pre-wrap rounded-md bg-surface p-3 text-sm">
+                          {closing}
+                        </pre>
+                      </>
+                    ) : (
+                      <Button variant="secondary" onClick={composer} disabled={composing}>
+                        {composing ? 'Préparation…' : 'Préparer le prompt de bilan'}
+                      </Button>
+                    )}
+                  </div>
+
+                  <TextAreaField
+                    label="b) Colle ici le résumé que ton IA t’a écrit"
+                    value={resume}
+                    onChange={(e) => setResume(e.target.value)}
+                    placeholder="Colle ici le texte du résumé…"
+                    className="[&_textarea]:min-h-32"
+                  />
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Button onClick={enregistrer} disabled={!resume.trim() || ingesting}>
+                      {ingesting ? 'Le Copilote lit ton résumé…' : 'Enregistrer ma séance'}
+                    </Button>
+                    <Link href="/copilote" className="text-xs text-muted-foreground underline">
+                      Choisir mon IA / mon solde
+                    </Link>
+                  </div>
+                  {bilan && (
+                    <Note>
+                      <span className="font-medium">
+                        {bilan.snapshot.outcome === 'maitrise'
+                          ? 'Bravo — compétence bien maîtrisée !'
+                          : bilan.snapshot.outcome === 'progres'
+                            ? 'Beau progrès, on continue.'
+                            : 'On y retravaillera, c’est noté.'}
+                      </span>{' '}
+                      {bilan.snapshot.carnetNote}
+                      {bilan.snapshot.nextStep
+                        ? ` — Prochaine étape : ${bilan.snapshot.nextStep}`
+                        : ''}
+                      {bilan.creditsSpent > 0
+                        ? ` (${bilan.creditsSpent} crédit(s) utilisé(s))`
+                        : ''}
+                    </Note>
+                  )}
+                  {bilanErr && <Note tone="error">{bilanErr}</Note>}
+                </Card>
+
+                <Card className="space-y-3">
+                  <CardTitle>Note rapide (sans IA)</CardTitle>
+                  <CardDescription>
+                    Tu t’es entraîné à la main ? Note honnêtement le résultat : ta maîtrise
+                    s’ajuste.
+                  </CardDescription>
+                  <div className="flex flex-wrap gap-2">
+                    <Button variant="secondary" onClick={() => pratiquer(true)}>
+                      J’ai réussi
+                    </Button>
+                    <Button variant="secondary" onClick={() => pratiquer(false)}>
+                      À revoir
+                    </Button>
+                  </div>
+                </Card>
+              </>
             )
           ) : (
             <Card className="space-y-3">

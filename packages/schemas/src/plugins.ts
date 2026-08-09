@@ -57,7 +57,9 @@ export const pluginContributesSchema = z
       )
       .default([]),
     navTiles: z
-      .array(z.object({ label: z.string().min(1), href: z.string().min(1), icon: z.string().min(1) }))
+      .array(
+        z.object({ label: z.string().min(1), href: z.string().min(1), icon: z.string().min(1) }),
+      )
       .default([]),
   })
   .default({ calendarEntryTypes: [], navTiles: [] });
@@ -112,7 +114,9 @@ export type UserPluginActivation = z.infer<typeof userPluginActivationSchema>;
 
 /** Catalogue enrichi de l'état d'activation du profil courant (écran « Mes apps »). */
 export const pluginCatalogueItemSchema = pluginRegistryEntrySchema.extend({
-  activation: userPluginActivationSchema.pick({ enabled: true, grantedScopes: true, config: true }).nullable(),
+  activation: userPluginActivationSchema
+    .pick({ enabled: true, grantedScopes: true, config: true })
+    .nullable(),
 });
 export type PluginCatalogueItem = z.infer<typeof pluginCatalogueItemSchema>;
 
@@ -149,6 +153,9 @@ export function compareVersions(a: string, b: string): number {
 }
 
 /** Le cœur (`coreVersion`) satisfait-il le `minCoreVersion` demandé par le plugin ? */
-export function satisfiesMinCore(minCoreVersion: string, coreVersion: string = CORE_VERSION): boolean {
+export function satisfiesMinCore(
+  minCoreVersion: string,
+  coreVersion: string = CORE_VERSION,
+): boolean {
   return compareVersions(coreVersion, minCoreVersion) >= 0;
 }

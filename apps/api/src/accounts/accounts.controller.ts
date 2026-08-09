@@ -64,7 +64,9 @@ export class AccountsController {
     const parsed = parseOr400(registerBody, body);
     const nowIso = new Date().toISOString();
     // Le statut « mineur » se déduit de la date de naissance (plus de case à cocher).
-    const isMinor = parsed.birthDate ? isMinorFromBirthDate(parsed.birthDate, nowIso) : parsed.isMinor;
+    const isMinor = parsed.birthDate
+      ? isMinorFromBirthDate(parsed.birthDate, nowIso)
+      : parsed.isMinor;
     const input = { ...parsed, isMinor };
     const errors = onboardingErrors(input, nowIso);
     if (errors.length > 0) throw new BadRequestException(errors);

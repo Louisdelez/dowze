@@ -3,7 +3,14 @@ import { and, desc, eq, gte } from 'drizzle-orm';
 import type { DomainMastery, RankChoice, ResultsView, TestRow } from '@dowze/schemas';
 import type { Skill } from '@dowze/schemas';
 import { DB, type Database } from '../db/drizzle.module';
-import { guardians, learnerRank, placementSessions, profiles, tests, testAttempts } from '../db/schema';
+import {
+  guardians,
+  learnerRank,
+  placementSessions,
+  profiles,
+  tests,
+  testAttempts,
+} from '../db/schema';
 import { SkillGraphService } from '../skill-graph/skill-graph.service';
 import { ProgressionService } from '../progression/progression.service';
 
@@ -126,7 +133,12 @@ export class ResultsService {
       .select({ kind: tests.kind, total: testAttempts.total, correct: testAttempts.correct })
       .from(testAttempts)
       .innerJoin(tests, eq(testAttempts.testId, tests.id))
-      .where(and(eq(testAttempts.profileId, profileId), gte(testAttempts.submittedAt, rankRow.rankStartedAt)));
+      .where(
+        and(
+          eq(testAttempts.profileId, profileId),
+          gte(testAttempts.submittedAt, rankRow.rankStartedAt),
+        ),
+      );
     let weeklyPassed = 0;
     let weeklyTotal = 0;
     let examsPassed = 0;
@@ -145,7 +157,8 @@ export class ResultsService {
     const examsOk = examsPassed >= examsRequired;
 
     // Plancher : ≥ 1 an par rang (consolidation + espacement).
-    const monthsAtRank = (Date.now() - rankRow.rankStartedAt.getTime()) / (1000 * 60 * 60 * 24 * 30.44);
+    const monthsAtRank =
+      (Date.now() - rankRow.rankStartedAt.getTime()) / (1000 * 60 * 60 * 24 * 30.44);
     const minYearMet = monthsAtRank >= 12;
     const monthsRemaining = Math.max(0, 12 - monthsAtRank);
 
@@ -258,7 +271,10 @@ export class ResultsService {
 
   /** Charge l'état de rang, ou l'initialise (première fois) au rang calculé par la maîtrise. */
   private async loadOrInitRank(profileId: string, computedRank: number) {
-    const rows = await this.db.select().from(learnerRank).where(eq(learnerRank.profileId, profileId));
+    const rows = await this.db
+      .select()
+      .from(learnerRank)
+      .where(eq(learnerRank.profileId, profileId));
     if (rows[0]) return rows[0];
     const inserted = await this.db
       .insert(learnerRank)
@@ -283,19 +299,31 @@ export class ResultsService {
   private async hasGuardian(profileId: string): Promise<boolean> {
     const prof = (await this.db.select().from(profiles).where(eq(profiles.id, profileId)))[0];
     if (!prof) return false;
-    const g = await this.db.select().from(guardians).where(eq(guardians.minorAccountId, prof.accountId));
+    const g = await this.db
+      .select()
+      .from(guardians)
+      .where(eq(guardians.minorAccountId, prof.accountId));
     return g.length > 0;
   }
 
   /** Promeut si les votes requis sont réunis (élève + responsable si compte parental). */
   private async maybePromote(profileId: string, hasParent: boolean): Promise<void> {
-    const row = (await this.db.select().from(learnerRank).where(eq(learnerRank.profileId, profileId)))[0];
+    const row = (
+      await this.db.select().from(learnerRank).where(eq(learnerRank.profileId, profileId))
+    )[0];
     if (!row) return;
     if (row.studentChoice === 'accept' && (!hasParent || row.parentChoice === 'accept')) {
       const nextR = Math.min((row.rank ?? 1) + 1, TOP_RANK);
       await this.db
         .update(learnerRank)
-        .set({ rank: nextR, rankStartedAt: new Date(), rrPoints: 0, studentChoice: null, parentChoice: null, updatedAt: new Date() })
+        .set({
+          rank: nextR,
+          rankStartedAt: new Date(),
+          rrPoints: 0,
+          studentChoice: null,
+          parentChoice: null,
+          updatedAt: new Date(),
+        })
         .where(eq(learnerRank.profileId, profileId));
     }
   }
@@ -304,7 +332,13 @@ export class ResultsService {
   private async consolidate(profileId: string): Promise<void> {
     await this.db
       .update(learnerRank)
-      .set({ rankStartedAt: new Date(), rrPoints: 0, studentChoice: null, parentChoice: null, updatedAt: new Date() })
+      .set({
+        rankStartedAt: new Date(),
+        rrPoints: 0,
+        studentChoice: null,
+        parentChoice: null,
+        updatedAt: new Date(),
+      })
       .where(eq(learnerRank.profileId, profileId));
   }
 

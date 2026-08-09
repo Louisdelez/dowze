@@ -1,6 +1,12 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { and, eq } from 'drizzle-orm';
-import { initialMastery, updateMastery, nextPrescribedSkill, learnableSkills, buildSkillMap } from '@dowze/core';
+import {
+  initialMastery,
+  updateMastery,
+  nextPrescribedSkill,
+  learnableSkills,
+  buildSkillMap,
+} from '@dowze/core';
 import { bktParamsSchema, type BktParams, type MasteryState, type Skill } from '@dowze/schemas';
 import { DB, type Database } from '../db/drizzle.module';
 import { masteryStates, specializations } from '../db/schema';

@@ -128,18 +128,25 @@ export default function ParentPage() {
         <Card className="space-y-3">
           <CardTitle>Mes enfants</CardTitle>
           {children.map((c) => (
-            <div key={c.childAccountId} className="flex items-center justify-between gap-2 rounded-lg border border-border p-3">
+            <div
+              key={c.childAccountId}
+              className="flex items-center justify-between gap-2 rounded-lg border border-border p-3"
+            >
               <div>
                 <p className="font-medium">{c.name}</p>
                 {c.needsParentConfirmation && (
-                  <p className="text-xs text-amber-700">Compte en attente de votre validation (moins de 13 ans).</p>
+                  <p className="text-xs text-amber-700">
+                    Compte en attente de votre validation (moins de 13 ans).
+                  </p>
                 )}
               </div>
               <div className="flex shrink-0 gap-2">
                 {c.needsParentConfirmation && (
                   <Button onClick={() => confirmer(c.childAccountId)}>Valider le compte</Button>
                 )}
-                <Button variant="secondary" onClick={() => ouvrirEnfant(c.childAccountId)}>Voir le suivi</Button>
+                <Button variant="secondary" onClick={() => ouvrirEnfant(c.childAccountId)}>
+                  Voir le suivi
+                </Button>
               </div>
             </div>
           ))}
@@ -169,10 +176,20 @@ export default function ParentPage() {
           <Card className="space-y-1">
             <CardTitle>Où en est {prenom} ?</CardTitle>
             <CardDescription>
-              {prenom} maîtrise déjà <strong>{data.masteredCount}</strong> compétence(s) et en travaille{' '}
-              <strong>{data.inProgressCount}</strong>.
-              {data.strengths[0] && <> Point fort du moment : <strong>{data.strengths[0]}</strong>.</>}
-              {data.nextStep && <> Prochaine étape : <strong>{data.nextStep.title}</strong>.</>}
+              {prenom} maîtrise déjà <strong>{data.masteredCount}</strong> compétence(s) et en
+              travaille <strong>{data.inProgressCount}</strong>.
+              {data.strengths[0] && (
+                <>
+                  {' '}
+                  Point fort du moment : <strong>{data.strengths[0]}</strong>.
+                </>
+              )}
+              {data.nextStep && (
+                <>
+                  {' '}
+                  Prochaine étape : <strong>{data.nextStep.title}</strong>.
+                </>
+              )}
             </CardDescription>
           </Card>
 
@@ -190,9 +207,10 @@ export default function ParentPage() {
             <Card className="space-y-2 border-amber-300 bg-amber-50">
               <CardTitle>{prenom} souhaite tenter un Saut de Rang</CardTitle>
               <CardDescription>
-                Un mois intensif pour monter à <strong>{jump.active.targetRankName}</strong>. C’est exigeant
-                (80 % requis), mais sans risque : en cas d’échec, {prenom} reprend son rang sans pénalité. À vous
-                de confirmer si le moment vous semble bon — parlez-en ensemble.
+                Un mois intensif pour monter à <strong>{jump.active.targetRankName}</strong>. C’est
+                exigeant (80 % requis), mais sans risque : en cas d’échec, {prenom} reprend son rang
+                sans pénalité. À vous de confirmer si le moment vous semble bon — parlez-en
+                ensemble.
               </CardDescription>
               <div>
                 <Button onClick={onConsent}>Confirmer le démarrage</Button>
@@ -207,8 +225,8 @@ export default function ParentPage() {
           <Card className="space-y-1 border-accent/30 bg-accent/5">
             <CardTitle>Comment l’aider (le plus efficace)</CardTitle>
             <CardDescription>
-              Ce qui aide le plus un enfant, ce n’est pas de vérifier ses notes, mais de s’intéresser et
-              d’encourager.{' '}
+              Ce qui aide le plus un enfant, ce n’est pas de vérifier ses notes, mais de
+              s’intéresser et d’encourager.{' '}
               {data.nextStep
                 ? `Demandez-lui de vous expliquer « ${data.nextStep.title} » avec ses mots — expliquer, c’est consolider.`
                 : 'Demandez-lui de vous raconter ce dont il/elle est le/la plus fier·e cette semaine.'}
@@ -217,10 +235,10 @@ export default function ParentPage() {
 
           {/* Énoncé de finalité — désamorce l'attente d'une note (recommandation Guskey). */}
           <Note tone="info">
-            Pourquoi pas de notes ni de moyenne ? Parce que la recherche est claire : une note chiffrée
-            détourne de l’apprentissage et compare les enfants entre eux. Ici on montre la{' '}
-            <strong>maîtrise</strong> (Découverte → En cours → Consolidé → <strong>Maîtrisé</strong>, la cible
-            normale) et la <strong>progression</strong> — pour encourager, pas juger.
+            Pourquoi pas de notes ni de moyenne ? Parce que la recherche est claire : une note
+            chiffrée détourne de l’apprentissage et compare les enfants entre eux. Ici on montre la{' '}
+            <strong>maîtrise</strong> (Découverte → En cours → Consolidé → <strong>Maîtrisé</strong>
+            , la cible normale) et la <strong>progression</strong> — pour encourager, pas juger.
           </Note>
         </>
       )}
@@ -280,10 +298,11 @@ function ParentalControls({
       <Card className="space-y-3 border-accent/30 bg-accent/5">
         <CardTitle>Protection : tout valider avant l’enfant</CardTitle>
         <CardDescription>
-          Quand c’est activé, <strong>chaque message et chaque demande d’ami</strong> — reçu ou envoyé, en
-          privé, en groupe ou en classe — passe <strong>d’abord par vous</strong>. Rien n’est visible par
-          {' '}{childName} tant que vous n’avez pas validé, et rien ne part tant que vous n’avez pas approuvé.
-          C’est une mesure forte, utile pour rassurer ou protéger un enfant plus sensible.
+          Quand c’est activé, <strong>chaque message et chaque demande d’ami</strong> — reçu ou
+          envoyé, en privé, en groupe ou en classe — passe <strong>d’abord par vous</strong>. Rien
+          n’est visible par {childName} tant que vous n’avez pas validé, et rien ne part tant que
+          vous n’avez pas approuvé. C’est une mesure forte, utile pour rassurer ou protéger un
+          enfant plus sensible.
         </CardDescription>
         <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-border bg-background p-3">
           <input
@@ -294,7 +313,9 @@ function ParentalControls({
             onChange={(e) => toggleSupervise(e.target.checked)}
           />
           <span className="text-sm font-medium">
-            {controls.supervised ? 'Activé — je valide tout' : 'Activer la validation de chaque message et ami'}
+            {controls.supervised
+              ? 'Activé — je valide tout'
+              : 'Activer la validation de chaque message et ami'}
           </span>
         </label>
       </Card>
@@ -307,7 +328,10 @@ function ParentalControls({
             <CardDescription>Rien à valider pour l’instant.</CardDescription>
           ) : (
             controls.queue.map((it) => (
-              <div key={it.id} className="flex items-center justify-between gap-2 rounded-lg border border-border p-3 text-sm">
+              <div
+                key={it.id}
+                className="flex items-center justify-between gap-2 rounded-lg border border-border p-3 text-sm"
+              >
                 <div className="min-w-0">
                   <p className="text-xs text-muted-foreground">
                     {it.kind === 'friend_request' ? 'Demande d’ami' : 'Message'} ·{' '}
@@ -316,8 +340,23 @@ function ParentalControls({
                   <p className="truncate font-medium">{it.preview}</p>
                 </div>
                 <div className="flex shrink-0 gap-2">
-                  <Button onClick={async () => { await decideSupervision(acc, it.id, true); onChange(); }}>Autoriser</Button>
-                  <Button variant="secondary" onClick={async () => { await decideSupervision(acc, it.id, false); onChange(); }}>Refuser</Button>
+                  <Button
+                    onClick={async () => {
+                      await decideSupervision(acc, it.id, true);
+                      onChange();
+                    }}
+                  >
+                    Autoriser
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    onClick={async () => {
+                      await decideSupervision(acc, it.id, false);
+                      onChange();
+                    }}
+                  >
+                    Refuser
+                  </Button>
                 </div>
               </div>
             ))
@@ -336,8 +375,23 @@ function ParentalControls({
             <div key={r.id} className="flex items-center justify-between gap-2 text-sm">
               <span>{r.scope === 'account' ? 'Suppression de compte' : 'Messages + amis'}</span>
               <div className="flex gap-2">
-                <Button onClick={async () => { await decideChildReset(acc, r.id, true); onChange(); }}>Approuver</Button>
-                <Button variant="secondary" onClick={async () => { await decideChildReset(acc, r.id, false); onChange(); }}>Refuser</Button>
+                <Button
+                  onClick={async () => {
+                    await decideChildReset(acc, r.id, true);
+                    onChange();
+                  }}
+                >
+                  Approuver
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={async () => {
+                    await decideChildReset(acc, r.id, false);
+                    onChange();
+                  }}
+                >
+                  Refuser
+                </Button>
               </div>
             </div>
           ))}
@@ -348,16 +402,21 @@ function ParentalControls({
       <Card className="space-y-2 border-amber-300 bg-amber-50/50">
         <CardTitle>Remise à 0 / suppression</CardTitle>
         <CardDescription>
-          Vous pouvez demander d’effacer <strong>tous les messages et amis</strong> de {childName} (compte
-          conservé), ou la <strong>suppression du compte</strong>. Dans les deux cas, un <strong>modérateur
-          valide</strong> avant exécution (pour éviter d’effacer des preuves en cas de harcèlement).
+          Vous pouvez demander d’effacer <strong>tous les messages et amis</strong> de {childName}{' '}
+          (compte conservé), ou la <strong>suppression du compte</strong>. Dans les deux cas, un{' '}
+          <strong>modérateur valide</strong> avant exécution (pour éviter d’effacer des preuves en
+          cas de harcèlement).
         </CardDescription>
         {resetDone ? (
           <Note tone="info">Demande envoyée à un modérateur.</Note>
         ) : (
           <div className="flex gap-2">
-            <Button variant="secondary" onClick={() => demanderReset('messages')}>Remise à 0 (messages + amis)</Button>
-            <Button variant="secondary" onClick={() => demanderReset('account')}>Supprimer le compte</Button>
+            <Button variant="secondary" onClick={() => demanderReset('messages')}>
+              Remise à 0 (messages + amis)
+            </Button>
+            <Button variant="secondary" onClick={() => demanderReset('account')}>
+              Supprimer le compte
+            </Button>
           </div>
         )}
       </Card>

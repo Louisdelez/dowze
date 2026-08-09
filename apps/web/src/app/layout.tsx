@@ -35,7 +35,9 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         <SessionHydrator />
         <CompanionProvider>
           <DesktopFrame>
-            <AppShell initialHost={initialHost} forceHub={desktopBuild}>{children}</AppShell>
+            <AppShell initialHost={initialHost} forceHub={desktopBuild}>
+              {children}
+            </AppShell>
           </DesktopFrame>
         </CompanionProvider>
       </body>

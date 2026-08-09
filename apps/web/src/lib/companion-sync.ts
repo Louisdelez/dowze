@@ -32,7 +32,9 @@ export function useCompanionSync() {
       if (timer) clearTimeout(timer);
       const { url, size, hidden, camMode, world, camSize, companionName } = s;
       timer = setTimeout(() => {
-        updateMyProfile({ companion: { url, size, hidden, camMode, world, camSize, name: companionName } }).catch(() => {
+        updateMyProfile({
+          companion: { url, size, hidden, camMode, world, camSize, name: companionName },
+        }).catch(() => {
           /* échec réseau → le local reste bon, on retentera au prochain changement */
         });
       }, 600);

@@ -26,7 +26,9 @@ import { Note } from '@/components/ui/note';
 import { SkeletonCards } from '@/components/ui/skeleton';
 
 function frDate(iso: string | null): string {
-  return iso ? new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+  return iso
+    ? new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+    : '';
 }
 
 export default function PassionPage() {
@@ -78,7 +80,12 @@ export default function PassionPage() {
       setErr('Indique 5 disciplines à explorer (une par ligne).');
       return;
     }
-    setView(await startDiscovery(profileId!, labels.map((label) => ({ label, disciplineHint: '' }))));
+    setView(
+      await startDiscovery(
+        profileId!,
+        labels.map((label) => ({ label, disciplineHint: '' })),
+      ),
+    );
   }, 'discovery');
 
   const suivante = guard(async () => setView(await nextDiscipline(profileId!)), 'next');
@@ -125,8 +132,8 @@ export default function PassionPage() {
         <>
           {view.capMinutes > 0 && !e && !d && (
             <Note>
-              Optionnel — prends ton temps. Une passion se travaille ~{view.capMinutes} min/jour au plus :
-              assez pour progresser, sans négliger le reste.
+              Optionnel — prends ton temps. Une passion se travaille ~{view.capMinutes} min/jour au
+              plus : assez pour progresser, sans négliger le reste.
             </Note>
           )}
 
@@ -138,23 +145,35 @@ export default function PassionPage() {
                   <div>
                     <CardTitle>{e.label}</CardTitle>
                     <CardDescription>
-                      {e.mode === 'pro' ? 'Mode : en faire un métier (Plan A / Plan B)' : 'Mode : pour le plaisir'}
+                      {e.mode === 'pro'
+                        ? 'Mode : en faire un métier (Plan A / Plan B)'
+                        : 'Mode : pour le plaisir'}
                     </CardDescription>
                   </div>
                   <IconStar />
                 </div>
                 {e.commitUntilIso && e.status === 'active' && (
                   <p className="mt-3 text-sm text-muted-foreground">
-                    Tu t'es engagé·e jusqu'au {frDate(e.commitUntilIso)} — donne une vraie chance à ton
-                    choix. Mais tu restes libre.
+                    Tu t'es engagé·e jusqu'au {frDate(e.commitUntilIso)} — donne une vraie chance à
+                    ton choix. Mais tu restes libre.
                   </p>
                 )}
                 <div className="mt-4 flex flex-wrap gap-2">
                   <Button
                     variant="utility"
-                    onClick={() => void guard(async () => setView(await setElectiveMode(profileId!, e.mode === 'pro' ? 'plaisir' : 'pro')), 'mode')()}
+                    onClick={() =>
+                      void guard(
+                        async () =>
+                          setView(
+                            await setElectiveMode(profileId!, e.mode === 'pro' ? 'plaisir' : 'pro'),
+                          ),
+                        'mode',
+                      )()
+                    }
                   >
-                    {e.mode === 'pro' ? 'Repasser en « pour le plaisir »' : 'Passer en « professionnaliser »'}
+                    {e.mode === 'pro'
+                      ? 'Repasser en « pour le plaisir »'
+                      : 'Passer en « professionnaliser »'}
                   </Button>
                 </div>
               </Card>
@@ -163,16 +182,15 @@ export default function PassionPage() {
               {view.plan ? (
                 <Card>
                   <CardTitle>{view.plan.distalGoal}</CardTitle>
-                  {view.plan.baseRate && (
-                    <Note className="mt-2">{view.plan.baseRate}</Note>
-                  )}
+                  {view.plan.baseRate && <Note className="mt-2">{view.plan.baseRate}</Note>}
                   {view.plan.paths.length > 0 && (
                     <div className="mt-3">
                       <p className="text-sm font-medium">Des voies possibles (Plan A / Plan B) :</p>
                       <ul className="mt-1 space-y-1 text-sm text-muted-foreground">
                         {view.plan.paths.map((p, i) => (
                           <li key={i}>
-                            <span className="font-medium text-foreground">{p.title}</span> — {p.note}
+                            <span className="font-medium text-foreground">{p.title}</span> —{' '}
+                            {p.note}
                           </li>
                         ))}
                       </ul>
@@ -188,7 +206,11 @@ export default function PassionPage() {
                               <IconCheck /> fait
                             </span>
                           ) : (
-                            <Button variant="utility" onClick={() => void validerJalon(m.id)} disabled={busy === 'ms:' + m.id}>
+                            <Button
+                              variant="utility"
+                              onClick={() => void validerJalon(m.id)}
+                              disabled={busy === 'ms:' + m.id}
+                            >
                               Valider
                             </Button>
                           )}
@@ -215,7 +237,10 @@ export default function PassionPage() {
               {view.badges.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {view.badges.map((b) => (
-                    <span key={b.id} className="inline-flex items-center gap-1 rounded-full border border-border bg-surface px-3 py-1 text-sm">
+                    <span
+                      key={b.id}
+                      className="inline-flex items-center gap-1 rounded-full border border-border bg-surface px-3 py-1 text-sm"
+                    >
                       <IconStar /> {b.name}
                     </span>
                   ))}
@@ -228,14 +253,31 @@ export default function PassionPage() {
                 {view.inReflection ? (
                   <>
                     <CardDescription>
-                      Tu réfléchis à passer à « {e.changeTarget} ». Confirmation possible à partir du{' '}
-                      {frDate(e.changeConfirmIso)} (on te laisse un mois pour être sûr·e).
+                      Tu réfléchis à passer à « {e.changeTarget} ». Confirmation possible à partir
+                      du {frDate(e.changeConfirmIso)} (on te laisse un mois pour être sûr·e).
                     </CardDescription>
                     <div className="mt-3 flex flex-wrap gap-2">
-                      <Button onClick={() => void guard(async () => setView(await confirmElectiveChange(profileId!)), 'confirm')()} disabled={busy === 'confirm'}>
+                      <Button
+                        onClick={() =>
+                          void guard(
+                            async () => setView(await confirmElectiveChange(profileId!)),
+                            'confirm',
+                          )()
+                        }
+                        disabled={busy === 'confirm'}
+                      >
                         Confirmer le changement
                       </Button>
-                      <Button variant="secondary" onClick={() => void guard(async () => setView(await cancelElectiveChange(profileId!)), 'cancelc')()} disabled={busy === 'cancelc'}>
+                      <Button
+                        variant="secondary"
+                        onClick={() =>
+                          void guard(
+                            async () => setView(await cancelElectiveChange(profileId!)),
+                            'cancelc',
+                          )()
+                        }
+                        disabled={busy === 'cancelc'}
+                      >
                         Finalement, je garde
                       </Button>
                     </div>
@@ -243,8 +285,8 @@ export default function PassionPage() {
                 ) : (
                   <>
                     <CardDescription>
-                      Tu peux changer, mais on te propose d'y réfléchir 1 mois avant de confirmer (pour ne
-                      pas décider sur un coup de tête).
+                      Tu peux changer, mais on te propose d'y réfléchir 1 mois avant de confirmer
+                      (pour ne pas décider sur un coup de tête).
                     </CardDescription>
                     <div className="mt-3 flex flex-wrap items-center gap-2">
                       <input
@@ -255,7 +297,13 @@ export default function PassionPage() {
                       />
                       <Button
                         variant="secondary"
-                        onClick={() => void guard(async () => setView(await proposeElectiveChange(profileId!, changeTarget)), 'propose')()}
+                        onClick={() =>
+                          void guard(
+                            async () =>
+                              setView(await proposeElectiveChange(profileId!, changeTarget)),
+                            'propose',
+                          )()
+                        }
                         disabled={busy === 'propose' || changeTarget.trim().length < 2}
                       >
                         Proposer un changement
@@ -263,7 +311,9 @@ export default function PassionPage() {
                     </div>
                     <button
                       className="mt-3 text-sm text-muted-foreground underline"
-                      onClick={() => void guard(async () => setView(await exitElective(profileId!)), 'exit')()}
+                      onClick={() =>
+                        void guard(async () => setView(await exitElective(profileId!)), 'exit')()
+                      }
                     >
                       Ça ne me convient vraiment pas — arrêter maintenant (sans pénalité)
                     </button>
@@ -280,19 +330,49 @@ export default function PassionPage() {
                 Semaine {d.currentIndex + 1}/5 · {d.currentDiscipline.label}
               </CardTitle>
               <CardDescription>
-                Jour {d.dayInWeek} — explore vraiment (fais des choses), et note ta journée ci-dessous.
+                Jour {d.dayInWeek} — explore vraiment (fais des choses), et note ta journée
+                ci-dessous.
               </CardDescription>
 
               {d.journalToday ? (
-                <Note className="mt-3">Journal du jour enregistré. Reviens demain, ou passe à la suivante.</Note>
+                <Note className="mt-3">
+                  Journal du jour enregistré. Reviens demain, ou passe à la suivante.
+                </Note>
               ) : (
                 <div className="mt-3 space-y-2">
-                  <textarea value={journal.did} onChange={(e2) => setJournal({ ...journal, did: e2.target.value })} rows={2} placeholder="Ce que j'ai fait aujourd'hui…" className="w-full rounded-md border border-border bg-surface p-2 text-sm" />
-                  <textarea value={journal.liked} onChange={(e2) => setJournal({ ...journal, liked: e2.target.value })} rows={2} placeholder="Ce que j'ai aimé…" className="w-full rounded-md border border-border bg-surface p-2 text-sm" />
-                  <textarea value={journal.disliked} onChange={(e2) => setJournal({ ...journal, disliked: e2.target.value })} rows={2} placeholder="Ce que je n'ai pas aimé…" className="w-full rounded-md border border-border bg-surface p-2 text-sm" />
+                  <textarea
+                    value={journal.did}
+                    onChange={(e2) => setJournal({ ...journal, did: e2.target.value })}
+                    rows={2}
+                    placeholder="Ce que j'ai fait aujourd'hui…"
+                    className="w-full rounded-md border border-border bg-surface p-2 text-sm"
+                  />
+                  <textarea
+                    value={journal.liked}
+                    onChange={(e2) => setJournal({ ...journal, liked: e2.target.value })}
+                    rows={2}
+                    placeholder="Ce que j'ai aimé…"
+                    className="w-full rounded-md border border-border bg-surface p-2 text-sm"
+                  />
+                  <textarea
+                    value={journal.disliked}
+                    onChange={(e2) => setJournal({ ...journal, disliked: e2.target.value })}
+                    rows={2}
+                    placeholder="Ce que je n'ai pas aimé…"
+                    className="w-full rounded-md border border-border bg-surface p-2 text-sm"
+                  />
                   <label className="block text-sm text-muted-foreground">
                     Plaisir / « perdu la notion du temps » : {journal.intensity}/5
-                    <input type="range" min={1} max={5} value={journal.intensity} onChange={(e2) => setJournal({ ...journal, intensity: Number(e2.target.value) })} className="mt-1 w-full" />
+                    <input
+                      type="range"
+                      min={1}
+                      max={5}
+                      value={journal.intensity}
+                      onChange={(e2) =>
+                        setJournal({ ...journal, intensity: Number(e2.target.value) })
+                      }
+                      className="mt-1 w-full"
+                    />
                   </label>
                   <Button onClick={() => void enregistrerJournal()} disabled={busy === 'journal'}>
                     Enregistrer ma journée
@@ -301,8 +381,14 @@ export default function PassionPage() {
               )}
 
               <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-4">
-                <Button variant="secondary" onClick={() => void suivante()} disabled={busy === 'next'}>
-                  {d.currentIndex + 1 >= 5 ? 'Terminer la découverte' : 'Passer à la discipline suivante'}
+                <Button
+                  variant="secondary"
+                  onClick={() => void suivante()}
+                  disabled={busy === 'next'}
+                >
+                  {d.currentIndex + 1 >= 5
+                    ? 'Terminer la découverte'
+                    : 'Passer à la discipline suivante'}
                 </Button>
                 <Button variant="utility" onClick={() => void choisir(d.currentDiscipline!.label)}>
                   J'ai trouvé : choisir « {d.currentDiscipline.label} »
@@ -316,10 +402,15 @@ export default function PassionPage() {
             <Card>
               <CardTitle>Découverte terminée</CardTitle>
               <CardDescription>
-                Tu peux choisir maintenant, ou demander à l'IA de repérer des pistes dans tes journaux.
+                Tu peux choisir maintenant, ou demander à l'IA de repérer des pistes dans tes
+                journaux.
               </CardDescription>
               <div className="mt-3">
-                <Button variant="secondary" onClick={() => void analyser()} disabled={busy === 'analyze'}>
+                <Button
+                  variant="secondary"
+                  onClick={() => void analyser()}
+                  disabled={busy === 'analyze'}
+                >
                   {busy === 'analyze' ? 'Analyse…' : 'Que disent mes journaux ?'}
                 </Button>
               </div>
@@ -329,7 +420,11 @@ export default function PassionPage() {
                     <div key={i} className="rounded-md border border-border p-3">
                       <p className="font-medium">{p.label}</p>
                       <p className="text-sm text-muted-foreground">{p.reason}</p>
-                      <Button variant="utility" className="mt-2" onClick={() => void choisir(p.label)}>
+                      <Button
+                        variant="utility"
+                        className="mt-2"
+                        onClick={() => void choisir(p.label)}
+                      >
                         Choisir celle-ci
                       </Button>
                     </div>
@@ -346,10 +441,20 @@ export default function PassionPage() {
                 <CardTitle className="flex items-center gap-2 text-base">
                   <IconHeart /> Je sais déjà
                 </CardTitle>
-                <CardDescription>Choisis directement ta passion (photo, cuisine, esport, dev, foot…).</CardDescription>
+                <CardDescription>
+                  Choisis directement ta passion (photo, cuisine, esport, dev, foot…).
+                </CardDescription>
                 <div className="mt-3 space-y-2">
-                  <input value={freeLabel} onChange={(ev) => setFreeLabel(ev.target.value)} placeholder="Ma passion…" className="w-full rounded-md border border-border bg-surface p-2 text-sm" />
-                  <Button onClick={() => void choisir(freeLabel)} disabled={busy.startsWith('choose') || freeLabel.trim().length < 2}>
+                  <input
+                    value={freeLabel}
+                    onChange={(ev) => setFreeLabel(ev.target.value)}
+                    placeholder="Ma passion…"
+                    className="w-full rounded-md border border-border bg-surface p-2 text-sm"
+                  />
+                  <Button
+                    onClick={() => void choisir(freeLabel)}
+                    disabled={busy.startsWith('choose') || freeLabel.trim().length < 2}
+                  >
                     Choisir cette passion
                   </Button>
                 </div>
@@ -358,18 +463,26 @@ export default function PassionPage() {
                 <CardTitle className="flex items-center gap-2 text-base">
                   <IconCompass /> Mode découverte
                 </CardTitle>
-                <CardDescription>Teste 5 disciplines, 1 semaine chacune, avec un journal de bord.</CardDescription>
+                <CardDescription>
+                  Teste 5 disciplines, 1 semaine chacune, avec un journal de bord.
+                </CardDescription>
                 <div className="mt-3 space-y-2">
                   {discInputs.map((val, i) => (
                     <input
                       key={i}
                       value={val}
-                      onChange={(ev) => setDiscInputs(discInputs.map((x, j) => (j === i ? ev.target.value : x)))}
+                      onChange={(ev) =>
+                        setDiscInputs(discInputs.map((x, j) => (j === i ? ev.target.value : x)))
+                      }
                       placeholder={`Discipline ${i + 1}`}
                       className="w-full rounded-md border border-border bg-surface p-2 text-sm"
                     />
                   ))}
-                  <Button variant="secondary" onClick={() => void lancerDecouverte()} disabled={busy === 'discovery'}>
+                  <Button
+                    variant="secondary"
+                    onClick={() => void lancerDecouverte()}
+                    disabled={busy === 'discovery'}
+                  >
                     Lancer la découverte
                   </Button>
                 </div>

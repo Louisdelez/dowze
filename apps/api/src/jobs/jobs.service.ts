@@ -35,8 +35,14 @@ export class JobsService implements OnModuleInit {
   /** Programme la maintenance nocturne de la ruche (répétable, ~3 h du matin). Idempotent. */
   async onModuleInit(): Promise<void> {
     try {
-      await this.hiveQueue.add('nightly', {}, { repeat: { pattern: '23 3 * * *' }, jobId: 'hive-nightly', removeOnComplete: true });
-    } catch { /* Redis indisponible : la planification reprendra au prochain boot */ }
+      await this.hiveQueue.add(
+        'nightly',
+        {},
+        { repeat: { pattern: '23 3 * * *' }, jobId: 'hive-nightly', removeOnComplete: true },
+      );
+    } catch {
+      /* Redis indisponible : la planification reprendra au prochain boot */
+    }
   }
 
   enqueueDigest(minorAccountId: string, periodIso: string) {

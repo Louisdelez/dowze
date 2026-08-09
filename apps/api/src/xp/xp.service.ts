@@ -39,7 +39,10 @@ export class XpService {
     const rows = await this.db.select().from(learnerXp).where(eq(learnerXp.profileId, profileId));
     let row = rows[0];
     if (!row) {
-      const ins = await this.db.insert(learnerXp).values({ profileId, today: this.todayStr() }).returning();
+      const ins = await this.db
+        .insert(learnerXp)
+        .values({ profileId, today: this.todayStr() })
+        .returning();
       row = ins[0]!;
     }
     if (row.today !== this.todayStr()) {

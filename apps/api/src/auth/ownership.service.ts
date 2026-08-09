@@ -23,7 +23,10 @@ export class OwnershipService {
   private async load(authId: string): Promise<Set<string>> {
     const ids = new Set<string>();
     const acc = (
-      await this.db.select({ id: accounts.id }).from(accounts).where(eq(accounts.authUserId, authId))
+      await this.db
+        .select({ id: accounts.id })
+        .from(accounts)
+        .where(eq(accounts.authUserId, authId))
     )[0];
     if (acc) {
       const own = await this.db

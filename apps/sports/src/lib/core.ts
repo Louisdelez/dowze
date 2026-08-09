@@ -77,7 +77,9 @@ export async function declareTraining(
 }
 
 export async function removeTraining(profileId: string): Promise<unknown> {
-  return core.request(`/v1/calendar/recurring/${profileId}/${SPORTS_SLUG}/${TRAINING_REF}`, { method: 'DELETE' });
+  return core.request(`/v1/calendar/recurring/${profileId}/${SPORTS_SLUG}/${TRAINING_REF}`, {
+    method: 'DELETE',
+  });
 }
 
 /** Match = entrée ponctuelle à date fixe = CONTRAINTE DURE dans le planning (P2). */
@@ -111,13 +113,20 @@ export interface MatchEntry {
 }
 
 export async function listMatches(profileId: string): Promise<MatchEntry[]> {
-  const all = await core.request<(MatchEntry & { sourceApp: string })[]>(`/v1/calendar/entries/${profileId}`);
+  const all = await core.request<(MatchEntry & { sourceApp: string })[]>(
+    `/v1/calendar/entries/${profileId}`,
+  );
   return all.filter((e) => e.sourceApp === SPORTS_SLUG);
 }
 
 export async function composeSession(
   profileId: string,
-  body: { title: string; goal?: string; level?: string; context?: { label: string; value: string }[] },
+  body: {
+    title: string;
+    goal?: string;
+    level?: string;
+    context?: { label: string; value: string }[];
+  },
 ): Promise<{ prompt: string; closingPrompt: string }> {
   return core.request('/v1/ai/compose', {
     method: 'POST',
@@ -141,7 +150,11 @@ export async function ingestSession(
         { key: 'exercices', type: 'stringArray', description: 'exercices / drills réalisés' },
         { key: 'dureeMin', type: 'integer', description: 'durée en minutes' },
         { key: 'ressenti', type: 'string', description: 'ressenti global' },
-        { key: 'progres', type: 'string', description: 'ce qui a progressé (technique, endurance…)' },
+        {
+          key: 'progres',
+          type: 'string',
+          description: 'ce qui a progressé (technique, endurance…)',
+        },
       ],
     }),
   });

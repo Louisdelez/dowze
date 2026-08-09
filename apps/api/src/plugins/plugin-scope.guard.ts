@@ -51,13 +51,17 @@ export class PluginScopeGuard implements CanActivate {
     const body = req.body ?? {};
 
     const profileId =
-      req.params.profileId ?? req.headers['x-dowze-profile'] ?? (body.profileId as string | undefined);
+      req.params.profileId ??
+      req.headers['x-dowze-profile'] ??
+      (body.profileId as string | undefined);
 
     // Identité du plugin : id direct, ou slug (path / en-tête / corps) à résoudre.
     let pluginId = req.params.pluginId;
     if (!pluginId) {
       const slug =
-        req.params.sourceApp ?? req.headers['x-dowze-plugin'] ?? (body.sourceApp as string | undefined);
+        req.params.sourceApp ??
+        req.headers['x-dowze-plugin'] ??
+        (body.sourceApp as string | undefined);
       if (slug) pluginId = (await this.plugins.idBySlug(slug)) ?? undefined;
     }
 

@@ -4,7 +4,8 @@ import os from 'node:os';
 
 // Documents de l'éditeur de code, un fichier texte par document, par utilisateur.
 // Stocké dans le volume, séparé de l'explorateur « Fichiers » et des dessins.
-const DATA_DIR = process.env.DEV_DATA_DIR || (process.env.NODE_ENV === 'production' ? '/data' : os.tmpdir());
+const DATA_DIR =
+  process.env.DEV_DATA_DIR || (process.env.NODE_ENV === 'production' ? '/data' : os.tmpdir());
 export const CODE_ROOT = path.join(DATA_DIR, 'code');
 export const MAX_CODE_BYTES = 5 * 1024 * 1024; // 5 Mo / document
 

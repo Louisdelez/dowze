@@ -36,7 +36,7 @@ const SYSTEM_PROMPTS: Record<BridgeOperation, string> = {
   'rapport-seance':
     "Tu viens de faire travailler l'élève sur une compétence. Produis un bilan HONNÊTE : " +
     "`outcome` = `reussi` s'il sait vraiment faire, `a-revoir` sinon ; " +
-    '`note` = une phrase concise pour son carnet (ce qu\'il a appris, ou ce qui reste à retravailler).',
+    "`note` = une phrase concise pour son carnet (ce qu'il a appris, ou ce qui reste à retravailler).",
 };
 
 export function promptFor(

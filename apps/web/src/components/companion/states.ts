@@ -38,7 +38,10 @@ export const MICROCOPY: Record<CompanionState, string[]> = {
  * - `status` → région polie (le reste).
  * - `talks`  → la bulle s'affiche automatiquement (sinon silencieux, ex. idle).
  */
-export const STATE_META: Record<CompanionState, { politeness: 'status' | 'alert'; talks: boolean }> = {
+export const STATE_META: Record<
+  CompanionState,
+  { politeness: 'status' | 'alert'; talks: boolean }
+> = {
   idle: { politeness: 'status', talks: false },
   reading: { politeness: 'status', talks: true },
   thinking: { politeness: 'status', talks: true },

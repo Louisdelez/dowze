@@ -63,13 +63,18 @@ export function ResultsBoard({
           {data.strengths.length > 0 ? (
             <div className="flex flex-wrap gap-2">
               {data.strengths.map((s, i) => (
-                <span key={i} className="rounded-full bg-emerald-50 px-3 py-1 text-sm text-emerald-700">
+                <span
+                  key={i}
+                  className="rounded-full bg-emerald-50 px-3 py-1 text-sm text-emerald-700"
+                >
                   {s}
                 </span>
               ))}
             </div>
           ) : (
-            <CardDescription>Tes premières réussites apparaîtront ici — ça vient vite !</CardDescription>
+            <CardDescription>
+              Tes premières réussites apparaîtront ici — ça vient vite !
+            </CardDescription>
           )}
         </Card>
         <Card className="space-y-2">
@@ -80,7 +85,9 @@ export function ResultsBoard({
               <span className="text-muted-foreground">({data.nextStep.domain})</span>
             </p>
           ) : (
-            <CardDescription>L'IA de Dowze te génère la suite — le chemin ne s'arrête jamais.</CardDescription>
+            <CardDescription>
+              L'IA de Dowze te génère la suite — le chemin ne s'arrête jamais.
+            </CardDescription>
           )}
         </Card>
       </div>
@@ -88,15 +95,25 @@ export function ResultsBoard({
       <Card className="space-y-3">
         <div>
           <CardTitle>Tes tests d'entraînement</CardTitle>
-          <CardDescription>Chaque test compte pour ta montée de rang (≥ 60 % à réussir sur l'année).</CardDescription>
+          <CardDescription>
+            Chaque test compte pour ta montée de rang (≥ 60 % à réussir sur l'année).
+          </CardDescription>
         </div>
         {data.tests.length > 0 ? (
           <ul className="space-y-2">
             {data.tests.map((t, i) => (
-              <li key={i} className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-sm">
-                <span>{t.kind === 'trimestrial' ? 'Examen trimestriel' : 'Test de la semaine'}</span>
+              <li
+                key={i}
+                className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-sm"
+              >
+                <span>
+                  {t.kind === 'trimestrial' ? 'Examen trimestriel' : 'Test de la semaine'}
+                </span>
                 <span className="text-muted-foreground">
-                  <strong className="text-foreground">{t.correct}/{t.total}</strong> réussi(s) · {formatDate(t.dateIso)}
+                  <strong className="text-foreground">
+                    {t.correct}/{t.total}
+                  </strong>{' '}
+                  réussi(s) · {formatDate(t.dateIso)}
                 </span>
               </li>
             ))}
@@ -110,7 +127,15 @@ export function ResultsBoard({
 }
 
 /** Carte de rang : écusson + barre RR + conditions de montée + vote. */
-function RankCard({ p, variant, onVote }: { p: Progression; variant: Variant; onVote?: (c: RankChoice) => Promise<void> }) {
+function RankCard({
+  p,
+  variant,
+  onVote,
+}: {
+  p: Progression;
+  variant: Variant;
+  onVote?: (c: RankChoice) => Promise<void>;
+}) {
   const style = tierStyle(p.rank);
   const [busy, setBusy] = useState<RankChoice | null>(null);
 
@@ -155,9 +180,21 @@ function RankCard({ p, variant, onVote }: { p: Progression; variant: Variant; on
       {/* Barre RR */}
       <div
         className="h-3 w-full overflow-hidden rounded-full border border-border bg-muted"
-        style={p.isTop ? { background: 'linear-gradient(90deg,#f59e0b33,#d946ef66,#f59e0b33)', borderColor: 'transparent' } : undefined}
+        style={
+          p.isTop
+            ? {
+                background: 'linear-gradient(90deg,#f59e0b33,#d946ef66,#f59e0b33)',
+                borderColor: 'transparent',
+              }
+            : undefined
+        }
       >
-        {!p.isTop ? <div className="h-full rounded-full" style={{ width: `${p.rr}%`, background: style.bg }} /> : null}
+        {!p.isTop ? (
+          <div
+            className="h-full rounded-full"
+            style={{ width: `${p.rr}%`, background: style.bg }}
+          />
+        ) : null}
       </div>
 
       {/* Rien d'autre que le rang + la barre. La montée (quand débloquée) apparaît ici, sinon rien. */}
@@ -187,16 +224,16 @@ function RankVote({
     if (!studentAccepted) {
       return (
         <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
-          L’élève peut monter au rang <strong>{p.nextRankName}</strong>. En attente de son choix — puis tu
-          confirmeras avec lui.
+          L’élève peut monter au rang <strong>{p.nextRankName}</strong>. En attente de son choix —
+          puis tu confirmeras avec lui.
         </p>
       );
     }
     return (
       <div className="space-y-2 rounded-lg bg-emerald-50 p-3">
         <p className="text-sm text-emerald-900">
-          {p.rankName} → <strong>{p.nextRankName}</strong> : l’élève souhaite monter. Confirmes-tu le passage,
-          ou vaut-il mieux consolider une année de plus ?
+          {p.rankName} → <strong>{p.nextRankName}</strong> : l’élève souhaite monter. Confirmes-tu
+          le passage, ou vaut-il mieux consolider une année de plus ?
         </p>
         {hasVote ? (
           <div className="flex flex-wrap gap-2">
@@ -218,8 +255,8 @@ function RankVote({
       <p className="flex items-start gap-1.5 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900">
         <IconCheck width={16} height={16} className="mt-0.5 shrink-0 text-emerald-600" />
         <span>
-          Tu as choisi de monter vers <strong>{p.nextRankName}</strong>. En attente de la confirmation de ton
-          responsable.
+          Tu as choisi de monter vers <strong>{p.nextRankName}</strong>. En attente de la
+          confirmation de ton responsable.
         </span>
       </p>
     );
@@ -227,8 +264,9 @@ function RankVote({
   return (
     <div className="space-y-2 rounded-lg bg-emerald-50 p-3">
       <p className="text-sm text-emerald-900">
-        Tu remplis tout pour passer à <strong>{p.nextRankName}</strong> ! À toi de choisir : monter, ou
-        consolider une année de plus si tu préfères d’abord affûter (les deux sont de bons choix).
+        Tu remplis tout pour passer à <strong>{p.nextRankName}</strong> ! À toi de choisir : monter,
+        ou consolider une année de plus si tu préfères d’abord affûter (les deux sont de bons
+        choix).
       </p>
       {hasVote ? (
         <div className="flex flex-wrap gap-2">

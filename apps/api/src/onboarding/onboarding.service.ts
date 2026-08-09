@@ -41,14 +41,21 @@ export class OnboardingService {
       })
       .onConflictDoUpdate({
         target: learnerDossiers.profileId,
-        set: { rawPresentation: input.presentation, structured: object, validated: false, updatedAt: now },
+        set: {
+          rawPresentation: input.presentation,
+          structured: object,
+          validated: false,
+          updatedAt: now,
+        },
       });
 
     return { profileId: input.profileId, structured: object, validated: false, creditsSpent };
   }
 
   /** Renvoie le dossier stocké (structuré validé/corrigé), ou null s'il n'existe pas. */
-  async get(profileId: string): Promise<{ profileId: string; structured: Dossier; validated: boolean } | null> {
+  async get(
+    profileId: string,
+  ): Promise<{ profileId: string; structured: Dossier; validated: boolean } | null> {
     const rows = await this.db
       .select()
       .from(learnerDossiers)

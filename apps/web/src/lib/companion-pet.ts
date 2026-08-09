@@ -90,10 +90,22 @@ export const CURATED_PETS: { slug: string; name: string }[] = [
 
 /** Galeries de pets « Codex » : va choisir un pet, télécharge son .zip, puis importe-le dans l'app. */
 export const PET_SITES: { name: string; url: string; note: string }[] = [
-  { name: 'codex-pet.com', url: 'https://codex-pet.com', note: 'télécharge la planche et importe-la' },
-  { name: 'codexpet.top', url: 'https://codexpet.top', note: 'télécharge la planche et importe-la' },
+  {
+    name: 'codex-pet.com',
+    url: 'https://codex-pet.com',
+    note: 'télécharge la planche et importe-la',
+  },
+  {
+    name: 'codexpet.top',
+    url: 'https://codexpet.top',
+    note: 'télécharge la planche et importe-la',
+  },
   { name: 'petdex.dev', url: 'https://petdex.dev', note: 'télécharge le .zip et importe-le' },
-  { name: 'codex-pets.net', url: 'https://codex-pets.net', note: 'télécharge le .zip et importe-le' },
+  {
+    name: 'codex-pets.net',
+    url: 'https://codex-pets.net',
+    note: 'télécharge le .zip et importe-le',
+  },
 ];
 
 export const COMPANION_MIN_SIZE = 60;

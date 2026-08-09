@@ -65,7 +65,11 @@ export default function SpecialisationPage() {
       <EmptyState
         title="Connecte-toi"
         description="Ta spécialisation est personnelle."
-        action={<Link href="/connexion" className="text-accent underline-offset-2 hover:underline">Se connecter</Link>}
+        action={
+          <Link href="/connexion" className="text-accent underline-offset-2 hover:underline">
+            Se connecter
+          </Link>
+        }
       />
     );
   }
@@ -83,9 +87,10 @@ export default function SpecialisationPage() {
         <Card className="space-y-1">
           <CardTitle>Bientôt : construis d’abord ton socle</CardTitle>
           <CardDescription>
-            La spécialisation s’ouvre au rang <strong>{view.unlockRankName}</strong> — pour l’instant tu bâtis
-            une base large dans plusieurs domaines (c’est ce qui rend une spécialité solide). Tu es{' '}
-            <strong>{view.currentRankName}</strong>. Continue, elle se débloquera.
+            La spécialisation s’ouvre au rang <strong>{view.unlockRankName}</strong> — pour
+            l’instant tu bâtis une base large dans plusieurs domaines (c’est ce qui rend une
+            spécialité solide). Tu es <strong>{view.currentRankName}</strong>. Continue, elle se
+            débloquera.
           </CardDescription>
         </Card>
       )}
@@ -116,7 +121,11 @@ export default function SpecialisationPage() {
             profileId &&
             view.active.map((d) => (
               <Card key={d.discipline} className="space-y-3">
-                <DisciplineRow d={d} busy={busy === d.discipline} onDrop={() => retirer(d.discipline)} />
+                <DisciplineRow
+                  d={d}
+                  busy={busy === d.discipline}
+                  onDrop={() => retirer(d.discipline)}
+                />
                 <PlanSection profileId={profileId} discipline={d.discipline} onBadge={charger} />
               </Card>
             ))}
@@ -125,9 +134,14 @@ export default function SpecialisationPage() {
           {view.proposals.length > 0 && (
             <Card className="space-y-3">
               <CardTitle>Des voies pour toi</CardTitle>
-              <CardDescription>Choisies d’après ce que tu creuses le plus — ce sont des pistes, pas un verdict.</CardDescription>
+              <CardDescription>
+                Choisies d’après ce que tu creuses le plus — ce sont des pistes, pas un verdict.
+              </CardDescription>
               {view.proposals.map((p) => (
-                <div key={p.discipline} className="flex items-center justify-between gap-3 rounded-lg border border-border p-3">
+                <div
+                  key={p.discipline}
+                  className="flex items-center justify-between gap-3 rounded-lg border border-border p-3"
+                >
                   <div className="min-w-0">
                     <p className="font-medium">{p.discipline}</p>
                     <p className="text-sm text-muted-foreground">{p.reason}</p>
@@ -143,10 +157,16 @@ export default function SpecialisationPage() {
           {/* Choix libre */}
           <Card className="space-y-3">
             <CardTitle>Ou choisis librement</CardTitle>
-            <CardDescription>Prends la direction que tu veux. Tu pourras en ajouter, en combiner, ou en retirer quand tu veux.</CardDescription>
+            <CardDescription>
+              Prends la direction que tu veux. Tu pourras en ajouter, en combiner, ou en retirer
+              quand tu veux.
+            </CardDescription>
             <div className="grid gap-2 sm:grid-cols-2">
               {view.disciplines.map((d) => (
-                <div key={d.discipline} className="flex items-center justify-between gap-2 rounded-lg border border-border p-3">
+                <div
+                  key={d.discipline}
+                  className="flex items-center justify-between gap-2 rounded-lg border border-border p-3"
+                >
                   <div className="min-w-0">
                     <p className="font-medium">{d.discipline}</p>
                     <p className="text-xs text-muted-foreground">
@@ -156,7 +176,11 @@ export default function SpecialisationPage() {
                   {d.chosen ? (
                     <span className="shrink-0 text-xs font-medium text-emerald-700">Choisie</span>
                   ) : (
-                    <Button variant="secondary" onClick={() => choisir(d.discipline)} disabled={busy === d.discipline}>
+                    <Button
+                      variant="secondary"
+                      onClick={() => choisir(d.discipline)}
+                      disabled={busy === d.discipline}
+                    >
                       {busy === d.discipline ? '…' : 'Choisir'}
                     </Button>
                   )}
@@ -167,8 +191,8 @@ export default function SpecialisationPage() {
 
           {view.active.length === 0 && view.proposals.length === 0 && (
             <Note tone="info">
-              Explore encore un peu chaque domaine — dès que tu creuses davantage l’un d’eux, Dowze te proposera
-              d’en faire une voie.
+              Explore encore un peu chaque domaine — dès que tu creuses davantage l’un d’eux, Dowze
+              te proposera d’en faire une voie.
             </Note>
           )}
         </>
@@ -255,18 +279,35 @@ function PlanSection({
               </Button>
             ) : null}
           </div>
-          <p className="text-xs text-muted-foreground">Réussi si : {m.successCriteria.join(' · ')}</p>
-          {m.projectBrief ? <p className="text-xs text-muted-foreground">Projet : {m.projectBrief}</p> : null}
+          <p className="text-xs text-muted-foreground">
+            Réussi si : {m.successCriteria.join(' · ')}
+          </p>
+          {m.projectBrief ? (
+            <p className="text-xs text-muted-foreground">Projet : {m.projectBrief}</p>
+          ) : null}
         </div>
       ))}
-      <button type="button" onClick={generer} disabled={busy} className="text-xs text-muted-foreground underline-offset-2 hover:underline">
+      <button
+        type="button"
+        onClick={generer}
+        disabled={busy}
+        className="text-xs text-muted-foreground underline-offset-2 hover:underline"
+      >
         Régénérer le plan
       </button>
     </div>
   );
 }
 
-function DisciplineRow({ d, busy, onDrop }: { d: DisciplineProgress; busy: boolean; onDrop: () => void }) {
+function DisciplineRow({
+  d,
+  busy,
+  onDrop,
+}: {
+  d: DisciplineProgress;
+  busy: boolean;
+  onDrop: () => void;
+}) {
   return (
     <div className="flex items-center justify-between gap-3 rounded-lg border border-border p-3">
       <div className="min-w-0">

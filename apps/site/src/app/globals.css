@@ -5,9 +5,17 @@
   --color-dowze-red: #e4002b;
 }
 
-:root { color-scheme: light; }
-html, body { height: 100%; }
-body { margin: 0; -webkit-font-smoothing: antialiased; }
+:root {
+  color-scheme: light;
+}
+html,
+body {
+  height: 100%;
+}
+body {
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+}
 
 /* Logo « box » façon Supreme : boîte rouge, texte blanc italique lourd. */
 .box-logo {

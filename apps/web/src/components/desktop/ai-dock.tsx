@@ -43,7 +43,9 @@ export function AiBridge() {
   useEffect(() => {
     if (!desktop || !open) return;
     const p = PROVIDERS.find((x) => x.id === provider)!;
-    aiPanelOpen(p.url).then(injectContext).catch(() => {});
+    aiPanelOpen(p.url)
+      .then(injectContext)
+      .catch(() => {});
   }, [desktop, open, provider]);
 
   // Écoute les conversations captées dans la webview IA → Mémorialiste (débounce + dédup).

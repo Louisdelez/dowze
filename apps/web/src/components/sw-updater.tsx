@@ -18,9 +18,15 @@ export function SwUpdater() {
     // servir du code PÉRIMÉ (l'app ne se met alors jamais à jour après un rebuild). On le désactive : on
     // dé-enregistre tout SW et on vide les caches. (Web PWA : comportement inchangé, mise à jour normale.)
     if (isDesktop()) {
-      navigator.serviceWorker.getRegistrations().then((rs) => rs.forEach((r) => r.unregister())).catch(() => {});
+      navigator.serviceWorker
+        .getRegistrations()
+        .then((rs) => rs.forEach((r) => r.unregister()))
+        .catch(() => {});
       if (typeof caches !== 'undefined') {
-        caches.keys().then((ks) => ks.forEach((k) => caches.delete(k))).catch(() => {});
+        caches
+          .keys()
+          .then((ks) => ks.forEach((k) => caches.delete(k)))
+          .catch(() => {});
       }
       return;
     }

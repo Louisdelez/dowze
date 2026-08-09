@@ -11,8 +11,8 @@ import { CopiloteService } from '../copilote/copilote.service';
 
 const INGEST_SYSTEM =
   "Tu es le module d'ingestion de Dowze. À partir du résumé écrit par l'utilisateur, tu extrais " +
-  'FIDÈLEMENT les informations demandées — sans jamais rien inventer. Si une information n\'apparaît pas ' +
-  'dans le résumé, laisse le champ vide ou nul. Tu ne donnes AUCUN conseil : tu ne fais qu\'extraire.';
+  "FIDÈLEMENT les informations demandées — sans jamais rien inventer. Si une information n'apparaît pas " +
+  "dans le résumé, laisse le champ vide ou nul. Tu ne donnes AUCUN conseil : tu ne fais qu'extraire.";
 
 @Injectable()
 export class PluginAiService {
@@ -46,7 +46,7 @@ export class PluginAiService {
     const prompt = lines.join('\n');
     const closingPrompt =
       "Quand j'aurai terminé, aide-moi à résumer en quelques points : ce que j'ai fait, ce qui a bien " +
-      "marché, ce qui a été difficile, et ce que je retiens pour la prochaine fois.";
+      'marché, ce qui a été difficile, et ce que je retiens pour la prochaine fois.';
     return { prompt, closingPrompt };
   }
 
@@ -60,17 +60,16 @@ export class PluginAiService {
     const prompt =
       `Application : ${body.sourceApp}\nRésumé de l'utilisateur :\n"""\n${body.summary}\n"""\n\n` +
       'Extrais les informations structurées demandées.';
-    const { object, creditsSpent } = await this.copilote.generateStructured<Record<string, unknown>>(
-      body.profileId,
-      {
-        schema,
-        schemaName: 'PluginSnapshot',
-        system: INGEST_SYSTEM,
-        prompt,
-        ref: `${body.sourceApp}:ingest`,
-        modelId: body.modelId,
-      },
-    );
+    const { object, creditsSpent } = await this.copilote.generateStructured<
+      Record<string, unknown>
+    >(body.profileId, {
+      schema,
+      schemaName: 'PluginSnapshot',
+      system: INGEST_SYSTEM,
+      prompt,
+      ref: `${body.sourceApp}:ingest`,
+      modelId: body.modelId,
+    });
     return { snapshot: object, creditsSpent };
   }
 }

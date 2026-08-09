@@ -97,11 +97,13 @@ export function CompanionPicker() {
     setErreur('');
     setOk('');
     try {
-      const { id, name, version } = await installCompanionPet((() => {
-        const f = new FormData();
-        f.append('file', file);
-        return f;
-      })());
+      const { id, name, version } = await installCompanionPet(
+        (() => {
+          const f = new FormData();
+          f.append('file', file);
+          return f;
+        })(),
+      );
       setUrl(companionPetUrl(id, version)); // sélectionne le nouveau pet
       setOk(`« ${name} » ajouté !`);
       await refreshLibrary();
@@ -199,7 +201,9 @@ export function CompanionPicker() {
                   key={a.id}
                   onClick={() => setPreviewAnim(a.id)}
                   className={`flex flex-col items-center gap-0.5 rounded-lg border p-1.5 transition ${
-                    previewAnim === a.id ? 'border-accent bg-accent/5' : 'border-border hover:bg-muted'
+                    previewAnim === a.id
+                      ? 'border-accent bg-accent/5'
+                      : 'border-border hover:bg-muted'
                   }`}
                 >
                   <span className="flex h-11 items-center justify-center">
@@ -226,7 +230,13 @@ export function CompanionPicker() {
         <div className="text-sm font-medium">Mode cam</div>
         {activeUrl && (
           <div className="mt-3 flex justify-center">
-            <CompanionCam url={activeUrl} animId="idle" world={world} size={Math.min(camSize, 260)} name={companionName} />
+            <CompanionCam
+              url={activeUrl}
+              animId="idle"
+              world={world}
+              size={Math.min(camSize, 260)}
+              name={companionName}
+            />
           </div>
         )}
         <div className="mt-3">
@@ -268,7 +278,16 @@ export function CompanionPicker() {
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <button onClick={() => setHidden(true)} className={tile(hidden)}>
             <span className="flex h-16 w-16 items-center justify-center text-muted-foreground">
-              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+              <svg
+                width="40"
+                height="40"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                aria-hidden="true"
+              >
                 <circle cx="12" cy="12" r="9" />
                 <path d="M5.6 5.6l12.8 12.8" />
               </svg>
@@ -298,10 +317,16 @@ export function CompanionPicker() {
               <span className="text-muted-foreground">
                 {selected.size} sélectionné{selected.size > 1 ? 's' : ''}
               </span>
-              <button onClick={() => void removeMany([...selected])} className="font-medium text-red-600 hover:underline">
+              <button
+                onClick={() => void removeMany([...selected])}
+                className="font-medium text-red-600 hover:underline"
+              >
                 Supprimer
               </button>
-              <button onClick={() => setSelected(new Set())} className="text-muted-foreground hover:underline">
+              <button
+                onClick={() => setSelected(new Set())}
+                className="text-muted-foreground hover:underline"
+              >
                 Annuler
               </button>
             </span>
@@ -329,7 +354,17 @@ export function CompanionPicker() {
                 >
                   {isSel && (
                     <span className="absolute right-1.5 top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-accent text-accent-foreground">
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <svg
+                        width="10"
+                        height="10"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                      >
                         <path d="M20 6 9 17l-5-5" />
                       </svg>
                     </span>
@@ -392,7 +427,11 @@ export function CompanionPicker() {
             className="mx-auto block w-full max-w-xs text-sm text-muted-foreground file:mr-3 file:cursor-pointer file:rounded-full file:border-0 file:bg-accent file:px-5 file:py-2 file:font-medium file:text-accent-foreground hover:file:bg-accent-active disabled:opacity-50"
           />
           <p className="mt-2 text-xs text-muted-foreground">
-            {busy ? 'Import…' : library.length >= MAX_PETS ? `Limite de ${MAX_PETS} atteinte` : 'ou glisse le fichier ici'}
+            {busy
+              ? 'Import…'
+              : library.length >= MAX_PETS
+                ? `Limite de ${MAX_PETS} atteinte`
+                : 'ou glisse le fichier ici'}
           </p>
         </div>
       </div>
@@ -411,7 +450,17 @@ export function CompanionPicker() {
                 className="inline-flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium hover:bg-muted"
               >
                 {s.name}
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
                   <path d="M15 3h6v6" />
                   <path d="M10 14 21 3" />
                   <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
@@ -435,16 +484,40 @@ export function CompanionPicker() {
               style={{ left: menu.x, top: menu.y }}
               onClick={(e) => e.stopPropagation()}
             >
-              <button className={item} onClick={() => { setUrl(pet.url); setMenu(null); }}>
+              <button
+                className={item}
+                onClick={() => {
+                  setUrl(pet.url);
+                  setMenu(null);
+                }}
+              >
                 Choisir comme compagnon
               </button>
-              <button className={item} onClick={() => { toggleSelect(pet.id); setMenu(null); }}>
+              <button
+                className={item}
+                onClick={() => {
+                  toggleSelect(pet.id);
+                  setMenu(null);
+                }}
+              >
                 {isSel ? 'Désélectionner' : 'Sélectionner'}
               </button>
-              <button className={item} onClick={() => { startRename(pet); setMenu(null); }}>
+              <button
+                className={item}
+                onClick={() => {
+                  startRename(pet);
+                  setMenu(null);
+                }}
+              >
                 Renommer
               </button>
-              <button className={`${item} text-red-600`} onClick={() => { void removeMany([pet.id]); setMenu(null); }}>
+              <button
+                className={`${item} text-red-600`}
+                onClick={() => {
+                  void removeMany([pet.id]);
+                  setMenu(null);
+                }}
+              >
                 Supprimer
               </button>
             </div>

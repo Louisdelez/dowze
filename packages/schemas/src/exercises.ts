@@ -71,7 +71,10 @@ export const shortGenSchema = z
 
 const clozeGapSchema = z
   .object({
-    acceptedAnswers: z.array(z.string()).min(1).describe('Mots acceptés pour ce trou (synonymes ok).'),
+    acceptedAnswers: z
+      .array(z.string())
+      .min(1)
+      .describe('Mots acceptés pour ce trou (synonymes ok).'),
   })
   .strict();
 
@@ -98,7 +101,10 @@ const meta = {
   sourceRef: z.string().default(''),
 };
 
-export const flashcardItemSchema = flashcardGenSchema.extend({ type: z.literal('flashcard'), ...meta });
+export const flashcardItemSchema = flashcardGenSchema.extend({
+  type: z.literal('flashcard'),
+  ...meta,
+});
 export const qcmItemSchema = qcmGenSchema.extend({ type: z.literal('qcm'), ...meta });
 export const shortItemSchema = shortGenSchema.extend({ type: z.literal('short'), ...meta });
 export const clozeItemSchema = clozeGenSchema.extend({ type: z.literal('cloze'), ...meta });

@@ -45,7 +45,11 @@ export default function ValidationPage() {
       <EmptyState
         title="Connecte-toi pour valider un sujet"
         description="Explique ce que tu as appris à d'autres — ils t'évaluent."
-        action={<Link href="/connexion" className="text-accent underline-offset-2 hover:underline">Se connecter</Link>}
+        action={
+          <Link href="/connexion" className="text-accent underline-offset-2 hover:underline">
+            Se connecter
+          </Link>
+        }
       />
     );
   }
@@ -66,7 +70,11 @@ export default function ValidationPage() {
           <CardTitle>Tes sujets validés</CardTitle>
           <div className="flex flex-wrap gap-2">
             {view.badges.map((b) => (
-              <span key={b.id} title={b.criteria} className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-sm text-amber-800">
+              <span
+                key={b.id}
+                title={b.criteria}
+                className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-sm text-amber-800"
+              >
                 <IconCheck width={14} height={14} className="text-amber-600" />
                 {b.name}
               </span>
@@ -79,8 +87,8 @@ export default function ValidationPage() {
         <Card className="space-y-3">
           <CardTitle>Mes sujets</CardTitle>
           <CardDescription>
-            Fais-les évaluer : partage le lien (à mettre en description d'une vidéo, ou à envoyer à quelqu'un),
-            ou laisse la communauté les évaluer.
+            Fais-les évaluer : partage le lien (à mettre en description d'une vidéo, ou à envoyer à
+            quelqu'un), ou laisse la communauté les évaluer.
           </CardDescription>
           {view.mySubjects.map((s) => (
             <MySubjectRow key={s.id} s={s} required={view.requiredReviews} profileId={profileId!} />
@@ -92,20 +100,29 @@ export default function ValidationPage() {
         <Card className="space-y-3">
           <div className="flex items-center justify-between gap-2">
             <CardTitle>Sujets à évaluer</CardTitle>
-            <Link href="/validation/communaute" className="text-sm text-accent underline-offset-2 hover:underline">
+            <Link
+              href="/validation/communaute"
+              className="text-sm text-accent underline-offset-2 hover:underline"
+            >
               Toute la communauté →
             </Link>
           </div>
           {view.isTeacher && (
-            <Note tone="info">Tu es prof agréé : ta validation compte pour une validation complète (en une fois).</Note>
+            <Note tone="info">
+              Tu es prof agréé : ta validation compte pour une validation complète (en une fois).
+            </Note>
           )}
           {!view.canReview ? (
             <Note tone="info">{view.reviewGateMessage}</Note>
           ) : view.toReview.length === 0 ? (
-            <CardDescription>Aucun sujet à évaluer pour l'instant — vois la page communauté.</CardDescription>
+            <CardDescription>
+              Aucun sujet à évaluer pour l'instant — vois la page communauté.
+            </CardDescription>
           ) : (
             view.toReview.map((s) =>
-              profileId ? <ReviewRow key={s.id} s={s} profileId={profileId} onReviewed={charger} /> : null,
+              profileId ? (
+                <ReviewRow key={s.id} s={s} profileId={profileId} onReviewed={charger} />
+              ) : null,
             )
           )}
         </Card>
@@ -113,7 +130,13 @@ export default function ValidationPage() {
     </div>
   );
 }
-function CreateForm({ profileId, onCreated }: { profileId: string; onCreated: (v: PeerValidationView) => void }) {
+function CreateForm({
+  profileId,
+  onCreated,
+}: {
+  profileId: string;
+  onCreated: (v: PeerValidationView) => void;
+}) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [busy, setBusy] = useState(false);
@@ -145,11 +168,16 @@ function CreateForm({ profileId, onCreated }: { profileId: string; onCreated: (v
       <div className="space-y-1">
         <CardTitle>Créer un sujet à valider</CardTitle>
         <CardDescription>
-          Tu vas l'expliquer à d'autres, comme un petit exposé. Si tu sais l'expliquer et qu'on te comprend,
-          c'est que tu l'as compris.
+          Tu vas l'expliquer à d'autres, comme un petit exposé. Si tu sais l'expliquer et qu'on te
+          comprend, c'est que tu l'as compris.
         </CardDescription>
       </div>
-      <TextField label="Titre du sujet" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex. Les fonctions affines" />
+      <TextField
+        label="Titre du sujet"
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        placeholder="Ex. Les fonctions affines"
+      />
       <TextAreaField
         label="Courte description"
         value={description}
@@ -164,7 +192,15 @@ function CreateForm({ profileId, onCreated }: { profileId: string; onCreated: (v
   );
 }
 
-function MySubjectRow({ s, required, profileId }: { s: ValidationSubject; required: number; profileId: string }) {
+function MySubjectRow({
+  s,
+  required,
+  profileId,
+}: {
+  s: ValidationSubject;
+  required: number;
+  profileId: string;
+}) {
   const [copied, setCopied] = useState(false);
   const [picking, setPicking] = useState(false);
   const [friends, setFriends] = useState<Friend[]>([]);
@@ -209,10 +245,18 @@ function MySubjectRow({ s, required, profileId }: { s: ValidationSubject; requir
           )}
           {s.status !== 'validated' && (
             <>
-              <button type="button" onClick={partager} className="text-xs text-accent underline-offset-2 hover:underline">
+              <button
+                type="button"
+                onClick={partager}
+                className="text-xs text-accent underline-offset-2 hover:underline"
+              >
                 {copied ? 'Lien copié !' : 'Partager'}
               </button>
-              <button type="button" onClick={ouvrirEnvoi} className="text-xs text-accent underline-offset-2 hover:underline">
+              <button
+                type="button"
+                onClick={ouvrirEnvoi}
+                className="text-xs text-accent underline-offset-2 hover:underline"
+              >
                 Envoyer à un ami
               </button>
             </>
@@ -223,7 +267,9 @@ function MySubjectRow({ s, required, profileId }: { s: ValidationSubject; requir
       {picking && (
         <div className="mt-2 space-y-1 border-t border-border/50 pt-2">
           {friends.length === 0 ? (
-            <p className="text-xs text-muted-foreground">Aucun ami — ajoute-en dans « Mes amis ».</p>
+            <p className="text-xs text-muted-foreground">
+              Aucun ami — ajoute-en dans « Mes amis ».
+            </p>
           ) : (
             friends.map((f) => (
               <button

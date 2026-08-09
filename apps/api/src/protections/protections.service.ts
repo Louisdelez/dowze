@@ -1,6 +1,19 @@
-import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { and, desc, eq, inArray, or } from 'drizzle-orm';
-import type { AiModerationFlag, GuardianControls, ModeratorQueue, ModerationReport, ResetRequest, SupervisionItemView } from '@dowze/schemas';
+import type {
+  AiModerationFlag,
+  GuardianControls,
+  ModeratorQueue,
+  ModerationReport,
+  ResetRequest,
+  SupervisionItemView,
+} from '@dowze/schemas';
 import { DB, type Database } from '../db/drizzle.module';
 import {
   accounts,
@@ -27,7 +40,9 @@ export class ProtectionsService {
   }
 
   private async profileForAccount(accountId: string) {
-    return (await this.db.select().from(profiles).where(eq(profiles.accountId, accountId)))[0] ?? null;
+    return (
+      (await this.db.select().from(profiles).where(eq(profiles.accountId, accountId)))[0] ?? null
+    );
   }
 
   // ---------------- Espace modérateur ----------------
@@ -103,14 +118,16 @@ export class ProtectionsService {
       .limit(100);
     const aiFlags: AiModerationFlag[] = await Promise.all(
       flagRows.map(async (f) => {
-        const msg = (await this.db.select().from(chatMessages).where(eq(chatMessages.id, f.messageId)))[0];
+        const msg = (
+          await this.db.select().from(chatMessages).where(eq(chatMessages.id, f.messageId))
+        )[0];
         return {
           id: f.id,
           authorName: await this.nameOf(f.authorId),
           category: f.category,
           reason: f.reason,
           severity: f.severity,
-          messageBody: msg?.status === 'anonymized' ? '(supprimé)' : msg?.body ?? '',
+          messageBody: msg?.status === 'anonymized' ? '(supprimé)' : (msg?.body ?? ''),
           createdAtIso: f.createdAt.toISOString(),
         };
       }),
@@ -120,7 +137,8 @@ export class ProtectionsService {
   }
 
   async resolveAiFlag(profileId: string, flagId: string): Promise<{ ok: true }> {
-    if (!(await this.isModerator(profileId))) throw new ForbiddenException('réservé aux modérateurs');
+    if (!(await this.isModerator(profileId)))
+      throw new ForbiddenException('réservé aux modérateurs');
     await this.db
       .update(aiModerationFlags)
       .set({ status: 'resolved', resolvedAt: new Date(), resolverId: profileId })
@@ -140,7 +158,8 @@ export class ProtectionsService {
   }
 
   async resolveReport(profileId: string, reportId: string): Promise<{ ok: true }> {
-    if (!(await this.isModerator(profileId))) throw new ForbiddenException('réservé aux modérateurs');
+    if (!(await this.isModerator(profileId)))
+      throw new ForbiddenException('réservé aux modérateurs');
     await this.db
       .update(userReports)
       .set({ status: 'resolved', resolvedAt: new Date(), resolverId: profileId })
@@ -148,15 +167,26 @@ export class ProtectionsService {
     return { ok: true as const };
   }
 
-  async moderatorDecideReset(profileId: string, resetId: string, approve: boolean): Promise<{ ok: true }> {
-    if (!(await this.isModerator(profileId))) throw new ForbiddenException('réservé aux modérateurs');
-    const req = (await this.db.select().from(resetRequests).where(eq(resetRequests.id, resetId)))[0];
+  async moderatorDecideReset(
+    profileId: string,
+    resetId: string,
+    approve: boolean,
+  ): Promise<{ ok: true }> {
+    if (!(await this.isModerator(profileId)))
+      throw new ForbiddenException('réservé aux modérateurs');
+    const req = (
+      await this.db.select().from(resetRequests).where(eq(resetRequests.id, resetId))
+    )[0];
     if (!req) throw new NotFoundException('demande introuvable');
     if (req.status !== 'pending_moderator') throw new BadRequestException('demande déjà traitée');
     if (approve) await this.executeReset(req.profileId, req.scope);
     await this.db
       .update(resetRequests)
-      .set({ status: approve ? 'approved' : 'rejected', moderatorId: profileId, resolvedAt: new Date() })
+      .set({
+        status: approve ? 'approved' : 'rejected',
+        moderatorId: profileId,
+        resolvedAt: new Date(),
+      })
       .where(eq(resetRequests.id, resetId));
     return { ok: true as const };
   }
@@ -174,10 +204,14 @@ export class ProtectionsService {
       .select()
       .from(conversationParticipants)
       .where(eq(conversationParticipants.profileId, profileId));
-    await this.db.delete(conversationParticipants).where(eq(conversationParticipants.profileId, profileId));
+    await this.db
+      .delete(conversationParticipants)
+      .where(eq(conversationParticipants.profileId, profileId));
     // 4. Conversations directes devenues orphelines (≤ 1 participant restant).
     for (const p of myParts) {
-      const c = (await this.db.select().from(conversations).where(eq(conversations.id, p.conversationId)))[0];
+      const c = (
+        await this.db.select().from(conversations).where(eq(conversations.id, p.conversationId))
+      )[0];
       if (c?.type !== 'direct') continue;
       const remaining = await this.db
         .select()
@@ -185,7 +219,9 @@ export class ProtectionsService {
         .where(eq(conversationParticipants.conversationId, c.id));
       if (remaining.length <= 1) {
         await this.db.delete(chatMessages).where(eq(chatMessages.conversationId, c.id));
-        await this.db.delete(conversationParticipants).where(eq(conversationParticipants.conversationId, c.id));
+        await this.db
+          .delete(conversationParticipants)
+          .where(eq(conversationParticipants.conversationId, c.id));
         await this.db.delete(conversations).where(eq(conversations.id, c.id));
       }
     }
@@ -199,7 +235,9 @@ export class ProtectionsService {
   async requestReset(profileId: string, scope: 'messages' | 'account'): Promise<ResetRequest> {
     const p = (await this.db.select().from(profiles).where(eq(profiles.id, profileId)))[0];
     if (!p) throw new NotFoundException('profil introuvable');
-    const guardian = (await this.db.select().from(guardians).where(eq(guardians.minorAccountId, p.accountId)))[0];
+    const guardian = (
+      await this.db.select().from(guardians).where(eq(guardians.minorAccountId, p.accountId))
+    )[0];
     // Sous accord parental (un responsable existe) → validation parentale d'abord ; sinon direct modérateur.
     const status = guardian ? 'pending_parent' : 'pending_moderator';
     const inserted = (
@@ -217,21 +255,32 @@ export class ProtectionsService {
   async guardianControls(childAccountId: string): Promise<GuardianControls> {
     const child = await this.profileForAccount(childAccountId);
     if (!child) throw new NotFoundException('élève introuvable');
-    const guardian = (await this.db.select().from(guardians).where(eq(guardians.minorAccountId, childAccountId)))[0];
+    const guardian = (
+      await this.db.select().from(guardians).where(eq(guardians.minorAccountId, childAccountId))
+    )[0];
 
     const items = await this.db
       .select()
       .from(supervisionItems)
-      .where(and(eq(supervisionItems.childAccountId, childAccountId), eq(supervisionItems.status, 'pending')))
+      .where(
+        and(
+          eq(supervisionItems.childAccountId, childAccountId),
+          eq(supervisionItems.status, 'pending'),
+        ),
+      )
       .orderBy(desc(supervisionItems.createdAt));
-    const queue: SupervisionItemView[] = await Promise.all(items.map((it) => this.toSupervisionView(it)));
+    const queue: SupervisionItemView[] = await Promise.all(
+      items.map((it) => this.toSupervisionView(it)),
+    );
 
     const pendingChildResetRows = await this.db
       .select()
       .from(resetRequests)
       .where(and(eq(resetRequests.profileId, child.id), eq(resetRequests.status, 'pending_parent')))
       .orderBy(desc(resetRequests.createdAt));
-    const pendingChildResets = await Promise.all(pendingChildResetRows.map((r) => this.toResetView(r)));
+    const pendingChildResets = await Promise.all(
+      pendingChildResetRows.map((r) => this.toResetView(r)),
+    );
 
     // Alertes de l'IA de modération concernant cet enfant (immédiates).
     const alertRows = await this.db
@@ -258,14 +307,18 @@ export class ProtectionsService {
     };
   }
 
-  private async toSupervisionView(it: typeof supervisionItems.$inferSelect): Promise<SupervisionItemView> {
+  private async toSupervisionView(
+    it: typeof supervisionItems.$inferSelect,
+  ): Promise<SupervisionItemView> {
     let otherName = '';
     let preview = '';
     if (it.kind === 'friend_request') {
       otherName = it.friendTargetId ? await this.nameOf(it.friendTargetId) : '';
       preview = "Demande d'ami";
     } else if (it.messageId) {
-      const m = (await this.db.select().from(chatMessages).where(eq(chatMessages.id, it.messageId)))[0];
+      const m = (
+        await this.db.select().from(chatMessages).where(eq(chatMessages.id, it.messageId))
+      )[0];
       otherName = m ? await this.nameOf(m.senderId) : '';
       preview = m?.body ?? '';
     }
@@ -280,26 +333,51 @@ export class ProtectionsService {
   }
 
   /** Active/désactive le mode supervisé (crée le responsable au besoin). */
-  async setSupervised(childAccountId: string, on: boolean, guardianEmail: string): Promise<{ supervised: boolean }> {
-    const existing = (await this.db.select().from(guardians).where(eq(guardians.minorAccountId, childAccountId)))[0];
+  async setSupervised(
+    childAccountId: string,
+    on: boolean,
+    guardianEmail: string,
+  ): Promise<{ supervised: boolean }> {
+    const existing = (
+      await this.db.select().from(guardians).where(eq(guardians.minorAccountId, childAccountId))
+    )[0];
     if (existing) {
       await this.db.update(guardians).set({ supervised: on }).where(eq(guardians.id, existing.id));
     } else {
-      await this.db.insert(guardians).values({ minorAccountId: childAccountId, email: guardianEmail || 'parent@dowze', supervised: on });
+      await this.db.insert(guardians).values({
+        minorAccountId: childAccountId,
+        email: guardianEmail || 'parent@dowze',
+        supervised: on,
+      });
     }
     return { supervised: on };
   }
 
   /** Le parent valide/refuse un item de la file (message ou demande d'ami, entrant ou sortant). */
-  async resolveSupervision(childAccountId: string, itemId: string, approve: boolean): Promise<{ ok: true }> {
-    const it = (await this.db.select().from(supervisionItems).where(eq(supervisionItems.id, itemId)))[0];
-    if (!it || it.childAccountId !== childAccountId) throw new NotFoundException('élément introuvable');
+  async resolveSupervision(
+    childAccountId: string,
+    itemId: string,
+    approve: boolean,
+  ): Promise<{ ok: true }> {
+    const it = (
+      await this.db.select().from(supervisionItems).where(eq(supervisionItems.id, itemId))
+    )[0];
+    if (!it || it.childAccountId !== childAccountId)
+      throw new NotFoundException('élément introuvable');
     if (it.status !== 'pending') throw new BadRequestException('déjà traité');
 
     if (it.kind === 'message' && it.messageId) {
       if (it.direction === 'out') {
-        if (approve) await this.db.update(chatMessages).set({ holdState: 'clear' }).where(eq(chatMessages.id, it.messageId));
-        else await this.db.update(chatMessages).set({ status: 'anonymized', body: '' }).where(eq(chatMessages.id, it.messageId));
+        if (approve)
+          await this.db
+            .update(chatMessages)
+            .set({ holdState: 'clear' })
+            .where(eq(chatMessages.id, it.messageId));
+        else
+          await this.db
+            .update(chatMessages)
+            .set({ status: 'anonymized', body: '' })
+            .where(eq(chatMessages.id, it.messageId));
       }
       // 'in' : l'approbation (status='approved') suffit à révéler le message côté enfant.
     } else if (it.kind === 'friend_request' && it.friendTargetId) {
@@ -309,11 +387,16 @@ export class ProtectionsService {
       const high = child < other ? other : child;
       if (approve) {
         if (it.direction === 'out')
-          await this.db.update(friendships).set({ status: 'pending' }).where(and(eq(friendships.userLow, low), eq(friendships.userHigh, high)));
+          await this.db
+            .update(friendships)
+            .set({ status: 'pending' })
+            .where(and(eq(friendships.userLow, low), eq(friendships.userHigh, high)));
         // 'in' : l'approbation suffit à révéler la demande entrante côté enfant.
       } else {
         // Refus → on supprime la relation en attente.
-        await this.db.delete(friendships).where(and(eq(friendships.userLow, low), eq(friendships.userHigh, high)));
+        await this.db
+          .delete(friendships)
+          .where(and(eq(friendships.userLow, low), eq(friendships.userHigh, high)));
       }
     }
 
@@ -325,10 +408,16 @@ export class ProtectionsService {
   }
 
   /** Le parent approuve la demande de remise à 0 de son enfant → part au modérateur. */
-  async parentDecideChildReset(childAccountId: string, resetId: string, approve: boolean): Promise<{ ok: true }> {
+  async parentDecideChildReset(
+    childAccountId: string,
+    resetId: string,
+    approve: boolean,
+  ): Promise<{ ok: true }> {
     const child = await this.profileForAccount(childAccountId);
     if (!child) throw new NotFoundException('élève introuvable');
-    const req = (await this.db.select().from(resetRequests).where(eq(resetRequests.id, resetId)))[0];
+    const req = (
+      await this.db.select().from(resetRequests).where(eq(resetRequests.id, resetId))
+    )[0];
     if (!req || req.profileId !== child.id) throw new NotFoundException('demande introuvable');
     if (req.status !== 'pending_parent') throw new BadRequestException('déjà traité');
     await this.db
@@ -343,13 +432,23 @@ export class ProtectionsService {
   }
 
   /** Le parent demande lui-même une remise à 0 → directement au modérateur. */
-  async parentCreateReset(childAccountId: string, scope: 'messages' | 'account', guardianEmail: string): Promise<ResetRequest> {
+  async parentCreateReset(
+    childAccountId: string,
+    scope: 'messages' | 'account',
+    guardianEmail: string,
+  ): Promise<ResetRequest> {
     const child = await this.profileForAccount(childAccountId);
     if (!child) throw new NotFoundException('élève introuvable');
     const inserted = (
       await this.db
         .insert(resetRequests)
-        .values({ profileId: child.id, scope, requestedBy: 'parent', requesterRef: guardianEmail, status: 'pending_moderator' })
+        .values({
+          profileId: child.id,
+          scope,
+          requestedBy: 'parent',
+          requesterRef: guardianEmail,
+          status: 'pending_moderator',
+        })
         .returning()
     )[0];
     if (!inserted) throw new BadRequestException('demande impossible');

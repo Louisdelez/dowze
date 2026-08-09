@@ -47,9 +47,12 @@ export function DailyBudgetCard({ profileId }: { profileId: string }) {
       <ul className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-3">
         {b.blocks.map((blk) => (
           <li key={blk.key} className="flex items-center gap-2">
-            <span className={`inline-block h-2.5 w-2.5 rounded-full ${COLORS[blk.key] ?? 'bg-muted'}`} />
+            <span
+              className={`inline-block h-2.5 w-2.5 rounded-full ${COLORS[blk.key] ?? 'bg-muted'}`}
+            />
             <span className="text-muted-foreground">
-              {blk.label} · {blk.minutes}′{blk.protectedBlock ? ' (protégé)' : ''}{blk.capped ? ' (plafonné)' : ''}
+              {blk.label} · {blk.minutes}′{blk.protectedBlock ? ' (protégé)' : ''}
+              {blk.capped ? ' (plafonné)' : ''}
             </span>
           </li>
         ))}

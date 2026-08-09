@@ -9,7 +9,12 @@ import type {
 } from '@dowze/schemas';
 import { pluginContributesSchema } from '@dowze/schemas';
 import { DB, type Database } from '../db/drizzle.module';
-import { calendarEntries, pluginRegistry, recurringCommitments, userPluginActivation } from '../db/schema';
+import {
+  calendarEntries,
+  pluginRegistry,
+  recurringCommitments,
+  userPluginActivation,
+} from '../db/schema';
 import { RealtimeService } from '../realtime/realtime.service';
 
 type RecurringRow = typeof recurringCommitments.$inferSelect;
@@ -47,7 +52,11 @@ export class CalendarService {
         adherenceMetric: body.adherenceMetric,
       })
       .onConflictDoUpdate({
-        target: [recurringCommitments.profileId, recurringCommitments.sourceApp, recurringCommitments.sourceRef],
+        target: [
+          recurringCommitments.profileId,
+          recurringCommitments.sourceApp,
+          recurringCommitments.sourceRef,
+        ],
         set: {
           type: body.type,
           title: body.title,
@@ -71,7 +80,11 @@ export class CalendarService {
     return row as RecurringRow;
   }
 
-  async removeRecurring(profileId: string, sourceApp: string, sourceRef: string): Promise<{ removed: true }> {
+  async removeRecurring(
+    profileId: string,
+    sourceApp: string,
+    sourceRef: string,
+  ): Promise<{ removed: true }> {
     await this.db
       .delete(recurringCommitments)
       .where(
@@ -90,7 +103,10 @@ export class CalendarService {
   }
 
   async listRecurring(profileId: string): Promise<RecurringRow[]> {
-    return this.db.select().from(recurringCommitments).where(eq(recurringCommitments.profileId, profileId));
+    return this.db
+      .select()
+      .from(recurringCommitments)
+      .where(eq(recurringCommitments.profileId, profileId));
   }
 
   /**
@@ -115,17 +131,24 @@ export class CalendarService {
           eq(userPluginActivation.profileId, recurringCommitments.profileId),
         ),
       )
-      .where(and(eq(recurringCommitments.profileId, profileId), eq(userPluginActivation.enabled, true)));
+      .where(
+        and(eq(recurringCommitments.profileId, profileId), eq(userPluginActivation.enabled, true)),
+      );
 
     return rows.map(({ rc, name, subdomain, contributes }) => {
       const parsed = pluginContributesSchema.safeParse(contributes);
-      const contrib: PluginContributes = parsed.success ? parsed.data : { calendarEntryTypes: [], navTiles: [] };
+      const contrib: PluginContributes = parsed.success
+        ? parsed.data
+        : { calendarEntryTypes: [], navTiles: [] };
       const entryMeta = contrib.calendarEntryTypes.find((e) => e.type === rc.type);
       const soft = (rc.softPreferences ?? {}) as {
         preferredTime?: 'matin' | 'apres-midi' | 'soir';
         cognitiveBoostBeforeStudy?: boolean;
       };
-      const hard = (rc.hardConstraints ?? {}) as { minRestDaysPerWeek?: number; weeklyCapMin?: number };
+      const hard = (rc.hardConstraints ?? {}) as {
+        minRestDaysPerWeek?: number;
+        weeklyCapMin?: number;
+      };
       return {
         key: `${rc.sourceApp}:${rc.sourceRef}`,
         entryType: rc.type,
@@ -220,7 +243,10 @@ export class CalendarService {
   }
 
   async listEntries(profileId: string): Promise<CalendarEntry[]> {
-    const rows = await this.db.select().from(calendarEntries).where(eq(calendarEntries.profileId, profileId));
+    const rows = await this.db
+      .select()
+      .from(calendarEntries)
+      .where(eq(calendarEntries.profileId, profileId));
     return rows.map((r) => this.toEntry(r)).sort((a, b) => a.start.localeCompare(b.start));
   }
 }

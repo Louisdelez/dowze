@@ -54,7 +54,9 @@ export class SpecializationService {
   ) {}
 
   private async currentRank(profileId: string): Promise<number> {
-    const row = (await this.db.select().from(learnerRank).where(eq(learnerRank.profileId, profileId)))[0];
+    const row = (
+      await this.db.select().from(learnerRank).where(eq(learnerRank.profileId, profileId))
+    )[0];
     return row?.rank ?? 1;
   }
 
@@ -66,9 +68,9 @@ export class SpecializationService {
     const mastery = await this.progression.getMastery(profileId);
     const pById = new Map(mastery.map((m) => [m.skillId, m.pMastery]));
     const chosen = new Set(
-      (await this.db.select().from(specializations).where(eq(specializations.profileId, profileId))).map(
-        (s) => s.discipline,
-      ),
+      (
+        await this.db.select().from(specializations).where(eq(specializations.profileId, profileId))
+      ).map((s) => s.discipline),
     );
 
     // Compétences par discipline, triées (pour la « prochaine étape »).
@@ -80,7 +82,9 @@ export class SpecializationService {
     }
 
     const progressOf = (discipline: string): DisciplineProgress => {
-      const skills = (byDisc.get(discipline) ?? []).slice().sort((a, b) => a.depth - b.depth || (a.order ?? 0) - (b.order ?? 0));
+      const skills = (byDisc.get(discipline) ?? [])
+        .slice()
+        .sort((a, b) => a.depth - b.depth || (a.order ?? 0) - (b.order ?? 0));
       let sumP = 0;
       let mastered = 0;
       let topRank = 0;
@@ -157,10 +161,19 @@ export class SpecializationService {
       await this.db
         .select()
         .from(specializationPlans)
-        .where(and(eq(specializationPlans.profileId, profileId), eq(specializationPlans.discipline, discipline)))
+        .where(
+          and(
+            eq(specializationPlans.profileId, profileId),
+            eq(specializationPlans.discipline, discipline),
+          ),
+        )
     )[0];
     if (!row) return null;
-    return { discipline: row.discipline, distalGoal: row.distalGoal, milestones: row.milestones as Milestone[] };
+    return {
+      discipline: row.discipline,
+      distalGoal: row.distalGoal,
+      milestones: row.milestones as Milestone[],
+    };
   }
 
   /** Le guide-IA génère (ou régénère) un plan de spécialisation pour la discipline. */
@@ -178,14 +191,17 @@ export class SpecializationService {
       `Discipline : ${discipline}. Niveau actuel de l'élève : ${meta(rank).name}.\n` +
       `Compétences repères de la discipline (du plus simple au plus avancé) : ${titles.join(' ; ')}.\n` +
       `Conçois le plan de spécialisation (objectif distal + 5 à 8 jalons avec projets et badges).`;
-    const { object } = await this.copilote.generateStructured<z.infer<typeof planGenSchema>>(profileId, {
-      schema: planGenSchema,
-      schemaName: 'SpecializationPlan',
-      system: PLAN_SYSTEM,
-      prompt,
-      temperature: 0.4,
-      ref: 'specialization-plan',
-    });
+    const { object } = await this.copilote.generateStructured<z.infer<typeof planGenSchema>>(
+      profileId,
+      {
+        schema: planGenSchema,
+        schemaName: 'SpecializationPlan',
+        system: PLAN_SYSTEM,
+        prompt,
+        temperature: 0.4,
+        ref: 'specialization-plan',
+      },
+    );
     const milestones: Milestone[] = object.milestones.map((m, i) => ({
       id: `m${i + 1}`,
       competency: m.competency,
@@ -206,12 +222,21 @@ export class SpecializationService {
   }
 
   /** Valide un jalon : le marque fait et débloque le badge associé. */
-  async completeMilestone(profileId: string, discipline: string, milestoneId: string): Promise<SpecializationPlan> {
+  async completeMilestone(
+    profileId: string,
+    discipline: string,
+    milestoneId: string,
+  ): Promise<SpecializationPlan> {
     const row = (
       await this.db
         .select()
         .from(specializationPlans)
-        .where(and(eq(specializationPlans.profileId, profileId), eq(specializationPlans.discipline, discipline)))
+        .where(
+          and(
+            eq(specializationPlans.profileId, profileId),
+            eq(specializationPlans.discipline, discipline),
+          ),
+        )
     )[0];
     if (!row) throw new NotFoundException('aucun plan pour cette discipline');
     const milestones = row.milestones as Milestone[];
@@ -222,7 +247,12 @@ export class SpecializationService {
       await this.db
         .update(specializationPlans)
         .set({ milestones })
-        .where(and(eq(specializationPlans.profileId, profileId), eq(specializationPlans.discipline, discipline)));
+        .where(
+          and(
+            eq(specializationPlans.profileId, profileId),
+            eq(specializationPlans.discipline, discipline),
+          ),
+        );
       await this.db.insert(learnerBadges).values({
         profileId,
         name: m.badgeName,
@@ -246,7 +276,9 @@ export class SpecializationService {
   async drop(profileId: string, discipline: string): Promise<SpecializationView> {
     await this.db
       .delete(specializations)
-      .where(and(eq(specializations.profileId, profileId), eq(specializations.discipline, discipline)));
+      .where(
+        and(eq(specializations.profileId, profileId), eq(specializations.discipline, discipline)),
+      );
     return this.view(profileId);
   }
 }

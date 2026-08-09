@@ -3,7 +3,8 @@ import path from 'node:path';
 import os from 'node:os';
 
 // Stockage « cloud » par utilisateur, dans le volume monté. Fichiers RÉELS sur disque (dossiers = vrais répertoires).
-const DATA_DIR = process.env.DEV_DATA_DIR || (process.env.NODE_ENV === 'production' ? '/data' : os.tmpdir());
+const DATA_DIR =
+  process.env.DEV_DATA_DIR || (process.env.NODE_ENV === 'production' ? '/data' : os.tmpdir());
 export const FILES_ROOT = path.join(DATA_DIR, 'files');
 export const QUOTA_BYTES = 10 * 1024 * 1024 * 1024; // 10 Go / utilisateur
 export const MAX_FILE_BYTES = 100 * 1024 * 1024; // 100 Mo / fichier
@@ -96,10 +97,13 @@ export async function listDir(user: string, rel: string): Promise<Entry[]> {
     } catch {
       continue;
     }
-    if (st.isDirectory()) entries.push({ name, type: 'folder', size: await dirSize(full), mtime: st.mtimeMs });
+    if (st.isDirectory())
+      entries.push({ name, type: 'folder', size: await dirSize(full), mtime: st.mtimeMs });
     else entries.push({ name, type: 'file', size: st.size, mtime: st.mtimeMs });
   }
-  entries.sort((a, b) => (a.type === b.type ? a.name.localeCompare(b.name) : a.type === 'folder' ? -1 : 1));
+  entries.sort((a, b) =>
+    a.type === b.type ? a.name.localeCompare(b.name) : a.type === 'folder' ? -1 : 1,
+  );
   return entries;
 }
 

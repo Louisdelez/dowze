@@ -11,9 +11,7 @@ const proposeBody = z.object({ profileId: z.string().uuid() }).strict();
 const chooseBody = z
   .object({ profileId: z.string().uuid(), proposal: expeditionProposalSchema })
   .strict();
-const advanceBody = z
-  .object({ bilan: z.string().max(8000).optional() })
-  .strict();
+const advanceBody = z.object({ bilan: z.string().max(8000).optional() }).strict();
 
 @Controller('expeditions/guided')
 @UseGuards(SupabaseAuthGuard)

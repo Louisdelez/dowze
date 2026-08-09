@@ -20,7 +20,10 @@ export class ClassesController {
   /** (Ré)assigner toutes les classes de l'année — réservé aux modérateurs. */
   @Post('assign/:profileId')
   assign(@Param('profileId') profileId: string, @Body() body: unknown) {
-    const { schoolYear } = parseOr400(z.object({ schoolYear: z.number().int().default(2026) }), body);
+    const { schoolYear } = parseOr400(
+      z.object({ schoolYear: z.number().int().default(2026) }),
+      body,
+    );
     return this.service.assignAll(uuid.parse(profileId), schoolYear);
   }
 }

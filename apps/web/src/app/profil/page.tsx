@@ -62,7 +62,11 @@ export default function ProfilPage() {
         photoUrl,
       });
       if (updated && me) {
-        setSession({ accountId: me.account.id, profileId: updated.id, displayName: updated.displayName });
+        setSession({
+          accountId: me.account.id,
+          profileId: updated.id,
+          displayName: updated.displayName,
+        });
       }
       setMessage('Profil enregistré.');
     } catch (e) {
@@ -79,7 +83,9 @@ export default function ProfilPage() {
     try {
       const { error } = await getSupabase().auth.updateUser({ email });
       if (error) throw error;
-      setMessage('Un email de confirmation vient de t’être envoyé pour valider la nouvelle adresse.');
+      setMessage(
+        'Un email de confirmation vient de t’être envoyé pour valider la nouvelle adresse.',
+      );
     } catch (e) {
       setErreur(String(e instanceof Error ? e.message : e));
     } finally {
@@ -134,14 +140,21 @@ export default function ProfilPage() {
       <EmptyState
         title="Connecte-toi"
         description="Tu dois être connecté·e pour voir ton profil."
-        action={<Link href="/connexion" className="text-accent underline-offset-2 hover:underline">Se connecter</Link>}
+        action={
+          <Link href="/connexion" className="text-accent underline-offset-2 hover:underline">
+            Se connecter
+          </Link>
+        }
       />
     );
   }
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Mon profil" subtitle="Tes informations personnelles, à toi de les gérer." />
+      <PageHeader
+        title="Mon profil"
+        subtitle="Tes informations personnelles, à toi de les gérer."
+      />
 
       {chargement ? (
         <Skeleton className="h-40" />
@@ -152,8 +165,11 @@ export default function ProfilPage() {
             <div className="flex items-center gap-4">
               <div className="h-16 w-16 overflow-hidden rounded-full border border-border bg-muted">
                 {photoUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={photoUrl} alt="Photo de profil" className="h-full w-full object-cover" />
+                  <img
+                    src={photoUrl}
+                    alt="Photo de profil"
+                    className="h-full w-full object-cover"
+                  />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-lg text-muted-foreground">
                     {displayName.slice(0, 1).toUpperCase() || '?'}
@@ -171,7 +187,11 @@ export default function ProfilPage() {
                     if (f) void televerserPhoto(f);
                   }}
                 />
-                <Button variant="secondary" onClick={() => fileRef.current?.click()} disabled={enCours}>
+                <Button
+                  variant="secondary"
+                  onClick={() => fileRef.current?.click()}
+                  disabled={enCours}
+                >
                   Changer la photo
                 </Button>
               </div>
@@ -197,7 +217,9 @@ export default function ProfilPage() {
           <Card className="space-y-4">
             <div>
               <CardTitle>Adresse e-mail</CardTitle>
-              <CardDescription>Changer ton e-mail demande une confirmation par lien.</CardDescription>
+              <CardDescription>
+                Changer ton e-mail demande une confirmation par lien.
+              </CardDescription>
             </div>
             <TextField
               label="E-mail"
@@ -238,8 +260,8 @@ export default function ProfilPage() {
             <div>
               <CardTitle>Code de suivi pour mon responsable</CardTitle>
               <CardDescription>
-                Donne ce code à ton parent/responsable pour qu’il puisse suivre ta progression (jamais tes
-                échanges privés). Tu sais ainsi exactement ce qu’il peut voir.
+                Donne ce code à ton parent/responsable pour qu’il puisse suivre ta progression
+                (jamais tes échanges privés). Tu sais ainsi exactement ce qu’il peut voir.
               </CardDescription>
             </div>
             {me && (
@@ -263,7 +285,9 @@ export default function ProfilPage() {
           <Card className="space-y-3">
             <div>
               <CardTitle>Mon parcours d’entrée</CardTitle>
-              <CardDescription>Tu peux refaire ces étapes à tout moment (ton niveau s’ajuste).</CardDescription>
+              <CardDescription>
+                Tu peux refaire ces étapes à tout moment (ton niveau s’ajuste).
+              </CardDescription>
             </div>
             <div className="flex flex-wrap gap-3">
               <Link href="/presentation">
@@ -288,7 +312,8 @@ export default function ProfilPage() {
 function ResetZone({ profileId }: { profileId: string }) {
   const [done, setDone] = useState<string | null>(null);
   async function demander() {
-    if (!confirm('Demander la remise à 0 de TOUS tes messages et amis ? Ton compte reste intact.')) return;
+    if (!confirm('Demander la remise à 0 de TOUS tes messages et amis ? Ton compte reste intact.'))
+      return;
     const r = await requestReset(profileId, 'messages');
     setDone(
       r.status === 'pending_parent'
@@ -300,14 +325,16 @@ function ResetZone({ profileId }: { profileId: string }) {
     <Card className="space-y-2 border-amber-300 bg-amber-50/50">
       <CardTitle>Remise à 0</CardTitle>
       <CardDescription>
-        Effacer <strong>tous</strong> tes messages et amis, et repartir de zéro. Ton compte, ta progression et
-        tes rangs sont conservés. Une validation par un modérateur est nécessaire.
+        Effacer <strong>tous</strong> tes messages et amis, et repartir de zéro. Ton compte, ta
+        progression et tes rangs sont conservés. Une validation par un modérateur est nécessaire.
       </CardDescription>
       {done ? (
         <Note tone="info">{done}</Note>
       ) : (
         <div>
-          <Button variant="secondary" onClick={demander}>Demander la remise à 0</Button>
+          <Button variant="secondary" onClick={demander}>
+            Demander la remise à 0
+          </Button>
         </div>
       )}
     </Card>

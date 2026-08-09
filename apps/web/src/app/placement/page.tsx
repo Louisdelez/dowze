@@ -52,7 +52,12 @@ export default function PlacementPage() {
       setErreur('');
       try {
         const responseTimeMs = Date.now() - startMsRef.current;
-        const next = await placementAnswer(cur.sessionId, answerRef.current.trim(), responseTimeMs, timedOut);
+        const next = await placementAnswer(
+          cur.sessionId,
+          answerRef.current.trim(),
+          responseTimeMs,
+          timedOut,
+        );
         setAnswer('');
         setStep(next);
       } catch (e) {
@@ -82,7 +87,6 @@ export default function PlacementPage() {
     }, 1000);
     return () => clearInterval(id);
     // On redémarre le minuteur à chaque nouvelle question.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step?.sessionId, step?.askedCount, step?.done]);
 
   if (!ready) return null;
@@ -91,7 +95,11 @@ export default function PlacementPage() {
       <EmptyState
         title="Connecte-toi"
         description="Le test d'évaluation d'entrée fait partie de ton arrivée à Dowze."
-        action={<Link href="/connexion" className="text-accent underline-offset-2 hover:underline">Se connecter</Link>}
+        action={
+          <Link href="/connexion" className="text-accent underline-offset-2 hover:underline">
+            Se connecter
+          </Link>
+        }
       />
     );
   }
@@ -105,7 +113,8 @@ export default function PlacementPage() {
           <CardTitle>Ton point de départ</CardTitle>
           {step.masteredCount > 0 && (
             <p className="text-sm text-muted-foreground">
-              Tu maîtrises déjà <strong>{step.masteredCount}</strong> compétence(s) — pas besoin de les refaire.
+              Tu maîtrises déjà <strong>{step.masteredCount}</strong> compétence(s) — pas besoin de
+              les refaire.
             </p>
           )}
           {step.entrySkill ? (
@@ -193,10 +202,17 @@ export default function PlacementPage() {
           />
           {erreur && <Note tone="error">{erreur}</Note>}
           <div className="flex flex-wrap gap-3">
-            <Button onClick={() => soumettre(false)} disabled={enCours || answer.trim().length === 0}>
+            <Button
+              onClick={() => soumettre(false)}
+              disabled={enCours || answer.trim().length === 0}
+            >
               {enCours ? 'Dowze réfléchit…' : 'Valider ma réponse'}
             </Button>
-            <Button variant="secondary" onClick={() => router.push('/dashboard')} disabled={enCours}>
+            <Button
+              variant="secondary"
+              onClick={() => router.push('/dashboard')}
+              disabled={enCours}
+            >
               Arrêter
             </Button>
           </div>
@@ -208,13 +224,17 @@ export default function PlacementPage() {
   // Écran d'accueil.
   return (
     <div className="space-y-6">
-      <PageHeader title="Situons ton niveau" subtitle="Entre 15 et 30 questions, sans stress, qui s'adaptent à toi." />
+      <PageHeader
+        title="Situons ton niveau"
+        subtitle="Entre 15 et 30 questions, sans stress, qui s'adaptent à toi."
+      />
       <Card className="space-y-4">
         <CardDescription>
-          On te pose des questions ouvertes qui s'adaptent à tes réponses : si tu réussis, elles montent ;
-          si tu bloques, elles redescendent — jusqu'à trouver précisément ton niveau. Un adulte ne recommence
-          pas la maternelle, et si tu es très à l'aise, on te proposera même des défis au-dessus de ton âge.
-          Chaque question a un temps conseillé, généreux : c'est un repère, jamais un couperet.
+          On te pose des questions ouvertes qui s'adaptent à tes réponses : si tu réussis, elles
+          montent ; si tu bloques, elles redescendent — jusqu'à trouver précisément ton niveau. Un
+          adulte ne recommence pas la maternelle, et si tu es très à l'aise, on te proposera même
+          des défis au-dessus de ton âge. Chaque question a un temps conseillé, généreux : c'est un
+          repère, jamais un couperet.
         </CardDescription>
         {erreur && <Note tone="error">{erreur}</Note>}
         <div className="flex flex-wrap gap-3">
@@ -232,7 +252,9 @@ export default function PlacementPage() {
 
 function lisible(e: unknown): string {
   const msg = String(e instanceof Error ? e.message : e);
-  if (msg.includes('402')) return 'Il faut des crédits (ou ta propre clé) pour le placement par l’IA. Va dans « Mon Copilote ».';
-  if (msg.includes('503')) return "Le modèle n'a pas répondu. Réessaie, ou choisis un autre modèle dans « Mon Copilote ».";
+  if (msg.includes('402'))
+    return 'Il faut des crédits (ou ta propre clé) pour le placement par l’IA. Va dans « Mon Copilote ».';
+  if (msg.includes('503'))
+    return "Le modèle n'a pas répondu. Réessaie, ou choisis un autre modèle dans « Mon Copilote ».";
   return msg;
 }

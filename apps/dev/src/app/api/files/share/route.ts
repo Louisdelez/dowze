@@ -14,7 +14,11 @@ export async function POST(req: Request) {
   if (!u) return NextResponse.json({ error: 'non authentifié' }, { status: 401 });
 
   let body: { path?: string; ttl?: number };
-  try { body = await req.json(); } catch { return NextResponse.json({ error: 'corps invalide' }, { status: 400 }); }
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: 'corps invalide' }, { status: 400 });
+  }
   const rel = (body.path || '').trim();
   if (!rel) return NextResponse.json({ error: 'path requis' }, { status: 400 });
 
@@ -29,5 +33,10 @@ export async function POST(req: Request) {
   const ttl = clampTtl(Number(body.ttl) || 3600);
   const { token, exp } = await signShare(u, rel, ttl);
   // Chemin RELATIF : le client préfixe window.location.origin (robuste derrière le reverse-proxy).
-  return NextResponse.json({ path: `/api/files/public/${token}`, token, exp, expiresInSeconds: ttl });
+  return NextResponse.json({
+    path: `/api/files/public/${token}`,
+    token,
+    exp,
+    expiresInSeconds: ttl,
+  });
 }

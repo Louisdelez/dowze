@@ -66,7 +66,8 @@ export async function PATCH(req: Request) {
   const u = await user();
   if (!u) return NextResponse.json({ error: 'non authentifié' }, { status: 401 });
   const body = await req.json().catch(() => ({}));
-  if (!body.name || !body.newName) return NextResponse.json({ error: 'paramètres' }, { status: 400 });
+  if (!body.name || !body.newName)
+    return NextResponse.json({ error: 'paramètres' }, { status: 400 });
   try {
     await fs.rename(codePath(u, body.name), codePath(u, body.newName));
     return NextResponse.json({ ok: true, name: safeName(body.newName) });

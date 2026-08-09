@@ -98,7 +98,11 @@ export default function PresentationPage() {
       <EmptyState
         title="Connecte-toi"
         description="Cette étape fait partie de ton inscription."
-        action={<Link href="/connexion" className="text-accent underline-offset-2 hover:underline">Se connecter</Link>}
+        action={
+          <Link href="/connexion" className="text-accent underline-offset-2 hover:underline">
+            Se connecter
+          </Link>
+        }
       />
     );
   }
@@ -123,7 +127,11 @@ export default function PresentationPage() {
             onChange={(e) =>
               setDossier({
                 ...dossier,
-                objectifPrincipal: { ...dossier.objectifPrincipal, valeur: e.target.value, statut: 'declare' },
+                objectifPrincipal: {
+                  ...dossier.objectifPrincipal,
+                  valeur: e.target.value,
+                  statut: 'declare',
+                },
               })
             }
           />
@@ -239,7 +247,9 @@ function Puces({ titre, items }: { titre: string; items: string[] }) {
 /** Message d'erreur lisible (masque le 402 crédits / 503 modèle en langage simple). */
 function lisible(e: unknown): string {
   const msg = String(e instanceof Error ? e.message : e);
-  if (msg.includes('402')) return 'Il faut des crédits (ou ta propre clé) pour que Dowze lise ta présentation. Va dans « Mon Copilote ».';
-  if (msg.includes('503')) return "Le modèle n'a pas répondu. Réessaie, ou choisis un autre modèle dans « Mon Copilote ».";
+  if (msg.includes('402'))
+    return 'Il faut des crédits (ou ta propre clé) pour que Dowze lise ta présentation. Va dans « Mon Copilote ».';
+  if (msg.includes('503'))
+    return "Le modèle n'a pas répondu. Réessaie, ou choisis un autre modèle dans « Mon Copilote ».";
   return msg;
 }

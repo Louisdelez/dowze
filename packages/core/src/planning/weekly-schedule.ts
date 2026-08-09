@@ -106,7 +106,14 @@ function studyPlaceables(
   hasSecondary: boolean,
 ): Placeable[] {
   const blocks: Placeable[] = [
-    { type: 'langue', dur: langMin, label: 'Langue', priority: 1, position: 10, routineAnchor: true },
+    {
+      type: 'langue',
+      dur: langMin,
+      label: 'Langue',
+      priority: 1,
+      position: 10,
+      routineAnchor: true,
+    },
     { type: 'revision', dur: revMin, label: 'Révisions', priority: 2, position: 20 },
     { type: 'cours', dur: coursMin, label: 'Cours principaux', priority: 4, position: 40 },
   ];
@@ -115,12 +122,24 @@ function studyPlaceables(
     blocks.push(
       dayIndex % 2 === 1
         ? { type: 'expedition', dur: expMin, label: 'Expédition', priority: 5, position: 55 }
-        : { type: 'cours', dur: Math.max(60, coursMin - 15), label: 'Cours principaux', priority: 5, position: 45 },
+        : {
+            type: 'cours',
+            dur: Math.max(60, coursMin - 15),
+            label: 'Cours principaux',
+            priority: 5,
+            position: 45,
+          },
     );
   }
   // Passion en fin de journée, ~2 jours/semaine (jours pairs), jamais prioritaire.
   if (hasSecondary && intensity !== 'leger' && dayIndex % 2 === 0) {
-    blocks.push({ type: 'passion', dur: passionMin, label: 'Ma passion', priority: 8, position: 70 });
+    blocks.push({
+      type: 'passion',
+      dur: passionMin,
+      label: 'Ma passion',
+      priority: 8,
+      position: 70,
+    });
   }
   return blocks;
 }
@@ -160,7 +179,10 @@ function recurringPlaceable(act: RecurringInput): Placeable {
  * Assigne chaque activité récurrente à des jours ESPACÉS parmi les jours actifs (récupération, cap hebdo,
  * jours de repos). Renvoie une map jour → activités.
  */
-function assignRecurringDays(recurring: RecurringInput[], activeDays: number[]): Map<number, RecurringInput[]> {
+function assignRecurringDays(
+  recurring: RecurringInput[],
+  activeDays: number[],
+): Map<number, RecurringInput[]> {
   const map = new Map<number, RecurringInput[]>();
   const len = activeDays.length;
   if (len === 0) return map;
@@ -171,7 +193,8 @@ function assignRecurringDays(recurring: RecurringInput[], activeDays: number[]):
       freq = Math.min(freq, Math.floor(act.weeklyCapMin / act.durationMin)); // cap OMS
     }
     // Garantir au moins `minRestDaysPerWeek` jours sans cette activité.
-    const maxDaysForRest = act.minRestDaysPerWeek != null ? Math.max(0, 7 - act.minRestDaysPerWeek) : 7;
+    const maxDaysForRest =
+      act.minRestDaysPerWeek != null ? Math.max(0, 7 - act.minRestDaysPerWeek) : 7;
     freq = Math.min(freq, len, maxDaysForRest);
     if (freq <= 0) continue;
 
@@ -207,12 +230,23 @@ export function weeklySchedule(input: ScheduleInput): ScheduleBlock[] {
   const dayEnd = clamp(input.dayEndMin, dayStart + 30, 1440);
   const windowMin = dayEnd - dayStart;
 
-  const activeDays = [...new Set(input.activeDays)].filter((d) => d >= 0 && d <= 6).sort((a, b) => a - b);
+  const activeDays = [...new Set(input.activeDays)]
+    .filter((d) => d >= 0 && d <= 6)
+    .sort((a, b) => a - b);
   const assigned = assignRecurringDays(input.recurring ?? [], activeDays);
 
   const out: ScheduleBlock[] = [];
   activeDays.forEach((dow, dayIndex) => {
-    const study = studyPlaceables(dayIndex, langMin, revMin, coursMin, expMin, passionMin, input.intensity, input.hasSecondary);
+    const study = studyPlaceables(
+      dayIndex,
+      langMin,
+      revMin,
+      coursMin,
+      expMin,
+      passionMin,
+      input.intensity,
+      input.hasSecondary,
+    );
     const recurring = (assigned.get(dow) ?? []).map(recurringPlaceable);
     const candidates = [...study, ...recurring];
 
@@ -243,7 +277,14 @@ export function weeklySchedule(input: ScheduleInput): ScheduleBlock[] {
         type: b.type,
         label: b.label,
         ...(b.type === 'plugin'
-          ? { sourceApp: b.sourceApp, entryType: b.entryType, color: b.color, icon: b.icon, appLabel: b.appLabel, href: b.href }
+          ? {
+              sourceApp: b.sourceApp,
+              entryType: b.entryType,
+              color: b.color,
+              icon: b.icon,
+              appLabel: b.appLabel,
+              href: b.href,
+            }
           : {}),
       });
       const routine = b.routineAnchor === true && ordered[i + 1]?.type === 'revision';
@@ -265,10 +306,58 @@ export interface SchedulePreset {
 }
 
 export const SCHEDULE_PRESETS: SchedulePreset[] = [
-  { key: 'plein-temps', name: 'Plein temps', description: 'Lun–Ven, matin et après-midi', activeDays: [1, 2, 3, 4, 5], dayStartMin: 8 * 60, dayEndMin: 17 * 60, intensity: 'soutenu' },
-  { key: 'matinee', name: 'Matinée', description: 'Lun–Ven, le matin', activeDays: [1, 2, 3, 4, 5], dayStartMin: 8 * 60, dayEndMin: 12 * 60, intensity: 'moyen' },
-  { key: 'apres-midi', name: 'Après-midi', description: 'Lun–Ven, l’après-midi', activeDays: [1, 2, 3, 4, 5], dayStartMin: 13 * 60, dayEndMin: 18 * 60, intensity: 'moyen' },
-  { key: 'soir', name: 'Cours du soir', description: 'Lun–Ven, après le travail', activeDays: [1, 2, 3, 4, 5], dayStartMin: 19 * 60, dayEndMin: 21 * 60 + 30, intensity: 'leger' },
-  { key: 'weekend', name: 'Week-end', description: 'Samedi et dimanche', activeDays: [6, 0], dayStartMin: 9 * 60, dayEndMin: 17 * 60, intensity: 'moyen' },
-  { key: 'leger', name: 'Léger', description: 'À ton rythme, un peu chaque jour', activeDays: [1, 2, 3, 4, 5, 6], dayStartMin: 9 * 60, dayEndMin: 12 * 60, intensity: 'leger' },
+  {
+    key: 'plein-temps',
+    name: 'Plein temps',
+    description: 'Lun–Ven, matin et après-midi',
+    activeDays: [1, 2, 3, 4, 5],
+    dayStartMin: 8 * 60,
+    dayEndMin: 17 * 60,
+    intensity: 'soutenu',
+  },
+  {
+    key: 'matinee',
+    name: 'Matinée',
+    description: 'Lun–Ven, le matin',
+    activeDays: [1, 2, 3, 4, 5],
+    dayStartMin: 8 * 60,
+    dayEndMin: 12 * 60,
+    intensity: 'moyen',
+  },
+  {
+    key: 'apres-midi',
+    name: 'Après-midi',
+    description: 'Lun–Ven, l’après-midi',
+    activeDays: [1, 2, 3, 4, 5],
+    dayStartMin: 13 * 60,
+    dayEndMin: 18 * 60,
+    intensity: 'moyen',
+  },
+  {
+    key: 'soir',
+    name: 'Cours du soir',
+    description: 'Lun–Ven, après le travail',
+    activeDays: [1, 2, 3, 4, 5],
+    dayStartMin: 19 * 60,
+    dayEndMin: 21 * 60 + 30,
+    intensity: 'leger',
+  },
+  {
+    key: 'weekend',
+    name: 'Week-end',
+    description: 'Samedi et dimanche',
+    activeDays: [6, 0],
+    dayStartMin: 9 * 60,
+    dayEndMin: 17 * 60,
+    intensity: 'moyen',
+  },
+  {
+    key: 'leger',
+    name: 'Léger',
+    description: 'À ton rythme, un peu chaque jour',
+    activeDays: [1, 2, 3, 4, 5, 6],
+    dayStartMin: 9 * 60,
+    dayEndMin: 12 * 60,
+    intensity: 'leger',
+  },
 ];

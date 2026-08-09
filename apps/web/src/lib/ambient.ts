@@ -51,7 +51,9 @@ export interface AmbientState {
 
 /** Heure locale (live) + météo ambiante (IP, sans prompt). Partagé par tout le site. */
 export function useAmbient(): AmbientState {
-  const [amb, setAmb] = useState<Ambient | null>(mem && Date.now() - mem.at < TTL ? mem.data : null);
+  const [amb, setAmb] = useState<Ambient | null>(
+    mem && Date.now() - mem.at < TTL ? mem.data : null,
+  );
   const [hour, setHour] = useState(12);
 
   useEffect(() => {
@@ -75,7 +77,12 @@ export function useAmbient(): AmbientState {
         setAmb(mem.data);
         return;
       }
-      if (!inflight) inflight = refresh().catch(() => {}).finally(() => { inflight = null; });
+      if (!inflight)
+        inflight = refresh()
+          .catch(() => {})
+          .finally(() => {
+            inflight = null;
+          });
       await inflight;
       if (mem) setAmb(mem.data);
     })();

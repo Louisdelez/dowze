@@ -8,7 +8,8 @@ import { SESSION_COOKIE, verifySession } from '@/lib/session';
 export const runtime = 'nodejs';
 
 // État « fait/à faire » par utilisateur, persisté dans un volume monté (défaut /data).
-const DATA_DIR = process.env.DEV_DATA_DIR || (process.env.NODE_ENV === 'production' ? '/data' : os.tmpdir());
+const DATA_DIR =
+  process.env.DEV_DATA_DIR || (process.env.NODE_ENV === 'production' ? '/data' : os.tmpdir());
 const FILE = path.join(DATA_DIR, 'todo.json');
 
 type Store = Record<string, Record<string, boolean>>; // user → { assetName → done }

@@ -53,7 +53,9 @@ export class RankJumpController {
   @Post(':profileId/retention/:id')
   retention(@Param('profileId') profileId: string, @Param('id') id: string, @Body() body: unknown) {
     const { score } = parseOr400(dayBody, body);
-    return this.service.doRetention(uuid.parse(profileId), uuid.parse(id), score).then(() => this.service.view(uuid.parse(profileId)));
+    return this.service
+      .doRetention(uuid.parse(profileId), uuid.parse(id), score)
+      .then(() => this.service.view(uuid.parse(profileId)));
   }
 
   /** A1 — génère le pré-test above-level (contenu du rang visé). */

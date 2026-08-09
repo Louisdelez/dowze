@@ -65,7 +65,10 @@ export default function AmisPage() {
   }, [q, profileId, ov]);
 
   const inviteLink = useMemo(
-    () => (typeof window !== 'undefined' && profileId ? `${window.location.origin}/amis?add=${profileId}` : ''),
+    () =>
+      typeof window !== 'undefined' && profileId
+        ? `${window.location.origin}/amis?add=${profileId}`
+        : '',
     [profileId],
   );
   const myCode = ov ? `${ov.meName}${ov.meTag ? `#${ov.meTag}` : ''}` : '';
@@ -87,7 +90,11 @@ export default function AmisPage() {
       <EmptyState
         title="Connecte-toi pour retrouver tes amis"
         description="Ajoute des amis et discute en individuel ou en groupe."
-        action={<Link href="/connexion" className="text-accent underline-offset-2 hover:underline">Se connecter</Link>}
+        action={
+          <Link href="/connexion" className="text-accent underline-offset-2 hover:underline">
+            Se connecter
+          </Link>
+        }
       />
     );
   }
@@ -112,7 +119,10 @@ export default function AmisPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-5">
-      <PageHeader title="Mes amis" subtitle="Ajoute des amis, discute en individuel ou en groupe." />
+      <PageHeader
+        title="Mes amis"
+        subtitle="Ajoute des amis, discute en individuel ou en groupe."
+      />
 
       {/* Ajouter un ami */}
       <Card className="space-y-3">
@@ -128,13 +138,19 @@ export default function AmisPage() {
             {results.map((r) => (
               <Line key={r.profileId} f={r}>
                 {r.status === 'friends' ? (
-                  <Button variant="secondary" onClick={() => message(r.profileId)}>Message</Button>
+                  <Button variant="secondary" onClick={() => message(r.profileId)}>
+                    Message
+                  </Button>
                 ) : r.status === 'outgoing' ? (
                   <span className="text-xs text-muted-foreground">Envoyée</span>
                 ) : r.status === 'incoming' ? (
-                  <Button onClick={() => refresh(acceptFriend(profileId!, r.profileId))}>Accepter</Button>
+                  <Button onClick={() => refresh(acceptFriend(profileId!, r.profileId))}>
+                    Accepter
+                  </Button>
                 ) : (
-                  <Button onClick={() => refresh(requestFriend(profileId!, r.profileId))}>Ajouter</Button>
+                  <Button onClick={() => refresh(requestFriend(profileId!, r.profileId))}>
+                    Ajouter
+                  </Button>
                 )}
               </Line>
             ))}
@@ -142,20 +158,34 @@ export default function AmisPage() {
         )}
         {/* Partage : pseudo, lien, QR */}
         <div className="flex flex-wrap items-center gap-2 border-t border-border/60 pt-3 text-sm">
-          <button onClick={() => copy(myCode, 'code')} className="rounded-full border border-border px-3 py-1.5 hover:bg-muted">
+          <button
+            onClick={() => copy(myCode, 'code')}
+            className="rounded-full border border-border px-3 py-1.5 hover:bg-muted"
+          >
             {copied === 'code' ? 'Copié !' : myCode || '…'}
           </button>
-          <button onClick={() => copy(inviteLink, 'link')} className="rounded-full border border-border px-3 py-1.5 hover:bg-muted">
+          <button
+            onClick={() => copy(inviteLink, 'link')}
+            className="rounded-full border border-border px-3 py-1.5 hover:bg-muted"
+          >
             {copied === 'link' ? 'Lien copié !' : 'Lien'}
           </button>
-          <button onClick={toggleQr} className="rounded-full border border-border px-3 py-1.5 hover:bg-muted">
+          <button
+            onClick={toggleQr}
+            className="rounded-full border border-border px-3 py-1.5 hover:bg-muted"
+          >
             {qr ? 'Masquer le QR' : 'QR'}
           </button>
         </div>
         {qr && (
           <div className="flex justify-center pt-1">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={qr} alt="QR d'invitation" width={180} height={180} className="rounded-lg border border-border" />
+            <img
+              src={qr}
+              alt="QR d'invitation"
+              width={180}
+              height={180}
+              className="rounded-lg border border-border"
+            />
           </div>
         )}
       </Card>
@@ -166,8 +196,15 @@ export default function AmisPage() {
           <CardTitle>Demandes reçues</CardTitle>
           {ov.incoming.map((f) => (
             <Line key={f.profileId} f={f}>
-              <Button onClick={() => refresh(acceptFriend(profileId!, f.profileId))}>Accepter</Button>
-              <Button variant="secondary" onClick={() => refresh(removeFriend(profileId!, f.profileId))}>Refuser</Button>
+              <Button onClick={() => refresh(acceptFriend(profileId!, f.profileId))}>
+                Accepter
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => refresh(removeFriend(profileId!, f.profileId))}
+              >
+                Refuser
+              </Button>
             </Line>
           ))}
         </Card>
@@ -177,11 +214,15 @@ export default function AmisPage() {
       <Card className="space-y-2">
         <CardTitle>Amis {ov ? `(${ov.friends.length})` : ''}</CardTitle>
         {!ov || ov.friends.length === 0 ? (
-          <p className="py-2 text-sm text-muted-foreground">Pas encore d'amis — ajoute quelqu'un ci-dessus.</p>
+          <p className="py-2 text-sm text-muted-foreground">
+            Pas encore d'amis — ajoute quelqu'un ci-dessus.
+          </p>
         ) : (
           ov.friends.map((f) => (
             <Line key={f.profileId} f={f}>
-              <Button variant="secondary" onClick={() => message(f.profileId)}>Message</Button>
+              <Button variant="secondary" onClick={() => message(f.profileId)}>
+                Message
+              </Button>
               <Overflow
                 onRetirer={() => refresh(removeFriend(profileId!, f.profileId))}
                 onBloquer={() => bloquer(f.profileId, f.name)}
@@ -222,7 +263,15 @@ function Line({ f, children }: { f: Friend; children: React.ReactNode }) {
   );
 }
 
-function Overflow({ onRetirer, onBloquer, onSignaler }: { onRetirer: () => void; onBloquer: () => void; onSignaler: () => void }) {
+function Overflow({
+  onRetirer,
+  onBloquer,
+  onSignaler,
+}: {
+  onRetirer: () => void;
+  onBloquer: () => void;
+  onSignaler: () => void;
+}) {
   const [open, setOpen] = useState(false);
   useEffect(() => {
     if (!open) return;
@@ -233,17 +282,47 @@ function Overflow({ onRetirer, onBloquer, onSignaler }: { onRetirer: () => void;
   return (
     <div className="relative">
       <button
-        onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen((o) => !o);
+        }}
         aria-label="Options"
         className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"
       >
         <IconMore width={18} height={18} />
       </button>
       {open && (
-        <div onClick={(e) => e.stopPropagation()} className="absolute right-0 top-full z-40 mt-1 w-40 overflow-hidden rounded-lg border border-border bg-background py-1 text-sm shadow-lg">
-          <button onClick={() => { setOpen(false); onRetirer(); }} className="block w-full px-3 py-2 text-left hover:bg-muted">Retirer</button>
-          <button onClick={() => { setOpen(false); onSignaler(); }} className="block w-full px-3 py-2 text-left hover:bg-muted">Signaler</button>
-          <button onClick={() => { setOpen(false); onBloquer(); }} className="block w-full px-3 py-2 text-left text-red-600 hover:bg-muted">Bloquer</button>
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="absolute right-0 top-full z-40 mt-1 w-40 overflow-hidden rounded-lg border border-border bg-background py-1 text-sm shadow-lg"
+        >
+          <button
+            onClick={() => {
+              setOpen(false);
+              onRetirer();
+            }}
+            className="block w-full px-3 py-2 text-left hover:bg-muted"
+          >
+            Retirer
+          </button>
+          <button
+            onClick={() => {
+              setOpen(false);
+              onSignaler();
+            }}
+            className="block w-full px-3 py-2 text-left hover:bg-muted"
+          >
+            Signaler
+          </button>
+          <button
+            onClick={() => {
+              setOpen(false);
+              onBloquer();
+            }}
+            className="block w-full px-3 py-2 text-left text-red-600 hover:bg-muted"
+          >
+            Bloquer
+          </button>
         </div>
       )}
     </div>

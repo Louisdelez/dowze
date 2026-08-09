@@ -31,7 +31,11 @@ export function useDowzeProfile(): DowzeProfile {
       setState({ profileId: null, displayName: null, ready: true, signedIn: false });
       return;
     }
-    const { data: prof } = await supabase.from('profiles').select('id, display_name').limit(1).maybeSingle();
+    const { data: prof } = await supabase
+      .from('profiles')
+      .select('id, display_name')
+      .limit(1)
+      .maybeSingle();
     setState({
       profileId: prof?.id ?? null,
       displayName: prof?.display_name ?? null,

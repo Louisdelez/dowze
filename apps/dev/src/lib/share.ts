@@ -19,7 +19,11 @@ export function clampTtl(seconds: number): number {
 }
 
 /** Crée un jeton de partage signé, valable `ttlSeconds` (borné 1h–24h). */
-export async function signShare(u: string, p: string, ttlSeconds: number): Promise<{ token: string; exp: number }> {
+export async function signShare(
+  u: string,
+  p: string,
+  ttlSeconds: number,
+): Promise<{ token: string; exp: number }> {
   const exp = Math.floor(Date.now() / 1000) + clampTtl(ttlSeconds);
   const body = b64url(JSON.stringify({ u, p, exp } satisfies SharePayload));
   const sig = await hmac(body);

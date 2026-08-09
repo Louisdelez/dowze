@@ -1,7 +1,14 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { and, desc, eq } from 'drizzle-orm';
 import { z } from 'zod';
-import type { CourseSheet, LanguageClass, LanguageCompose, LanguageIngestResult, LanguagesView, LearnerLanguage } from '@dowze/schemas';
+import type {
+  CourseSheet,
+  LanguageClass,
+  LanguageCompose,
+  LanguageIngestResult,
+  LanguagesView,
+  LearnerLanguage,
+} from '@dowze/schemas';
 import { cefrOf, courseSheetGenSchema, courseSheetSchema } from '@dowze/schemas';
 import { DB, type Database } from '../db/drizzle.module';
 import {
@@ -20,7 +27,13 @@ import { RealtimeService } from '../realtime/realtime.service';
 import { DOWZE_BOT_PROFILE_ID } from '../common/bot';
 import { MAX_SIZE } from '../classes/assign';
 import { CATALOGUE, LANG_NAMES, countryFromLocale, proposeLanguages } from './geo';
-import { CHATBOT_SYSTEM, LANGUAGE_COURSE_SYSTEM, LANGUAGE_INGEST_SYSTEM, buildLanguageClosingPrompt, buildLanguagePrompt } from './language-prompts';
+import {
+  CHATBOT_SYSTEM,
+  LANGUAGE_COURSE_SYSTEM,
+  LANGUAGE_INGEST_SYSTEM,
+  buildLanguageClosingPrompt,
+  buildLanguagePrompt,
+} from './language-prompts';
 import { COURSE_SHEET_SYSTEM } from '../copilote/prompts';
 import { localDateStr } from '../common/local-date';
 
@@ -121,7 +134,8 @@ export class LanguagesService {
   }
 
   private projection(level: number, dailyMin: number): string {
-    if (level >= 3) return "Tu as atteint le niveau B1 — vise maintenant B2, et garde cette langue vivante.";
+    if (level >= 3)
+      return 'Tu as atteint le niveau B1 — vise maintenant B2, et garde cette langue vivante.';
     const B1_HOURS = 375;
     const doneHours = (level / 3) * B1_HOURS;
     const remaining = Math.max(0, B1_HOURS - doneHours);
@@ -139,7 +153,9 @@ export class LanguagesService {
     const all = await this.rows(profileId);
     const activeRow = all.find((r) => r.status === 'active') ?? null;
     const active = activeRow ? this.toLearnerLanguage(activeRow) : null;
-    const maintenance = all.filter((r) => r.status === 'maintenance').map((r) => this.toLearnerLanguage(r));
+    const maintenance = all
+      .filter((r) => r.status === 'maintenance')
+      .map((r) => this.toLearnerLanguage(r));
 
     const already = all.map((r) => r.lang);
     const proposals = proposeLanguages(countryFromLocale(p?.locale), l1, already);
@@ -166,7 +182,8 @@ export class LanguagesService {
   async choose(profileId: string, lang: string): Promise<LanguagesView> {
     const p = await this.profile(profileId);
     const l1 = this.l1Of(p?.locale);
-    if (lang === l1) throw new BadRequestException("C'est ta langue maternelle — choisis une langue étrangère.");
+    if (lang === l1)
+      throw new BadRequestException("C'est ta langue maternelle — choisis une langue étrangère.");
     if (!CATALOGUE.includes(lang)) throw new BadRequestException('Langue non disponible.');
 
     const all = await this.rows(profileId);
@@ -188,10 +205,16 @@ export class LanguagesService {
       await this.db
         .update(learnerLanguages)
         .set({ status: 'maintenance' })
-        .where(and(eq(learnerLanguages.profileId, profileId), eq(learnerLanguages.lang, activeRow.lang)));
+        .where(
+          and(eq(learnerLanguages.profileId, profileId), eq(learnerLanguages.lang, activeRow.lang)),
+        );
     }
 
-    const proposals = proposeLanguages(countryFromLocale(p?.locale), l1, all.map((r) => r.lang));
+    const proposals = proposeLanguages(
+      countryFromLocale(p?.locale),
+      l1,
+      all.map((r) => r.lang),
+    );
     const pitch = proposals.find((x) => x.lang === lang)?.pitch ?? '';
     await this.db
       .insert(learnerLanguages)
@@ -212,15 +235,19 @@ export class LanguagesService {
         .from(learnerLanguages)
         .where(and(eq(learnerLanguages.profileId, profileId), eq(learnerLanguages.lang, lang)))
     )[0];
-    if (!r) throw new BadRequestException('Tu n\'apprends pas cette langue.');
+    if (!r) throw new BadRequestException("Tu n'apprends pas cette langue.");
     return r;
   }
 
   /** Centres d'intérêt de l'élève (dossier), en une courte ligne — pour ancrer les exemples du prof. */
   private async interestsLine(profileId: string): Promise<string | null> {
-    const d = (await this.db.select().from(learnerDossiers).where(eq(learnerDossiers.profileId, profileId)))[0];
+    const d = (
+      await this.db.select().from(learnerDossiers).where(eq(learnerDossiers.profileId, profileId))
+    )[0];
     const structured = d?.structured as { interets?: Array<{ theme?: string }> } | undefined;
-    const themes = (structured?.interets ?? []).map((i) => i.theme).filter((t): t is string => Boolean(t));
+    const themes = (structured?.interets ?? [])
+      .map((i) => i.theme)
+      .filter((t): t is string => Boolean(t));
     return themes.length > 0 ? themes.slice(0, 5).join(', ') : null;
   }
 
@@ -253,7 +280,14 @@ export class LanguagesService {
       lastSummary: await this.lastSummary(profileId, lang),
       interests: await this.interestsLine(profileId),
     });
-    return { lang, name, cefr: cefrOf(r.level), mode, prompt, closingPrompt: buildLanguageClosingPrompt(name) };
+    return {
+      lang,
+      name,
+      cefr: cefrOf(r.level),
+      mode,
+      prompt,
+      closingPrompt: buildLanguageClosingPrompt(name),
+    };
   }
 
   /**
@@ -262,14 +296,17 @@ export class LanguagesService {
    */
   async ingest(profileId: string, lang: string, summary: string): Promise<LanguageIngestResult> {
     const r = await this.assertLearnerLang(profileId, lang);
-    const { object } = await this.copilote.generateStructured<z.infer<typeof ingestGenSchema>>(profileId, {
-      schema: ingestGenSchema,
-      schemaName: 'LanguageSnapshot',
-      system: LANGUAGE_INGEST_SYSTEM,
-      prompt: `Bilan de séance de ${LANG_NAMES[lang] ?? lang} à analyser :\n\n${summary}`,
-      temperature: 0.2,
-      ref: `lang-ingest:${lang}`,
-    });
+    const { object } = await this.copilote.generateStructured<z.infer<typeof ingestGenSchema>>(
+      profileId,
+      {
+        schema: ingestGenSchema,
+        schemaName: 'LanguageSnapshot',
+        system: LANGUAGE_INGEST_SYSTEM,
+        prompt: `Bilan de séance de ${LANG_NAMES[lang] ?? lang} à analyser :\n\n${summary}`,
+        temperature: 0.2,
+        ref: `lang-ingest:${lang}`,
+      },
+    );
 
     const today = todayStr();
     // Avancement : seulement pour la langue ACTIVE (la maintenance TIENT, elle ne progresse pas),
@@ -343,7 +380,10 @@ export class LanguagesService {
       temperature: 0.4,
       ref: `lang-cours:${lang}`,
     });
-    const sheet: CourseSheet = courseSheetSchema.parse({ ...object, skillId: LANGUAGE_COURSE_SKILL_ID });
+    const sheet: CourseSheet = courseSheetSchema.parse({
+      ...object,
+      skillId: LANGUAGE_COURSE_SKILL_ID,
+    });
     return { sheet, name, cefr, creditsSpent };
   }
 
@@ -395,7 +435,11 @@ export class LanguagesService {
   }
 
   /** Y a-t-il déjà une activité (session/maintenance) enregistrée AUJOURD'HUI pour cette langue ? */
-  private async alreadyPracticedToday(profileId: string, lang: string, today: string): Promise<boolean> {
+  private async alreadyPracticedToday(
+    profileId: string,
+    lang: string,
+    today: string,
+  ): Promise<boolean> {
     const row = (
       await this.db
         .select({ id: languageActivity.id })
@@ -416,7 +460,12 @@ export class LanguagesService {
    * Bot « Dowze » invoqué avec `/` dans le salon de classe de langue. Il POSTE sa réponse DANS LE CANAL
    * PARTAGÉ (visible par tous les membres), comme un bot Discord. ≠ le cours quotidien (compose/ingest).
    */
-  async chatbot(profileId: string, conversationId: string, lang: string, userText: string): Promise<{ ok: true }> {
+  async chatbot(
+    profileId: string,
+    conversationId: string,
+    lang: string,
+    userText: string,
+  ): Promise<{ ok: true }> {
     const r = await this.assertLearnerLang(profileId, lang);
     // AUTORISATION (audit 08-2026) : l'appelant doit être PARTICIPANT de la conversation — sinon n'importe
     // quel élève pouvait faire poster le bot (piloté par son texte) dans n'importe quel salon.
@@ -424,7 +473,12 @@ export class LanguagesService {
       await this.db
         .select({ profileId: conversationParticipants.profileId })
         .from(conversationParticipants)
-        .where(and(eq(conversationParticipants.conversationId, conversationId), eq(conversationParticipants.profileId, profileId)))
+        .where(
+          and(
+            eq(conversationParticipants.conversationId, conversationId),
+            eq(conversationParticipants.profileId, profileId),
+          ),
+        )
         .limit(1)
     )[0];
     if (!member) throw new BadRequestException('Tu ne fais pas partie de cette conversation.');
@@ -442,7 +496,10 @@ export class LanguagesService {
       await Promise.all(
         recent
           .reverse()
-          .map(async (m) => `${m.senderId === DOWZE_BOT_PROFILE_ID ? 'DOWZE' : (await this.nameOf(m.senderId)) || 'ÉLÈVE'} : ${m.body}`),
+          .map(
+            async (m) =>
+              `${m.senderId === DOWZE_BOT_PROFILE_ID ? 'DOWZE' : (await this.nameOf(m.senderId)) || 'ÉLÈVE'} : ${m.body}`,
+          ),
       )
     ).join('\n');
 
@@ -463,7 +520,13 @@ export class LanguagesService {
     const inserted = (
       await this.db
         .insert(chatMessages)
-        .values({ conversationId, senderId: DOWZE_BOT_PROFILE_ID, body: object.reply, kind: 'text', holdState: 'clear' })
+        .values({
+          conversationId,
+          senderId: DOWZE_BOT_PROFILE_ID,
+          body: object.reply,
+          kind: 'text',
+          holdState: 'clear',
+        })
         .returning()
     )[0];
     await this.db
@@ -476,7 +539,8 @@ export class LanguagesService {
       .select()
       .from(conversationParticipants)
       .where(eq(conversationParticipants.conversationId, conversationId));
-    for (const pp of parts) void this.realtime.publishToUser(pp.profileId, { type: 'message', conversationId });
+    for (const pp of parts)
+      void this.realtime.publishToUser(pp.profileId, { type: 'message', conversationId });
 
     return { ok: true as const };
   }
@@ -513,7 +577,8 @@ export class LanguagesService {
         ),
       );
     for (const c of existing) {
-      const count = (await this.db.select().from(memberships).where(eq(memberships.classeId, c.id))).length;
+      const count = (await this.db.select().from(memberships).where(eq(memberships.classeId, c.id)))
+        .length;
       if (count < MAX_SIZE) return this.joinLanguageClass(c.id, profileId);
     }
 
@@ -537,16 +602,24 @@ export class LanguagesService {
         .returning()
     )[0];
     if (!cls) return null;
-    await this.db
-      .insert(conversations)
-      .values({ type: 'class_channel', classId: cls.id, name: `Classe ${name}`, createdBy: profileId });
+    await this.db.insert(conversations).values({
+      type: 'class_channel',
+      classId: cls.id,
+      name: `Classe ${name}`,
+      createdBy: profileId,
+    });
     return this.joinLanguageClass(cls.id, profileId);
   }
 
   private async joinLanguageClass(classId: string, profileId: string): Promise<string> {
     await this.db
       .insert(memberships)
-      .values({ classeId: classId, profileId, schoolYear: CURRENT_SCHOOL_YEAR, assignmentReason: 'language' })
+      .values({
+        classeId: classId,
+        profileId,
+        schoolYear: CURRENT_SCHOOL_YEAR,
+        assignmentReason: 'language',
+      })
       .onConflictDoNothing();
     const chan = (
       await this.db
@@ -571,7 +644,12 @@ export class LanguagesService {
       const mineRows = await this.db
         .select()
         .from(memberships)
-        .where(and(eq(memberships.profileId, profileId), eq(memberships.schoolYear, CURRENT_SCHOOL_YEAR)));
+        .where(
+          and(
+            eq(memberships.profileId, profileId),
+            eq(memberships.schoolYear, CURRENT_SCHOOL_YEAR),
+          ),
+        );
       let clsId: string | null = null;
       for (const m of mineRows) {
         const c = (await this.db.select().from(classes).where(eq(classes.id, m.classeId)))[0];
@@ -590,7 +668,10 @@ export class LanguagesService {
           .from(conversations)
           .where(and(eq(conversations.classId, cls.id), eq(conversations.type, 'class_channel')))
       )[0];
-      const memberRows = await this.db.select().from(memberships).where(eq(memberships.classeId, cls.id));
+      const memberRows = await this.db
+        .select()
+        .from(memberships)
+        .where(eq(memberships.classeId, cls.id));
       const members = await Promise.all(
         memberRows.map(async (mr) => ({
           profileId: mr.profileId,

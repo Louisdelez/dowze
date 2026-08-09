@@ -100,7 +100,9 @@ export class ValidationService {
       const others = await this.db
         .select()
         .from(validationSubjects)
-        .where(and(eq(validationSubjects.status, 'open'), ne(validationSubjects.profileId, profileId)))
+        .where(
+          and(eq(validationSubjects.status, 'open'), ne(validationSubjects.profileId, profileId)),
+        )
         .orderBy(desc(validationSubjects.createdAt))
         .limit(30);
       const mapped = await Promise.all(others.map((r) => this.toSubject(r, profileId)));
@@ -111,9 +113,16 @@ export class ValidationService {
       await this.db
         .select()
         .from(learnerBadges)
-        .where(and(eq(learnerBadges.profileId, profileId), eq(learnerBadges.discipline, 'Validation')))
+        .where(
+          and(eq(learnerBadges.profileId, profileId), eq(learnerBadges.discipline, 'Validation')),
+        )
         .orderBy(desc(learnerBadges.createdAt))
-    ).map((b) => ({ id: b.id, name: b.name, criteria: b.criteria, dateIso: b.createdAt.toISOString() }));
+    ).map((b) => ({
+      id: b.id,
+      name: b.name,
+      criteria: b.criteria,
+      dateIso: b.createdAt.toISOString(),
+    }));
 
     const teacher = await this.isTeacher(profileId);
     return {
@@ -133,7 +142,12 @@ export class ValidationService {
   /** Crée un sujet à valider (titre + description ; pas de menu de compétences). */
   async createSubject(
     profileId: string,
-    input: { title: string; description: string; evidenceUrl: string | null; format: 'visio' | 'video' },
+    input: {
+      title: string;
+      description: string;
+      evidenceUrl: string | null;
+      format: 'visio' | 'video';
+    },
   ): Promise<PeerValidationView> {
     await this.db.insert(validationSubjects).values({
       profileId,
@@ -146,7 +160,11 @@ export class ValidationService {
   }
 
   /** Un pair éligible évalue un sujet (validé + étoiles + commentaire). */
-  async review(profileId: string, subjectId: string, input: PeerReviewInput): Promise<PeerValidationView> {
+  async review(
+    profileId: string,
+    subjectId: string,
+    input: PeerReviewInput,
+  ): Promise<PeerValidationView> {
     const level = await this.xp.level(profileId);
     const age = await this.xp.accountAgeDays(profileId);
     if (level < EVAL_MIN_LEVEL || age < EVAL_MIN_AGE_DAYS)
@@ -162,7 +180,12 @@ export class ValidationService {
       await this.db
         .select()
         .from(validationReviews)
-        .where(and(eq(validationReviews.subjectId, subjectId), eq(validationReviews.reviewerId, profileId)))
+        .where(
+          and(
+            eq(validationReviews.subjectId, subjectId),
+            eq(validationReviews.reviewerId, profileId),
+          ),
+        )
     )[0];
     if (already) throw new BadRequestException('déjà évalué');
 
@@ -188,7 +211,10 @@ export class ValidationService {
           .where(eq(validationReviews.subjectId, subjectId));
         const avg = reviews.reduce((a, r) => a + r.stars, 0) / reviews.length;
         if (reviews.length >= REQUIRED_REVIEWS && avg >= REQUIRED_AVG_STARS) {
-          await this.markValidated(subject, `Validé par ${reviews.length} pairs · ${Math.round(avg * 10) / 10}/5 étoiles`);
+          await this.markValidated(
+            subject,
+            `Validé par ${reviews.length} pairs · ${Math.round(avg * 10) / 10}/5 étoiles`,
+          );
         }
       }
     }
@@ -196,11 +222,17 @@ export class ValidationService {
   }
 
   /** Page communautaire : tous les sujets ouverts (des autres), avec recherche + tri. */
-  async community(profileId: string, q: string, sort: 'recent' | 'level'): Promise<ValidationSubject[]> {
+  async community(
+    profileId: string,
+    q: string,
+    sort: 'recent' | 'level',
+  ): Promise<ValidationSubject[]> {
     const rows = await this.db
       .select()
       .from(validationSubjects)
-      .where(and(eq(validationSubjects.status, 'open'), ne(validationSubjects.profileId, profileId)))
+      .where(
+        and(eq(validationSubjects.status, 'open'), ne(validationSubjects.profileId, profileId)),
+      )
       .orderBy(desc(validationSubjects.createdAt))
       .limit(200);
     let subjects = await Promise.all(rows.map((r) => this.toSubject(r, profileId)));
@@ -220,7 +252,9 @@ export class ValidationService {
 
   /** Un sujet précis (lien de partage). */
   async getSubject(profileId: string, subjectId: string): Promise<ValidationSubject | null> {
-    const row = (await this.db.select().from(validationSubjects).where(eq(validationSubjects.id, subjectId)))[0];
+    const row = (
+      await this.db.select().from(validationSubjects).where(eq(validationSubjects.id, subjectId))
+    )[0];
     return row ? this.toSubject(row, profileId) : null;
   }
 

@@ -5,8 +5,14 @@ import { SupabaseAuthGuard } from '../auth/supabase-auth.guard';
 import { ElectivesService } from './electives.service';
 
 const uuid = z.string().uuid();
-const disc = z.object({ label: z.string().min(1).max(80), disciplineHint: z.string().max(60).default('') });
-const startBody = z.object({ disciplines: z.array(disc).length(5), round: z.number().int().min(1).max(5).default(1) });
+const disc = z.object({
+  label: z.string().min(1).max(80),
+  disciplineHint: z.string().max(60).default(''),
+});
+const startBody = z.object({
+  disciplines: z.array(disc).length(5),
+  round: z.number().int().min(1).max(5).default(1),
+});
 const journalBody = z.object({
   discipline: z.string().min(1).max(80),
   did: z.string().max(2000).default(''),

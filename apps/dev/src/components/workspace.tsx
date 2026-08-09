@@ -32,7 +32,9 @@ export function Workspace({ user }: { user: string }) {
               key={t.id}
               onClick={() => setTool(t.id)}
               className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition ${
-                tool === t.id ? 'bg-foreground text-white' : 'text-muted-foreground hover:bg-surface-soft hover:text-foreground'
+                tool === t.id
+                  ? 'bg-foreground text-white'
+                  : 'text-muted-foreground hover:bg-surface-soft hover:text-foreground'
               }`}
             >
               {t.label}
@@ -56,7 +58,17 @@ export function Workspace({ user }: { user: string }) {
 
       {/* Contenu de l'outil actif */}
       <div className="min-h-0 flex-1">
-        {tool === 'assets' ? <Catalog /> : tool === 'tasks' ? <Tasks /> : tool === 'draw' ? <Draw /> : tool === 'editor' ? <CodeEditor /> : <Files />}
+        {tool === 'assets' ? (
+          <Catalog />
+        ) : tool === 'tasks' ? (
+          <Tasks />
+        ) : tool === 'draw' ? (
+          <Draw />
+        ) : tool === 'editor' ? (
+          <CodeEditor />
+        ) : (
+          <Files />
+        )}
       </div>
     </div>
   );

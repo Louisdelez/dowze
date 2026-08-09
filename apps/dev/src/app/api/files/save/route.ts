@@ -14,8 +14,10 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const rel: string = body.path;
   const content: unknown = body.content;
-  if (!rel || typeof content !== 'string') return NextResponse.json({ error: 'paramètres' }, { status: 400 });
-  if (Buffer.byteLength(content, 'utf8') > MAX_FILE_BYTES) return NextResponse.json({ error: 'Fichier trop lourd.' }, { status: 413 });
+  if (!rel || typeof content !== 'string')
+    return NextResponse.json({ error: 'paramètres' }, { status: 400 });
+  if (Buffer.byteLength(content, 'utf8') > MAX_FILE_BYTES)
+    return NextResponse.json({ error: 'Fichier trop lourd.' }, { status: 413 });
   try {
     const p = resolveSafe(u, rel);
     await fs.writeFile(p, content, 'utf8');

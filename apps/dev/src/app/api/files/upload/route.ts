@@ -30,11 +30,18 @@ export async function POST(req: Request) {
 
   for (let i = 0; i < files.length; i++) {
     const f = files[i]!;
-    if (f.size > MAX_FILE_BYTES) return NextResponse.json({ error: `Fichier trop lourd (max ${Math.round(MAX_FILE_BYTES / 1048576)} Mo).` }, { status: 413 });
+    if (f.size > MAX_FILE_BYTES)
+      return NextResponse.json(
+        { error: `Fichier trop lourd (max ${Math.round(MAX_FILE_BYTES / 1048576)} Mo).` },
+        { status: 413 },
+      );
     if (f.size > remaining) return NextResponse.json({ error: 'Quota dépassé.' }, { status: 413 });
     // Chemin relatif éventuel (dossier glissé) → nettoyage segment par segment (anti-traversée).
     const relPath = rawPaths[i] || f.name;
-    const segs = relPath.split('/').map((s) => sanitizeName(s)).filter(Boolean);
+    const segs = relPath
+      .split('/')
+      .map((s) => sanitizeName(s))
+      .filter(Boolean);
     if (!segs.length) continue;
     try {
       const target = resolveSafe(u, path.join(rel, ...segs));

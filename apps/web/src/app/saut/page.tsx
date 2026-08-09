@@ -184,7 +184,11 @@ export default function SautPage() {
       <EmptyState
         title="Connecte-toi"
         description="Le Saut de Rang est personnel."
-        action={<Link href="/connexion" className="text-accent underline-offset-2 hover:underline">Se connecter</Link>}
+        action={
+          <Link href="/connexion" className="text-accent underline-offset-2 hover:underline">
+            Se connecter
+          </Link>
+        }
       />
     );
   }
@@ -213,27 +217,37 @@ export default function SautPage() {
             <ExerciseCard
               key={i}
               item={item}
-              onGraded={(c) => setResults((r) => ({ ...r, [i]: { skillId: item.competenceId, correct: c } }))}
+              onGraded={(c) =>
+                setResults((r) => ({ ...r, [i]: { skillId: item.competenceId, correct: c } }))
+              }
             />
           ))}
-          <Button onClick={terminerTache} disabled={busy || Object.keys(results).length !== test.items.length}>
+          <Button
+            onClick={terminerTache}
+            disabled={busy || Object.keys(results).length !== test.items.length}
+          >
             {busy ? 'Enregistrement…' : 'Terminer'}
           </Button>
         </div>
       ) : pretest ? (
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Pré-test « above-level » : des questions du rang visé (que tu n’as pas encore appris) — pour voir si
-            un saut est jouable. Réponds au mieux ; ne pas savoir, c’est normal.
+            Pré-test « above-level » : des questions du rang visé (que tu n’as pas encore appris) —
+            pour voir si un saut est jouable. Réponds au mieux ; ne pas savoir, c’est normal.
           </p>
           {pretest.map((item, i) => (
             <ExerciseCard
               key={i}
               item={item}
-              onGraded={(c) => setResults((r) => ({ ...r, [i]: { skillId: item.competenceId, correct: c } }))}
+              onGraded={(c) =>
+                setResults((r) => ({ ...r, [i]: { skillId: item.competenceId, correct: c } }))
+              }
             />
           ))}
-          <Button onClick={terminerPretest} disabled={busy || Object.keys(results).length !== pretest.length}>
+          <Button
+            onClick={terminerPretest}
+            disabled={busy || Object.keys(results).length !== pretest.length}
+          >
             {busy ? '…' : 'Terminer le pré-test'}
           </Button>
         </div>
@@ -243,11 +257,14 @@ export default function SautPage() {
             <Card className="space-y-2">
               <CardTitle>Révisions de rétention</CardTitle>
               <CardDescription>
-                Des petits re-tests pour ancrer durablement ce que tu as validé lors d’un saut — même si tu
-                hésites, l’effort de te souvenir renforce ta mémoire.
+                Des petits re-tests pour ancrer durablement ce que tu as validé lors d’un saut —
+                même si tu hésites, l’effort de te souvenir renforce ta mémoire.
               </CardDescription>
               {view.retention.map((r) => (
-                <div key={r.id} className="flex items-center justify-between gap-2 rounded-lg border border-border p-3 text-sm">
+                <div
+                  key={r.id}
+                  className="flex items-center justify-between gap-2 rounded-lg border border-border p-3 text-sm"
+                >
                   <span>Rétention · niveau {r.rankName}</span>
                   <Button variant="secondary" onClick={() => faireRetention(r.id)} disabled={busy}>
                     Faire le re-test
@@ -259,119 +276,140 @@ export default function SautPage() {
 
           {/* Saut en cours */}
           {a && a.status === 'pending-consent' ? (
-        <Card className="space-y-2">
-          <CardTitle>En attente de ton responsable</CardTitle>
-          <CardDescription>
-            Ton Saut vers <strong>{a.targetRankName}</strong> est prêt. Le mois intensif démarrera dès que ton
-            responsable l’aura confirmé (dans son Espace responsable). En attendant, repose-toi bien.
-          </CardDescription>
-          <div>
-            <Button variant="secondary" onClick={abandonner} disabled={busy}>
-              Annuler la demande
-            </Button>
-          </div>
-        </Card>
-      ) : active && a ? (
-        <>
-          <Card className="space-y-3">
-            <div className="flex items-center justify-between">
-              <CardTitle>Saut vers {a.targetRankName}</CardTitle>
-              <span className="text-sm text-muted-foreground">Jour {a.currentDay}/{a.totalDays}</span>
-            </div>
-            {/* Barre de score vers 80 % */}
-            <div className="relative h-3 w-full overflow-hidden rounded-full border border-border bg-muted">
-              <div className="h-full rounded-full bg-emerald-500" style={{ width: `${Math.round(a.provisionalScore * 100)}%` }} />
-              <div className="absolute inset-y-0" style={{ left: '80%' }}>
-                <div className="h-full w-0.5 bg-foreground/60" />
+            <Card className="space-y-2">
+              <CardTitle>En attente de ton responsable</CardTitle>
+              <CardDescription>
+                Ton Saut vers <strong>{a.targetRankName}</strong> est prêt. Le mois intensif
+                démarrera dès que ton responsable l’aura confirmé (dans son Espace responsable). En
+                attendant, repose-toi bien.
+              </CardDescription>
+              <div>
+                <Button variant="secondary" onClick={abandonner} disabled={busy}>
+                  Annuler la demande
+                </Button>
               </div>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Score : <strong className="text-foreground">{Math.round(a.provisionalScore * 100)} %</strong> · objectif{' '}
-              <strong className="text-foreground">80 %</strong> · examens réussis {a.examsPassed}/{a.examsRequired}
-            </p>
-            {/* Frise du mois */}
-            <div className="flex flex-wrap gap-1">
-              {a.plan.map((d) => (
-                <span
-                  key={d.day}
-                  title={`Jour ${d.day} — ${d.label}`}
-                  className={`inline-block h-4 w-4 rounded-sm ${DAY_COLOR[d.type]} ${
-                    d.day === a.currentDay ? 'ring-2 ring-offset-1 ring-foreground' : ''
-                  } ${d.done ? '' : 'opacity-40'}`}
-                />
-              ))}
-            </div>
-          </Card>
-
-          {/* Bien-être (A3) : soutien, jamais un diagnostic */}
-          {view?.wellbeing.note ? <Note tone="info">{view.wellbeing.note}</Note> : null}
-
-          {/* Tâche du jour */}
-          <Card className="space-y-3">
-              <CardTitle>Ta tâche du jour</CardTitle>
-              {a.canDoToday ? (
-                <>
-                  <CardDescription>{a.today?.label}</CardDescription>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <span>Comment tu te sens ?</span>
-                    {[1, 2, 3, 4, 5].map((n) => (
-                      <button
-                        key={n}
-                        type="button"
-                        onClick={() => faireMood(n)}
-                        className="h-7 w-7 rounded-full border border-border hover:bg-muted"
-                        title={`${n}/5`}
-                      >
-                        {n}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="flex flex-wrap gap-3">
-                    <Button onClick={faireLaTache} disabled={busy}>
-                      {busy ? '…' : 'Faire la tâche du jour'}
-                    </Button>
-                    <Button variant="secondary" onClick={abandonner} disabled={busy}>
-                      Abandonner (retour au rang, sans pénalité)
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Rappel : dors 8-10 h, ça fait partie de la préparation. Le rythme doit rester tenable.
-                  </p>
-                </>
-              ) : (
-                <>
-                  <CardDescription>
-                    Tu as fait ta tâche du jour — bravo. Reviens <strong>demain</strong> pour la suite : un mois
-                    intensif se construit jour après jour (c’est ça qui ancre durablement).
-                  </CardDescription>
-                  {a.nextTaskAt ? (
-                    <p className="text-xs text-muted-foreground">
-                      Prochaine tâche disponible le {formatDateTime(a.nextTaskAt)}.
-                    </p>
-                  ) : null}
-                  <div>
-                    <Button variant="secondary" onClick={abandonner} disabled={busy}>
-                      Abandonner (retour au rang, sans pénalité)
-                    </Button>
-                  </div>
-                </>
-              )}
             </Card>
-        </>
-      ) : a && a.status === 'passed' ? (
-        <Card className="space-y-2">
-          <CardTitle className="flex items-center gap-2">
-            <IconTrophy width={20} height={20} className="text-amber-500" /> Réussi !
-          </CardTitle>
-          <CardDescription>
-            Tu as validé le mois intensif — tu montes à <strong>{a.targetRankName}</strong>. Bravo, c’était dur
-            et tu l’as fait. On te proposera des révisions espacées pour ancrer durablement ce que tu as appris.
-          </CardDescription>
-          <Link href="/resultats" className="text-accent underline-offset-2 hover:underline">Voir mon nouveau rang →</Link>
-        </Card>
+          ) : active && a ? (
+            <>
+              <Card className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle>Saut vers {a.targetRankName}</CardTitle>
+                  <span className="text-sm text-muted-foreground">
+                    Jour {a.currentDay}/{a.totalDays}
+                  </span>
+                </div>
+                {/* Barre de score vers 80 % */}
+                <div className="relative h-3 w-full overflow-hidden rounded-full border border-border bg-muted">
+                  <div
+                    className="h-full rounded-full bg-emerald-500"
+                    style={{ width: `${Math.round(a.provisionalScore * 100)}%` }}
+                  />
+                  <div className="absolute inset-y-0" style={{ left: '80%' }}>
+                    <div className="h-full w-0.5 bg-foreground/60" />
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Score :{' '}
+                  <strong className="text-foreground">
+                    {Math.round(a.provisionalScore * 100)} %
+                  </strong>{' '}
+                  · objectif <strong className="text-foreground">80 %</strong> · examens réussis{' '}
+                  {a.examsPassed}/{a.examsRequired}
+                </p>
+                {/* Frise du mois */}
+                <div className="flex flex-wrap gap-1">
+                  {a.plan.map((d) => (
+                    <span
+                      key={d.day}
+                      title={`Jour ${d.day} — ${d.label}`}
+                      className={`inline-block h-4 w-4 rounded-sm ${DAY_COLOR[d.type]} ${
+                        d.day === a.currentDay ? 'ring-2 ring-offset-1 ring-foreground' : ''
+                      } ${d.done ? '' : 'opacity-40'}`}
+                    />
+                  ))}
+                </div>
+              </Card>
+
+              {/* Bien-être (A3) : soutien, jamais un diagnostic */}
+              {view?.wellbeing.note ? <Note tone="info">{view.wellbeing.note}</Note> : null}
+
+              {/* Tâche du jour */}
+              <Card className="space-y-3">
+                <CardTitle>Ta tâche du jour</CardTitle>
+                {a.canDoToday ? (
+                  <>
+                    <CardDescription>{a.today?.label}</CardDescription>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <span>Comment tu te sens ?</span>
+                      {[1, 2, 3, 4, 5].map((n) => (
+                        <button
+                          key={n}
+                          type="button"
+                          onClick={() => faireMood(n)}
+                          className="h-7 w-7 rounded-full border border-border hover:bg-muted"
+                          title={`${n}/5`}
+                        >
+                          {n}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="flex flex-wrap gap-3">
+                      <Button onClick={faireLaTache} disabled={busy}>
+                        {busy ? '…' : 'Faire la tâche du jour'}
+                      </Button>
+                      <Button variant="secondary" onClick={abandonner} disabled={busy}>
+                        Abandonner (retour au rang, sans pénalité)
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Rappel : dors 8-10 h, ça fait partie de la préparation. Le rythme doit rester
+                      tenable.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <CardDescription>
+                      Tu as fait ta tâche du jour — bravo. Reviens <strong>demain</strong> pour la
+                      suite : un mois intensif se construit jour après jour (c’est ça qui ancre
+                      durablement).
+                    </CardDescription>
+                    {a.nextTaskAt ? (
+                      <p className="text-xs text-muted-foreground">
+                        Prochaine tâche disponible le {formatDateTime(a.nextTaskAt)}.
+                      </p>
+                    ) : null}
+                    <div>
+                      <Button variant="secondary" onClick={abandonner} disabled={busy}>
+                        Abandonner (retour au rang, sans pénalité)
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </Card>
+            </>
+          ) : a && a.status === 'passed' ? (
+            <Card className="space-y-2">
+              <CardTitle className="flex items-center gap-2">
+                <IconTrophy width={20} height={20} className="text-amber-500" /> Réussi !
+              </CardTitle>
+              <CardDescription>
+                Tu as validé le mois intensif — tu montes à <strong>{a.targetRankName}</strong>.
+                Bravo, c’était dur et tu l’as fait. On te proposera des révisions espacées pour
+                ancrer durablement ce que tu as appris.
+              </CardDescription>
+              <Link href="/resultats" className="text-accent underline-offset-2 hover:underline">
+                Voir mon nouveau rang →
+              </Link>
+            </Card>
           ) : (
             // Pas de saut actif : jauge + démarrage
-            <NoActive view={view} onStart={demarrer} onPretest={faireLePretest} busy={busy} previousStatus={a?.status} />
+            <NoActive
+              view={view}
+              onStart={demarrer}
+              onPretest={faireLePretest}
+              busy={busy}
+              previousStatus={a?.status}
+            />
           )}
         </>
       )}
@@ -397,18 +435,19 @@ function NoActive({
     <div className="space-y-4">
       {previousStatus === 'failed' || previousStatus === 'abandoned' ? (
         <Note tone="info">
-          Ton précédent saut n’a pas abouti — <strong>aucune pénalité</strong>, tu es exactement à ton rang. Ce
-          que tu as appris reste à toi. Tenter, c’est déjà fort.
+          Ton précédent saut n’a pas abouti — <strong>aucune pénalité</strong>, tu es exactement à
+          ton rang. Ce que tu as appris reste à toi. Tenter, c’est déjà fort.
         </Note>
       ) : null}
 
       <Card className="space-y-2">
         <CardTitle>Le Saut de Rang, c’est quoi ?</CardTitle>
         <CardDescription>
-          Un mois intensif pour franchir un rang plus vite, si tu maîtrises déjà presque tout ton rang. Un test
-          chaque jour, un grand test le samedi, une expédition-éclair le dimanche, et une semaine d’examens pour
-          finir. <strong>Réussir = 80 %.</strong> C’est volontairement exigeant — tout le monde ne le fait pas, et
-          c’est normal. Si ça n’aboutit pas, tu reprends ton rang sans rien perdre.
+          Un mois intensif pour franchir un rang plus vite, si tu maîtrises déjà presque tout ton
+          rang. Un test chaque jour, un grand test le samedi, une expédition-éclair le dimanche, et
+          une semaine d’examens pour finir. <strong>Réussir = 80 %.</strong> C’est volontairement
+          exigeant — tout le monde ne le fait pas, et c’est normal. Si ça n’aboutit pas, tu reprends
+          ton rang sans rien perdre.
         </CardDescription>
       </Card>
 
@@ -422,8 +461,9 @@ function NoActive({
             </div>
           </div>
           <p className="text-sm text-muted-foreground">
-            <strong className="text-foreground">{e.score}/100</strong> · il faut au moins <strong>60</strong> pour
-            te lancer (on vérifie que tu es prêt — sauter n’est pas s’épuiser pour rien).
+            <strong className="text-foreground">{e.score}/100</strong> · il faut au moins{' '}
+            <strong>60</strong> pour te lancer (on vérifie que tu es prêt — sauter n’est pas
+            s’épuiser pour rien).
           </p>
           {e.blockers.length > 0 ? (
             <ul className="space-y-1 text-sm text-muted-foreground">
@@ -435,8 +475,8 @@ function NoActive({
           {e.pretestNeeded ? (
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">
-                Pour compléter ta jauge, passe le <strong>pré-test</strong> : quelques questions du rang visé
-                (pas encore appris) pour vérifier que le saut est jouable.
+                Pour compléter ta jauge, passe le <strong>pré-test</strong> : quelques questions du
+                rang visé (pas encore appris) pour vérifier que le saut est jouable.
               </p>
               <Button onClick={onPretest} disabled={busy}>
                 {busy ? 'Préparation…' : 'Passer le pré-test'}
@@ -445,7 +485,9 @@ function NoActive({
           ) : e.canStart ? (
             <div className="space-y-2">
               {e.parentConsentNeeded ? (
-                <p className="text-xs text-muted-foreground">Ton responsable devra confirmer avant le démarrage.</p>
+                <p className="text-xs text-muted-foreground">
+                  Ton responsable devra confirmer avant le démarrage.
+                </p>
               ) : null}
               <Button onClick={onStart} disabled={busy}>
                 {busy ? '…' : 'Démarrer le mois intensif'}

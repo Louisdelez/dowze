@@ -36,11 +36,18 @@ export default function LoginPage() {
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-block-cream/40 p-6">
-      <form onSubmit={submit} className="w-full max-w-sm rounded-3xl border border-border bg-surface p-8 shadow-sm">
-        <div className="mb-1 text-xs font-bold uppercase tracking-widest text-accent">Dowze Dev</div>
+      <form
+        onSubmit={submit}
+        className="w-full max-w-sm rounded-3xl border border-border bg-surface p-8 shadow-sm"
+      >
+        <div className="mb-1 text-xs font-bold uppercase tracking-widest text-accent">
+          Dowze Dev
+        </div>
         <h1 className="mb-6 text-2xl font-bold">Connexion</h1>
 
-        <label className="mb-1 block text-sm font-semibold" htmlFor="u">Identifiant</label>
+        <label className="mb-1 block text-sm font-semibold" htmlFor="u">
+          Identifiant
+        </label>
         <input
           id="u"
           value={username}
@@ -49,7 +56,9 @@ export default function LoginPage() {
           className="mb-4 w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
         />
 
-        <label className="mb-1 block text-sm font-semibold" htmlFor="p">Mot de passe</label>
+        <label className="mb-1 block text-sm font-semibold" htmlFor="p">
+          Mot de passe
+        </label>
         <input
           id="p"
           type="password"
@@ -59,7 +68,11 @@ export default function LoginPage() {
           className="mb-5 w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
         />
 
-        {error && <div className="mb-4 rounded-xl bg-block-pink px-3 py-2 text-sm font-medium text-foreground">{error}</div>}
+        {error && (
+          <div className="mb-4 rounded-xl bg-block-pink px-3 py-2 text-sm font-medium text-foreground">
+            {error}
+          </div>
+        )}
 
         <button
           type="submit"
@@ -68,7 +81,9 @@ export default function LoginPage() {
         >
           {busy ? '…' : 'Se connecter'}
         </button>
-        <p className="mt-4 text-center text-xs text-muted-foreground">Comptes gérés par l’administrateur.</p>
+        <p className="mt-4 text-center text-xs text-muted-foreground">
+          Comptes gérés par l’administrateur.
+        </p>
       </form>
     </main>
   );

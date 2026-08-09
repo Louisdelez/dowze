@@ -24,7 +24,11 @@ export class ProtectionsController {
   }
 
   @Post('moderator/:profileId/reset/:resetId/decide')
-  decideReset(@Param('profileId') profileId: string, @Param('resetId') resetId: string, @Body() body: unknown) {
+  decideReset(
+    @Param('profileId') profileId: string,
+    @Param('resetId') resetId: string,
+    @Body() body: unknown,
+  ) {
     const { approve } = parseOr400(z.object({ approve: z.boolean() }), body);
     return this.service.moderatorDecideReset(uuid.parse(profileId), uuid.parse(resetId), approve);
   }
@@ -73,7 +77,11 @@ export class ProtectionsController {
     @Body() body: unknown,
   ) {
     const { approve } = parseOr400(z.object({ approve: z.boolean() }), body);
-    return this.service.parentDecideChildReset(uuid.parse(childAccountId), uuid.parse(resetId), approve);
+    return this.service.parentDecideChildReset(
+      uuid.parse(childAccountId),
+      uuid.parse(resetId),
+      approve,
+    );
   }
 
   @Post('parent/:childAccountId/reset')

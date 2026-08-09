@@ -50,7 +50,11 @@ export default function ResultatsPage() {
       <EmptyState
         title="Connecte-toi pour voir tes résultats"
         description="Ta maîtrise et ta progression apparaîtront ici."
-        action={<Link href="/connexion" className="text-accent underline-offset-2 hover:underline">Se connecter</Link>}
+        action={
+          <Link href="/connexion" className="text-accent underline-offset-2 hover:underline">
+            Se connecter
+          </Link>
+        }
       />
     );
   }
@@ -72,8 +76,13 @@ export default function ResultatsPage() {
         <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
           <IconLock width={14} height={14} className="mt-0.5 shrink-0" />
           <span>
-            Ton responsable peut consulter ce suivi de progression (jamais tes échanges privés) avec ton
-            <strong> code de suivi</strong>, que tu retrouves dans <Link href="/profil" className="text-accent underline-offset-2 hover:underline">ton profil</Link>.
+            Ton responsable peut consulter ce suivi de progression (jamais tes échanges privés) avec
+            ton
+            <strong> code de suivi</strong>, que tu retrouves dans{' '}
+            <Link href="/profil" className="text-accent underline-offset-2 hover:underline">
+              ton profil
+            </Link>
+            .
           </span>
         </p>
       )}

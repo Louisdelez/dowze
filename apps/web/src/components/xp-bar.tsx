@@ -31,7 +31,11 @@ export function XpBar() {
     // Connexion quotidienne (idempotent côté serveur) puis état courant.
     claimDailyXp(profileId)
       .then((v) => !stop && setXp(v))
-      .catch(() => getXp(profileId).then((v) => !stop && setXp(v)).catch(() => {}));
+      .catch(() =>
+        getXp(profileId)
+          .then((v) => !stop && setXp(v))
+          .catch(() => {}),
+      );
 
     // Heartbeat de temps actif : toutes les 60 s, si visible ET actif dans la dernière minute.
     const iv = setInterval(() => {
@@ -51,12 +55,18 @@ export function XpBar() {
   if (!signedIn || !xp) return null;
 
   return (
-    <div className="flex items-center gap-2" title={`Niveau ${xp.level} · ${xp.xpIntoLevel}/${xp.xpForNext} XP${xp.streak > 1 ? ` · série ${xp.streak} j` : ''}`}>
+    <div
+      className="flex items-center gap-2"
+      title={`Niveau ${xp.level} · ${xp.xpIntoLevel}/${xp.xpForNext} XP${xp.streak > 1 ? ` · série ${xp.streak} j` : ''}`}
+    >
       <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-md bg-violet-600 px-1.5 text-xs font-bold text-white">
         {xp.level}
       </span>
       <div className="hidden h-2 w-24 overflow-hidden rounded-full bg-muted sm:block">
-        <div className="h-full rounded-full bg-violet-500" style={{ width: `${Math.round(xp.progressPct * 100)}%` }} />
+        <div
+          className="h-full rounded-full bg-violet-500"
+          style={{ width: `${Math.round(xp.progressPct * 100)}%` }}
+        />
       </div>
     </div>
   );

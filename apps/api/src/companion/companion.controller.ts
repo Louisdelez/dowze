@@ -82,25 +82,46 @@ const createAgentBody = z
 const patchAgentBody = createAgentBody.partial();
 const spaceBody = z.object({ name: z.string().min(1).max(40) }).strict();
 // Création d'open-space typé (organisation) : type + template de rôles + mission (tous optionnels).
-const createSpaceBody = z.object({
-  name: z.string().min(1).max(40),
-  type: z.string().max(20).optional(),
-  template: z.string().max(40).optional(),
-  mission: z.string().max(500).optional(),
-}).strict();
+const createSpaceBody = z
+  .object({
+    name: z.string().min(1).max(40),
+    type: z.string().max(20).optional(),
+    template: z.string().max(40).optional(),
+    mission: z.string().max(500).optional(),
+  })
+  .strict();
 const serviceOrgBody = z.object({ service: z.enum(['academie']).default('academie') }).strict();
-const buildAgentBody = z.object({ description: z.string().min(1).max(500), skinUrl: z.string().max(600).nullable().optional(), space: z.string().max(60).optional() }).strict();
+const buildAgentBody = z
+  .object({
+    description: z.string().min(1).max(500),
+    skinUrl: z.string().max(600).nullable().optional(),
+    space: z.string().max(60).optional(),
+  })
+  .strict();
 const chatAgentBody = z.object({ message: z.string().min(1).max(1000) }).strict();
-const orchestrateBody = z.object({ message: z.string().min(1).max(1000), leaderId: z.string().uuid().optional() }).strict();
+const orchestrateBody = z
+  .object({ message: z.string().min(1).max(1000), leaderId: z.string().uuid().optional() })
+  .strict();
 const spaceOrchestrateBody = z.object({ message: z.string().min(1).max(1000) }).strict();
 const projectBody = z.object({ goal: z.string().min(1).max(1000) }).strict();
-const knowledgeBody = z.object({ title: z.string().max(160).default(''), content: z.string().min(1).max(8000) }).strict();
+const knowledgeBody = z
+  .object({ title: z.string().max(160).default(''), content: z.string().min(1).max(8000) })
+  .strict();
 const protectBody = z.object({ protected: z.boolean() }).strict();
-const mergeBody = z.object({ survivorId: z.string().uuid(), absorbedId: z.string().uuid() }).strict();
+const mergeBody = z
+  .object({ survivorId: z.string().uuid(), absorbedId: z.string().uuid() })
+  .strict();
 const relayTokenBody = z.object({ label: z.string().max(60).optional() }).strict();
 const relaySayBody = z.object({ text: z.string().min(1).max(1000) }).strict();
-const bridgeIngestBody = z.object({ source: z.enum(['chatgpt', 'claude', 'ia']).default('ia'), text: z.string().min(1).max(60000) }).strict();
-const buyBody = z.object({ item: z.string().min(1).max(40), qty: z.number().int().min(1).max(999).optional() }).strict();
+const bridgeIngestBody = z
+  .object({
+    source: z.enum(['chatgpt', 'claude', 'ia']).default('ia'),
+    text: z.string().min(1).max(60000),
+  })
+  .strict();
+const buyBody = z
+  .object({ item: z.string().min(1).max(40), qty: z.number().int().min(1).max(999).optional() })
+  .strict();
 const roomItemsSchema = z
   .array(z.object({ item: z.string().max(40), c: z.number().int(), r: z.number().int() }).strict())
   .max(300);
@@ -166,7 +187,11 @@ export class CompanionController {
   @Post('agents/:id/care/:action')
   @UseGuards(SupabaseAuthGuard)
   @Throttle({ default: { ttl: 60_000, limit: 120 } })
-  async actAgentCare(@Req() req: AuthedRequest, @Param('id') id: string, @Param('action') action: string) {
+  async actAgentCare(
+    @Req() req: AuthedRequest,
+    @Param('id') id: string,
+    @Param('action') action: string,
+  ) {
     if (!req.accountAuthId) throw new UnauthorizedException('non authentifié');
     return this.care.actAgentCare(req.accountAuthId, id, action);
   }
@@ -297,7 +322,11 @@ export class CompanionController {
   @Post('spaces/:id/orchestrate')
   @UseGuards(SupabaseAuthGuard)
   @Throttle({ default: { ttl: 60_000, limit: 15 } })
-  async orchestrateSpace(@Req() req: AuthedRequest, @Param('id') id: string, @Body() body: unknown) {
+  async orchestrateSpace(
+    @Req() req: AuthedRequest,
+    @Param('id') id: string,
+    @Body() body: unknown,
+  ) {
     if (!req.accountAuthId) throw new UnauthorizedException('non authentifié');
     if (!UUID_RE.test(id)) throw new NotFoundException();
     const { message } = parseOr400(spaceOrchestrateBody, body);
@@ -440,7 +469,11 @@ export class CompanionController {
   @Post('spaces/:id/knowledge')
   @UseGuards(SupabaseAuthGuard)
   @Throttle({ default: { ttl: 60_000, limit: 30 } })
-  async addSpaceKnowledge(@Req() req: AuthedRequest, @Param('id') id: string, @Body() body: unknown) {
+  async addSpaceKnowledge(
+    @Req() req: AuthedRequest,
+    @Param('id') id: string,
+    @Body() body: unknown,
+  ) {
     if (!req.accountAuthId) throw new UnauthorizedException('non authentifié');
     if (!UUID_RE.test(id)) throw new NotFoundException();
     const { title, content } = parseOr400(knowledgeBody, body);
@@ -521,22 +554,36 @@ export class CompanionController {
   async mcp(@Req() req: McpRequest, @Res() res: McpResponse) {
     const auth = req.headers['authorization'];
     const header = Array.isArray(auth) ? auth[0] : auth;
-    const token = header && /^Bearer\s+/i.test(header) ? header.replace(/^Bearer\s+/i, '').trim() : '';
+    const token =
+      header && /^Bearer\s+/i.test(header) ? header.replace(/^Bearer\s+/i, '').trim() : '';
     const profileId = token ? await this.service.relayProfileFromToken(token) : null;
     if (!profileId) {
-      res.status(401).json({ jsonrpc: '2.0', id: null, error: { code: -32001, message: 'Jeton relais invalide.' } });
+      res.status(401).json({
+        jsonrpc: '2.0',
+        id: null,
+        error: { code: -32001, message: 'Jeton relais invalide.' },
+      });
       return;
     }
     const body = req.body;
     if (Array.isArray(body)) {
       const out: unknown[] = [];
-      for (const m of body) { const r = await this.mcpProcess(profileId, m as JsonRpc); if (r) out.push(r); }
-      if (out.length === 0) { res.status(202).end(); return; }
+      for (const m of body) {
+        const r = await this.mcpProcess(profileId, m as JsonRpc);
+        if (r) out.push(r);
+      }
+      if (out.length === 0) {
+        res.status(202).end();
+        return;
+      }
       res.status(200).json(out);
       return;
     }
     const r = await this.mcpProcess(profileId, (body ?? {}) as JsonRpc);
-    if (!r) { res.status(202).end(); return; }
+    if (!r) {
+      res.status(202).end();
+      return;
+    }
     res.status(200).json(r);
   }
 
@@ -556,7 +603,9 @@ export class CompanionController {
           "Envoie un message d'avancement, un résultat ou une question courte à l'utilisateur DANS son application Dowze (il le voit dans la messagerie de son compagnon-téléphone). Utilise-le pour le tenir informé pendant que tu travailles : ce que tu viens de faire, un résultat, un blocage, une question. Écris naturellement, en français, court (comme un SMS).",
         inputSchema: {
           type: 'object',
-          properties: { text: { type: 'string', description: "Le message à afficher dans Dowze." } },
+          properties: {
+            text: { type: 'string', description: 'Le message à afficher dans Dowze.' },
+          },
           required: ['text'],
         },
       },
@@ -570,33 +619,54 @@ export class CompanionController {
   }
 
   /** Exécute un outil MCP. */
-  private async mcpCall(profileId: string, name: string, args: Record<string, unknown>): Promise<McpToolResult> {
+  private async mcpCall(
+    profileId: string,
+    name: string,
+    args: Record<string, unknown>,
+  ): Promise<McpToolResult> {
     if (name === 'dowze_send_update') {
       const text = typeof args.text === 'string' ? args.text : '';
-      if (!text.trim()) return { content: [{ type: 'text', text: 'Erreur : le champ "text" est requis.' }], isError: true };
+      if (!text.trim())
+        return {
+          content: [{ type: 'text', text: 'Erreur : le champ "text" est requis.' }],
+          isError: true,
+        };
       await this.service.relayPush(profileId, text);
       return { content: [{ type: 'text', text: 'Envoyé à Dowze ✅' }] };
     }
     if (name === 'dowze_get_messages') {
       const msgs = await this.service.relayPull(profileId);
-      const text = msgs.length ? msgs.map((m, i) => `${i + 1}. ${m}`).join('\n') : '(aucune nouvelle instruction)';
+      const text = msgs.length
+        ? msgs.map((m, i) => `${i + 1}. ${m}`).join('\n')
+        : '(aucune nouvelle instruction)';
       return { content: [{ type: 'text', text }] };
     }
     return { content: [{ type: 'text', text: `Outil inconnu : ${name}` }], isError: true };
   }
 
   /** Traite un message JSON-RPC (renvoie la réponse, ou `null` pour une notification). */
-  private async mcpProcess(profileId: string, msg: JsonRpc): Promise<Record<string, unknown> | null> {
+  private async mcpProcess(
+    profileId: string,
+    msg: JsonRpc,
+  ): Promise<Record<string, unknown> | null> {
     const id = msg?.id;
     const method = typeof msg?.method === 'string' ? msg.method : '';
-    const params = (msg?.params && typeof msg.params === 'object' ? msg.params : {}) as Record<string, unknown>;
+    const params = (msg?.params && typeof msg.params === 'object' ? msg.params : {}) as Record<
+      string,
+      unknown
+    >;
     const isNotification = id === undefined || id === null;
     const ok = (result: unknown): Record<string, unknown> => ({ jsonrpc: '2.0', id, result });
-    const err = (code: number, message: string): Record<string, unknown> => ({ jsonrpc: '2.0', id, error: { code, message } });
+    const err = (code: number, message: string): Record<string, unknown> => ({
+      jsonrpc: '2.0',
+      id,
+      error: { code, message },
+    });
     try {
       switch (method) {
         case 'initialize': {
-          const pv = typeof params.protocolVersion === 'string' ? params.protocolVersion : '2025-06-18';
+          const pv =
+            typeof params.protocolVersion === 'string' ? params.protocolVersion : '2025-06-18';
           return ok({
             protocolVersion: pv,
             capabilities: { tools: {} },
@@ -611,7 +681,9 @@ export class CompanionController {
           return ok({ tools: this.mcpTools() });
         case 'tools/call': {
           const toolName = typeof params.name === 'string' ? params.name : '';
-          const toolArgs = (params.arguments && typeof params.arguments === 'object' ? params.arguments : {}) as Record<string, unknown>;
+          const toolArgs = (
+            params.arguments && typeof params.arguments === 'object' ? params.arguments : {}
+          ) as Record<string, unknown>;
           return ok(await this.mcpCall(profileId, toolName, toolArgs));
         }
         case 'resources/list':

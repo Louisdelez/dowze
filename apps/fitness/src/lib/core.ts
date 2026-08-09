@@ -58,7 +58,10 @@ export async function deactivateFitness(pluginId: string, profileId: string): Pr
 }
 
 /** Déclare l'activité récurrente « séance de sport » → apparaît dans le planning académie (P2). */
-export async function declareWorkout(profileId: string, frequencyPerWeek: number): Promise<unknown> {
+export async function declareWorkout(
+  profileId: string,
+  frequencyPerWeek: number,
+): Promise<unknown> {
   return core.request('/v1/calendar/recurring', {
     method: 'POST',
     headers: pluginHeader,
@@ -86,7 +89,12 @@ export async function removeWorkout(profileId: string): Promise<unknown> {
 /** compose (P3) : contexte → prompt lisible à donner à SON IA (ChatGPT/Claude). */
 export async function composeSession(
   profileId: string,
-  body: { title: string; goal?: string; level?: string; context?: { label: string; value: string }[] },
+  body: {
+    title: string;
+    goal?: string;
+    level?: string;
+    context?: { label: string; value: string }[];
+  },
 ): Promise<{ prompt: string; closingPrompt: string }> {
   return core.request('/v1/ai/compose', {
     method: 'POST',
@@ -111,7 +119,11 @@ export async function ingestSession(
         { key: 'exercices', type: 'stringArray', description: 'exercices réalisés' },
         { key: 'dureeMin', type: 'integer', description: 'durée en minutes' },
         { key: 'ressenti', type: 'string', description: 'ressenti global' },
-        { key: 'intensitePercue', type: 'string', description: 'intensité perçue : facile, moyen ou dur' },
+        {
+          key: 'intensitePercue',
+          type: 'string',
+          description: 'intensité perçue : facile, moyen ou dur',
+        },
       ],
     }),
   });

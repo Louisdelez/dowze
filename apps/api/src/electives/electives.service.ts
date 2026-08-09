@@ -53,14 +53,19 @@ function capMinutesFor(age: number | null): number {
 
 const disciplinesGen = z.object({
   proposals: z
-    .array(z.object({ label: z.string().min(1), disciplineHint: z.string(), reason: z.string().min(1) }))
+    .array(
+      z.object({ label: z.string().min(1), disciplineHint: z.string(), reason: z.string().min(1) }),
+    )
     .min(1)
     .max(3),
 });
 const planGen = z.object({
   distalGoal: z.string().min(1),
   baseRate: z.string().min(1),
-  paths: z.array(z.object({ title: z.string().min(1), note: z.string().min(1) })).min(2).max(4),
+  paths: z
+    .array(z.object({ title: z.string().min(1), note: z.string().min(1) }))
+    .min(2)
+    .max(4),
   milestones: z
     .array(
       z.object({
@@ -83,7 +88,9 @@ export class ElectivesService {
   ) {}
 
   private async electiveRow(profileId: string) {
-    return (await this.db.select().from(electives).where(eq(electives.profileId, profileId)))[0] ?? null;
+    return (
+      (await this.db.select().from(electives).where(eq(electives.profileId, profileId)))[0] ?? null
+    );
   }
   private async discoveryRow(profileId: string) {
     return (
@@ -91,7 +98,9 @@ export class ElectivesService {
         await this.db
           .select()
           .from(electiveDiscovery)
-          .where(and(eq(electiveDiscovery.profileId, profileId), eq(electiveDiscovery.status, 'active')))
+          .where(
+            and(eq(electiveDiscovery.profileId, profileId), eq(electiveDiscovery.status, 'active')),
+          )
       )[0] ?? null
     );
   }
@@ -114,7 +123,10 @@ export class ElectivesService {
     };
   }
 
-  private toDiscovery(r: typeof electiveDiscovery.$inferSelect, journalToday: boolean): ElectiveDiscovery {
+  private toDiscovery(
+    r: typeof electiveDiscovery.$inferSelect,
+    journalToday: boolean,
+  ): ElectiveDiscovery {
     const list = r.disciplines as DiscoveryDiscipline[];
     const current = list[r.currentIndex] ?? null;
     const dayInWeek = Math.min(
@@ -163,12 +175,25 @@ export class ElectivesService {
       await this.db
         .select()
         .from(learnerBadges)
-        .where(and(eq(learnerBadges.profileId, profileId), like(learnerBadges.discipline, 'Passion%')))
+        .where(
+          and(eq(learnerBadges.profileId, profileId), like(learnerBadges.discipline, 'Passion%')),
+        )
         .orderBy(desc(learnerBadges.createdAt))
-    ).map((b) => ({ id: b.id, name: b.name, discipline: b.discipline, criteria: b.criteria, dateIso: b.createdAt.toISOString() }));
+    ).map((b) => ({
+      id: b.id,
+      name: b.name,
+      discipline: b.discipline,
+      criteria: b.criteria,
+      dateIso: b.createdAt.toISOString(),
+    }));
 
     const plan = eRow ? await this.getPlan(profileId, eRow.label) : null;
-    const inReflection = !!(eRow && eRow.status === 'change_pending' && eRow.changeConfirmAt && eRow.changeConfirmAt > new Date());
+    const inReflection = !!(
+      eRow &&
+      eRow.status === 'change_pending' &&
+      eRow.changeConfirmAt &&
+      eRow.changeConfirmAt > new Date()
+    );
 
     return {
       elective: eRow ? this.toElective(eRow) : null,
@@ -183,14 +208,23 @@ export class ElectivesService {
 
   // ---------------- Mode découverte ----------------
 
-  async startDiscovery(profileId: string, disciplines: DiscoveryDiscipline[], round = 1): Promise<ElectiveView> {
-    if (disciplines.length !== 5) throw new BadRequestException('Choisis exactement 5 disciplines à explorer.');
+  async startDiscovery(
+    profileId: string,
+    disciplines: DiscoveryDiscipline[],
+    round = 1,
+  ): Promise<ElectiveView> {
+    if (disciplines.length !== 5)
+      throw new BadRequestException('Choisis exactement 5 disciplines à explorer.');
     // Une seule découverte active : on clôt l'ancienne.
     await this.db
       .update(electiveDiscovery)
       .set({ status: 'done' })
-      .where(and(eq(electiveDiscovery.profileId, profileId), eq(electiveDiscovery.status, 'active')));
-    await this.db.insert(electiveDiscovery).values({ profileId, round, disciplines, currentIndex: 0 });
+      .where(
+        and(eq(electiveDiscovery.profileId, profileId), eq(electiveDiscovery.status, 'active')),
+      );
+    await this.db
+      .insert(electiveDiscovery)
+      .values({ profileId, round, disciplines, currentIndex: 0 });
     return this.view(profileId);
   }
 
@@ -200,7 +234,10 @@ export class ElectivesService {
     if (!d) throw new NotFoundException('aucune découverte en cours');
     const list = d.disciplines as DiscoveryDiscipline[];
     if (d.currentIndex + 1 >= list.length) {
-      await this.db.update(electiveDiscovery).set({ status: 'done' }).where(eq(electiveDiscovery.id, d.id));
+      await this.db
+        .update(electiveDiscovery)
+        .set({ status: 'done' })
+        .where(eq(electiveDiscovery.id, d.id));
     } else {
       await this.db
         .update(electiveDiscovery)
@@ -237,21 +274,26 @@ export class ElectivesService {
       .orderBy(desc(electiveJournal.createdAt))
       .limit(40);
     if (entries.length === 0)
-      throw new BadRequestException("Tiens d'abord ton journal de bord quelques jours — l'IA aura de quoi t'aider.");
+      throw new BadRequestException(
+        "Tiens d'abord ton journal de bord quelques jours — l'IA aura de quoi t'aider.",
+      );
     const digest = entries
       .map(
         (e) =>
           `[${e.discipline}] fait: ${e.did || '—'} | aimé: ${e.liked || '—'} | pas aimé: ${e.disliked || '—'} | plaisir ${e.intensity}/5`,
       )
       .join('\n');
-    const { object } = await this.copilote.generateStructured<z.infer<typeof disciplinesGen>>(profileId, {
-      schema: disciplinesGen,
-      schemaName: 'ElectiveProposals',
-      system: PROPOSALS_SYSTEM,
-      prompt: `Journaux de l'élève (récents en premier) :\n${digest}\n\nPropose 2-3 pistes (hypothèses).`,
-      temperature: 0.5,
-      ref: 'elective-proposals',
-    });
+    const { object } = await this.copilote.generateStructured<z.infer<typeof disciplinesGen>>(
+      profileId,
+      {
+        schema: disciplinesGen,
+        schemaName: 'ElectiveProposals',
+        system: PROPOSALS_SYSTEM,
+        prompt: `Journaux de l'élève (récents en premier) :\n${digest}\n\nPropose 2-3 pistes (hypothèses).`,
+        temperature: 0.5,
+        ref: 'elective-proposals',
+      },
+    );
     return object.proposals;
   }
 
@@ -296,7 +338,9 @@ export class ElectivesService {
     await this.db
       .update(electiveDiscovery)
       .set({ status: 'done' })
-      .where(and(eq(electiveDiscovery.profileId, profileId), eq(electiveDiscovery.status, 'active')));
+      .where(
+        and(eq(electiveDiscovery.profileId, profileId), eq(electiveDiscovery.status, 'active')),
+      );
     return this.view(profileId);
   }
 
@@ -316,7 +360,12 @@ export class ElectivesService {
     const now = new Date();
     await this.db
       .update(electives)
-      .set({ status: 'change_pending', changeTarget: t, changeProposedAt: now, changeConfirmAt: addMonths(now, REFLECTION_MONTHS) })
+      .set({
+        status: 'change_pending',
+        changeTarget: t,
+        changeProposedAt: now,
+        changeConfirmAt: addMonths(now, REFLECTION_MONTHS),
+      })
       .where(eq(electives.profileId, profileId));
     return this.view(profileId);
   }
@@ -327,7 +376,9 @@ export class ElectivesService {
     if (!r || r.status !== 'change_pending' || !r.changeTarget)
       throw new BadRequestException('aucun changement en attente');
     if (r.changeConfirmAt && r.changeConfirmAt > new Date())
-      throw new BadRequestException('Prends encore un peu de temps pour réfléchir — le changement se confirme après 1 mois.');
+      throw new BadRequestException(
+        'Prends encore un peu de temps pour réfléchir — le changement se confirme après 1 mois.',
+      );
     // Bascule vers la nouvelle passion + nouvel engagement doux.
     const now = new Date();
     await this.db.delete(electivePlans).where(eq(electivePlans.profileId, profileId));
@@ -409,12 +460,30 @@ export class ElectivesService {
     }));
     await this.db
       .insert(electivePlans)
-      .values({ profileId, label: r.label, distalGoal: object.distalGoal, paths: object.paths, baseRate: object.baseRate, milestones })
+      .values({
+        profileId,
+        label: r.label,
+        distalGoal: object.distalGoal,
+        paths: object.paths,
+        baseRate: object.baseRate,
+        milestones,
+      })
       .onConflictDoUpdate({
         target: [electivePlans.profileId, electivePlans.label],
-        set: { distalGoal: object.distalGoal, paths: object.paths, baseRate: object.baseRate, milestones },
+        set: {
+          distalGoal: object.distalGoal,
+          paths: object.paths,
+          baseRate: object.baseRate,
+          milestones,
+        },
       });
-    return { label: r.label, distalGoal: object.distalGoal, paths: object.paths, baseRate: object.baseRate, milestones };
+    return {
+      label: r.label,
+      distalGoal: object.distalGoal,
+      paths: object.paths,
+      baseRate: object.baseRate,
+      milestones,
+    };
   }
 
   async completeMilestone(profileId: string, milestoneId: string): Promise<ElectivePlan> {
@@ -441,6 +510,12 @@ export class ElectivesService {
         milestoneId,
       });
     }
-    return { label: row.label, distalGoal: row.distalGoal, paths: row.paths as ElectivePlan['paths'], baseRate: row.baseRate, milestones };
+    return {
+      label: row.label,
+      distalGoal: row.distalGoal,
+      paths: row.paths as ElectivePlan['paths'],
+      baseRate: row.baseRate,
+      milestones,
+    };
   }
 }

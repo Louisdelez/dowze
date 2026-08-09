@@ -1,4 +1,10 @@
-import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { and, eq, inArray } from 'drizzle-orm';
 import {
   pluginContributesSchema,
@@ -61,7 +67,10 @@ export class PluginsService {
   async catalogueForProfile(profileId: string): Promise<PluginCatalogueItem[]> {
     const [rows, activations] = await Promise.all([
       this.db.select().from(pluginRegistry).where(inArray(pluginRegistry.status, VISIBLE_STATUSES)),
-      this.db.select().from(userPluginActivation).where(eq(userPluginActivation.profileId, profileId)),
+      this.db
+        .select()
+        .from(userPluginActivation)
+        .where(eq(userPluginActivation.profileId, profileId)),
     ]);
     const byPlugin = new Map<string, ActivationRow>(activations.map((a) => [a.pluginId, a]));
     return rows.map((r) => {
@@ -80,7 +89,10 @@ export class PluginsService {
   }
 
   private async getById(pluginId: string): Promise<RegistryRow> {
-    const [row] = await this.db.select().from(pluginRegistry).where(eq(pluginRegistry.id, pluginId));
+    const [row] = await this.db
+      .select()
+      .from(pluginRegistry)
+      .where(eq(pluginRegistry.id, pluginId));
     if (!row) throw new NotFoundException('plugin inconnu');
     return row;
   }
@@ -102,7 +114,12 @@ export class PluginsService {
     const [a] = await this.db
       .select()
       .from(userPluginActivation)
-      .where(and(eq(userPluginActivation.profileId, profileId), eq(userPluginActivation.pluginId, pluginId)));
+      .where(
+        and(
+          eq(userPluginActivation.profileId, profileId),
+          eq(userPluginActivation.pluginId, pluginId),
+        ),
+      );
     if (!a || !a.enabled) return null;
     return (a.grantedScopes ?? []) as PluginScope[];
   }
@@ -134,9 +151,7 @@ export class PluginsService {
     }
     const missingRequired = requested.filter((s) => !granted.includes(s));
     if (missingRequired.length > 0) {
-      throw new BadRequestException(
-        `scopes requis manquants : ${missingRequired.join(', ')}`,
-      );
+      throw new BadRequestException(`scopes requis manquants : ${missingRequired.join(', ')}`);
     }
     this.validateConfig(plugin.configSchema as Record<string, unknown>, body.config);
 
@@ -167,13 +182,19 @@ export class PluginsService {
   }
 
   /** Désactive (révoque) un plugin pour un profil — idempotent, non destructif. */
-  async deactivate(pluginId: string, profileId: string): Promise<{ pluginId: string; enabled: false }> {
+  async deactivate(
+    pluginId: string,
+    profileId: string,
+  ): Promise<{ pluginId: string; enabled: false }> {
     const plugin = await this.getById(pluginId);
     await this.db
       .update(userPluginActivation)
       .set({ enabled: false, updatedAt: new Date() })
       .where(
-        and(eq(userPluginActivation.profileId, profileId), eq(userPluginActivation.pluginId, pluginId)),
+        and(
+          eq(userPluginActivation.profileId, profileId),
+          eq(userPluginActivation.pluginId, pluginId),
+        ),
       );
     await this.realtime.publishToUser(profileId, {
       type: 'plugin.deactivated',
@@ -192,17 +213,21 @@ export class PluginsService {
     if (!schema || typeof schema !== 'object' || Object.keys(schema).length === 0) return;
     const required = Array.isArray(schema.required) ? (schema.required as string[]) : [];
     for (const key of required) {
-      if (!(key in config)) throw new BadRequestException(`config : champ requis « ${key} » manquant`);
+      if (!(key in config))
+        throw new BadRequestException(`config : champ requis « ${key} » manquant`);
     }
     const props = (schema.properties ?? {}) as Record<string, Record<string, unknown>>;
     for (const [key, value] of Object.entries(config)) {
       const spec = props[key];
       if (!spec) continue;
       if (Array.isArray(spec.enum) && !spec.enum.includes(value)) {
-        throw new BadRequestException(`config : « ${key} » doit être parmi ${JSON.stringify(spec.enum)}`);
+        throw new BadRequestException(
+          `config : « ${key} » doit être parmi ${JSON.stringify(spec.enum)}`,
+        );
       }
       if (spec.type === 'integer') {
-        if (!Number.isInteger(value)) throw new BadRequestException(`config : « ${key} » doit être un entier`);
+        if (!Number.isInteger(value))
+          throw new BadRequestException(`config : « ${key} » doit être un entier`);
         const n = value as number;
         if (typeof spec.minimum === 'number' && n < spec.minimum) {
           throw new BadRequestException(`config : « ${key} » ≥ ${spec.minimum}`);

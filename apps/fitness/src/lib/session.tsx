@@ -12,7 +12,12 @@ interface FitnessSession {
   signedIn: boolean;
 }
 
-const Ctx = createContext<FitnessSession>({ profileId: null, displayName: null, ready: false, signedIn: false });
+const Ctx = createContext<FitnessSession>({
+  profileId: null,
+  displayName: null,
+  ready: false,
+  signedIn: false,
+});
 export const useFitnessSession = (): FitnessSession => useContext(Ctx);
 
 /**
@@ -21,7 +26,12 @@ export const useFitnessSession = (): FitnessSession => useContext(Ctx);
  * table `profiles` (RLS : chacun ne lit que le sien).
  */
 export function SessionProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<FitnessSession>({ profileId: null, displayName: null, ready: false, signedIn: false });
+  const [state, setState] = useState<FitnessSession>({
+    profileId: null,
+    displayName: null,
+    ready: false,
+    signedIn: false,
+  });
 
   const resolve = useCallback(async () => {
     const supabase = getSupabase();
@@ -32,7 +42,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setState({ profileId: null, displayName: null, ready: true, signedIn: false });
       return;
     }
-    const { data: prof } = await supabase.from('profiles').select('id, display_name').limit(1).maybeSingle();
+    const { data: prof } = await supabase
+      .from('profiles')
+      .select('id, display_name')
+      .limit(1)
+      .maybeSingle();
     setState({
       profileId: prof?.id ?? null,
       displayName: prof?.display_name ?? null,

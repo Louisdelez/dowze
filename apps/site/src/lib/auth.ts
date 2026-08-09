@@ -22,7 +22,10 @@ export async function registerAccount(input: RegisterInput): Promise<unknown> {
   const token = data.session?.access_token;
   const res = await fetch(`${API}/accounts`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
     body: JSON.stringify(input),
   });
   if (!res.ok) throw new Error((await res.text().catch(() => '')) || 'Inscription impossible');

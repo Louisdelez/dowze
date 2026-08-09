@@ -4,7 +4,13 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import type { AssignResult, ModeratorQueue } from '@dowze/schemas';
 import { useProfile } from '@/lib/use-profile';
-import { assignClasses, decideReset, getModeratorQueue, resolveAiFlag, resolveReport } from '@/lib/api';
+import {
+  assignClasses,
+  decideReset,
+  getModeratorQueue,
+  resolveAiFlag,
+  resolveReport,
+} from '@/lib/api';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardTitle, CardDescription } from '@/components/ui/card';
@@ -30,7 +36,11 @@ export default function ModerationPage() {
       <EmptyState
         title="Espace modération"
         description="Réservé aux modérateurs."
-        action={<Link href="/connexion" className="text-accent underline-offset-2 hover:underline">Se connecter</Link>}
+        action={
+          <Link href="/connexion" className="text-accent underline-offset-2 hover:underline">
+            Se connecter
+          </Link>
+        }
       />
     );
   }
@@ -62,9 +72,17 @@ export default function ModerationPage() {
                 {f.authorName} · {f.category} ({f.severity})
               </CardTitle>
               <CardDescription>{f.reason}</CardDescription>
-              <p className="rounded-lg border border-border bg-background p-2 text-xs">« {f.messageBody} »</p>
+              <p className="rounded-lg border border-border bg-background p-2 text-xs">
+                « {f.messageBody} »
+              </p>
               <div>
-                <Button variant="secondary" onClick={async () => { await resolveAiFlag(profileId!, f.id); charger(); }}>
+                <Button
+                  variant="secondary"
+                  onClick={async () => {
+                    await resolveAiFlag(profileId!, f.id);
+                    charger();
+                  }}
+                >
                   Marquer traité
                 </Button>
               </div>
@@ -86,7 +104,9 @@ export default function ModerationPage() {
               <CardDescription>« {r.reason} »</CardDescription>
               {r.context.length > 0 && (
                 <div className="space-y-1 rounded-lg border border-border bg-muted/30 p-2 text-xs">
-                  <p className="font-medium text-muted-foreground">Contexte (derniers messages) :</p>
+                  <p className="font-medium text-muted-foreground">
+                    Contexte (derniers messages) :
+                  </p>
                   {r.context.map((m) => (
                     <p key={m.id}>
                       <span className="font-medium">{m.senderName} :</span>{' '}
@@ -96,7 +116,13 @@ export default function ModerationPage() {
                 </div>
               )}
               <div>
-                <Button variant="secondary" onClick={async () => { await resolveReport(profileId!, r.id); charger(); }}>
+                <Button
+                  variant="secondary"
+                  onClick={async () => {
+                    await resolveReport(profileId!, r.id);
+                    charger();
+                  }}
+                >
                   Marquer traité
                 </Button>
               </div>
@@ -115,13 +141,28 @@ export default function ModerationPage() {
               <div>
                 <p className="font-medium">{r.childName}</p>
                 <p className="text-xs text-muted-foreground">
-                  {r.scope === 'account' ? 'Suppression de compte' : 'Messages + amis'} · demandé par{' '}
-                  {r.requestedBy === 'parent' ? 'le responsable' : 'l’élève'}
+                  {r.scope === 'account' ? 'Suppression de compte' : 'Messages + amis'} · demandé
+                  par {r.requestedBy === 'parent' ? 'le responsable' : 'l’élève'}
                 </p>
               </div>
               <div className="flex gap-2">
-                <Button onClick={async () => { await decideReset(profileId!, r.id, true); charger(); }}>Valider</Button>
-                <Button variant="secondary" onClick={async () => { await decideReset(profileId!, r.id, false); charger(); }}>Refuser</Button>
+                <Button
+                  onClick={async () => {
+                    await decideReset(profileId!, r.id, true);
+                    charger();
+                  }}
+                >
+                  Valider
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={async () => {
+                    await decideReset(profileId!, r.id, false);
+                    charger();
+                  }}
+                >
+                  Refuser
+                </Button>
               </div>
             </Card>
           ))
@@ -136,7 +177,12 @@ function AssignClasses({ profileId }: { profileId: string }) {
   const [res, setRes] = useState<AssignResult | null>(null);
 
   async function lancer() {
-    if (!confirm('(Ré)assigner toutes les classes de l’année ? Les classes existantes seront recomposées.')) return;
+    if (
+      !confirm(
+        '(Ré)assigner toutes les classes de l’année ? Les classes existantes seront recomposées.',
+      )
+    )
+      return;
     setBusy(true);
     try {
       setRes(await assignClasses(profileId, 2026));
@@ -149,15 +195,20 @@ function AssignClasses({ profileId }: { profileId: string }) {
     <Card className="space-y-2 border-accent/30 bg-accent/5">
       <CardTitle>Assignation des classes (année 2026)</CardTitle>
       <CardDescription>
-        Forme les classes automatiquement : niveau (jamais mélangé) &gt; langue &gt; âge (l’âge n’exclut
-        jamais). Cible 20, min 12, max 25 ; fusion multilingue si trop peu de monde dans une langue.
+        Forme les classes automatiquement : niveau (jamais mélangé) &gt; langue &gt; âge (l’âge
+        n’exclut jamais). Cible 20, min 12, max 25 ; fusion multilingue si trop peu de monde dans
+        une langue.
       </CardDescription>
       <div>
-        <Button onClick={lancer} disabled={busy}>{busy ? 'Assignation…' : 'Lancer l’assignation'}</Button>
+        <Button onClick={lancer} disabled={busy}>
+          {busy ? 'Assignation…' : 'Lancer l’assignation'}
+        </Button>
       </div>
       {res && (
         <div className="space-y-1 rounded-lg border border-border bg-background p-2 text-xs">
-          <p className="font-medium">{res.created} classe(s) pour {res.totalLearners} apprenant(s) :</p>
+          <p className="font-medium">
+            {res.created} classe(s) pour {res.totalLearners} apprenant(s) :
+          </p>
           {res.classes.map((c, i) => (
             <p key={i}>
               {c.name} — {c.size} membre(s) ({c.reason}){c.isMultilingual ? ' · multilingue' : ''}

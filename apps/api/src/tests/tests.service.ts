@@ -66,7 +66,12 @@ export class TestsService {
       const skillId = targets[i] as string;
       const type = TYPE_CYCLE[i % TYPE_CYCLE.length] as ExType;
       try {
-        const { items } = await this.exercises.generate({ profileId, skillId, type, count: perSkill });
+        const { items } = await this.exercises.generate({
+          profileId,
+          skillId,
+          type,
+          count: perSkill,
+        });
         buckets.push(items);
       } catch {
         // Une compétence qui échoue ne bloque pas le test entier.
@@ -82,9 +87,7 @@ export class TestsService {
     }
 
     const now = new Date();
-    const row = (
-      await this.db.insert(tests).values({ profileId, kind, items }).returning()
-    )[0];
+    const row = (await this.db.insert(tests).values({ profileId, kind, items }).returning())[0];
     if (!row) throw new Error('échec de création du test');
 
     return { id: row.id, kind, items, createdAtIso: now.toISOString() };
@@ -118,7 +121,9 @@ export class TestsService {
     // C1 : gain variable de la barre RR (façon Elo, cible 0,6). Bar visible découplée du gate rigoureux.
     if (total > 0) {
       const delta = Math.round(25 * (correct / total - 0.6));
-      const row = (await this.db.select().from(learnerRank).where(eq(learnerRank.profileId, profileId)))[0];
+      const row = (
+        await this.db.select().from(learnerRank).where(eq(learnerRank.profileId, profileId))
+      )[0];
       if (row) {
         const next = Math.max(0, (row.rrPoints ?? 0) + delta);
         await this.db

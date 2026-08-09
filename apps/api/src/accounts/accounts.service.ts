@@ -99,7 +99,9 @@ export class AccountsService {
       )[0];
 
       // Auto-liaison : le parent a déjà un compte avec cet email → on le relie tout de suite.
-      const parentAcc = (await this.db.select().from(accounts).where(eq(accounts.email, guardianEmail)))[0];
+      const parentAcc = (
+        await this.db.select().from(accounts).where(eq(accounts.email, guardianEmail))
+      )[0];
       if (parentAcc && g) {
         await this.db
           .update(guardians)
@@ -117,7 +119,10 @@ export class AccountsService {
   }
 
   /** Relie ce compte (parent) à tous ses enfants en attente (dont l'email d'invitation = son email). */
-  private async adoptPendingChildren(guardianAccountId: string, guardianEmail: string): Promise<void> {
+  private async adoptPendingChildren(
+    guardianAccountId: string,
+    guardianEmail: string,
+  ): Promise<void> {
     const email = guardianEmail.trim().toLowerCase();
     const pending = await this.db
       .select()
@@ -165,10 +170,15 @@ export class AccountsService {
 
   /** Les comptes enfants/liés supervisés par ce compte parent. */
   async childrenForGuardian(guardianAccountId: string) {
-    const rows = await this.db.select().from(guardians).where(eq(guardians.guardianAccountId, guardianAccountId));
+    const rows = await this.db
+      .select()
+      .from(guardians)
+      .where(eq(guardians.guardianAccountId, guardianAccountId));
     const out = [];
     for (const g of rows) {
-      const childAcc = (await this.db.select().from(accounts).where(eq(accounts.id, g.minorAccountId)))[0];
+      const childAcc = (
+        await this.db.select().from(accounts).where(eq(accounts.id, g.minorAccountId))
+      )[0];
       const childProfile = await this.profileForAccount(g.minorAccountId);
       if (!childAcc || !childProfile) continue;
       out.push({
@@ -176,7 +186,8 @@ export class AccountsService {
         name: childProfile.displayName,
         tier: g.tier as AgeTier,
         activationStatus: childAcc.activationStatus,
-        needsParentConfirmation: g.tier === 'enfant' && childAcc.activationStatus === 'pending_parent',
+        needsParentConfirmation:
+          g.tier === 'enfant' && childAcc.activationStatus === 'pending_parent',
       });
     }
     return out;
@@ -188,11 +199,22 @@ export class AccountsService {
       await this.db
         .select()
         .from(guardians)
-        .where(and(eq(guardians.guardianAccountId, guardianAccountId), eq(guardians.minorAccountId, childAccountId)))
+        .where(
+          and(
+            eq(guardians.guardianAccountId, guardianAccountId),
+            eq(guardians.minorAccountId, childAccountId),
+          ),
+        )
     )[0];
     if (!g) return { ok: false };
-    await this.db.update(accounts).set({ activationStatus: 'active' }).where(eq(accounts.id, childAccountId));
-    await this.db.update(guardians).set({ parentConfirmedAt: new Date() }).where(eq(guardians.id, g.id));
+    await this.db
+      .update(accounts)
+      .set({ activationStatus: 'active' })
+      .where(eq(accounts.id, childAccountId));
+    await this.db
+      .update(guardians)
+      .set({ parentConfirmedAt: new Date() })
+      .where(eq(guardians.id, g.id));
     return { ok: true };
   }
 

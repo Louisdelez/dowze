@@ -34,9 +34,12 @@ export interface SessionPromptCtx {
 }
 
 const EPISTEMIC_HINT: Record<string, string> = {
-  'en-debat': 'Savoir CONTROVERSÉ : présente les positions en présence, distingue faits et débats, ne tranche pas hâtivement.',
-  emergent: 'Savoir ÉMERGENT (front de recherche) : cultive l\'humilité épistémique, sépare l\'établi de l\'exploratoire, cite l\'incertitude.',
-  obsolescent: 'Savoir en voie d\'OBSOLESCENCE : signale ce qui est révisé, et vers quoi le consensus évolue.',
+  'en-debat':
+    'Savoir CONTROVERSÉ : présente les positions en présence, distingue faits et débats, ne tranche pas hâtivement.',
+  emergent:
+    "Savoir ÉMERGENT (front de recherche) : cultive l'humilité épistémique, sépare l'établi de l'exploratoire, cite l'incertitude.",
+  obsolescent:
+    "Savoir en voie d'OBSOLESCENCE : signale ce qui est révisé, et vers quoi le consensus évolue.",
 };
 
 /**
@@ -68,18 +71,25 @@ export function buildSessionPrompt(ctx: SessionPromptCtx): string {
     memoire.push(`Travaux passés reliés (mémoire) : ${ctx.relatedNotes.join(' ; ')}`);
   }
   if (ctx.relatedSkills && ctx.relatedSkills.length > 0) {
-    memoire.push(`Compétences voisines par le sens (pour relier les idées) : ${ctx.relatedSkills.join(' ; ')}`);
+    memoire.push(
+      `Compétences voisines par le sens (pour relier les idées) : ${ctx.relatedSkills.join(' ; ')}`,
+    );
   }
 
-  const epistemic = ctx.epistemicStatus && EPISTEMIC_HINT[ctx.epistemicStatus]
-    ? `\n- ${EPISTEMIC_HINT[ctx.epistemicStatus]}`
-    : '';
-  const sources = ctx.sources && ctx.sources.length > 0
-    ? `\n- Sources de référence (ancre-toi dessus, ne les récite pas) : ${ctx.sources.join(' ; ')}`
-    : '';
-  const objectif = (ctx.description
-    ? `- Ce que ça veut dire, et à quel niveau : ${ctx.description}`
-    : `- Concentre-toi précisément sur cette compétence, à son niveau scolaire.`) + epistemic + sources;
+  const epistemic =
+    ctx.epistemicStatus && EPISTEMIC_HINT[ctx.epistemicStatus]
+      ? `\n- ${EPISTEMIC_HINT[ctx.epistemicStatus]}`
+      : '';
+  const sources =
+    ctx.sources && ctx.sources.length > 0
+      ? `\n- Sources de référence (ancre-toi dessus, ne les récite pas) : ${ctx.sources.join(' ; ')}`
+      : '';
+  const objectif =
+    (ctx.description
+      ? `- Ce que ça veut dire, et à quel niveau : ${ctx.description}`
+      : `- Concentre-toi précisément sur cette compétence, à son niveau scolaire.`) +
+    epistemic +
+    sources;
 
   return [
     `Tu es mon professeur particulier : expérimenté, patient et exigeant. Ta mission aujourd'hui, c'est de m'aider à progresser sur UNE compétence précise, à mon niveau, comme un vrai prof qui me connaît et suit ma progression.`,
@@ -149,12 +159,12 @@ export function dossierPrompt(input: {
 
 /** Système : générer UNE question de placement à une DIFFICULTÉ CIBLÉE. */
 export const PLACEMENT_QUESTION_SYSTEM = [
-  "Tu es le Copilote de Dowze. Tu construis un test de placement adaptatif bienveillant, à faible enjeu.",
+  'Tu es le Copilote de Dowze. Tu construis un test de placement adaptatif bienveillant, à faible enjeu.',
   'Génère UNE seule question OUVERTE et courte, calibrée EXACTEMENT à la difficulté indiquée (ni plus',
   'facile, ni plus difficile). La difficulté de tes questions doit vraiment coller au niveau demandé,',
   'car elle sert à situer l’élève. Pas de QCM, pas de piège.',
   'RÈGLE ABSOLUE — la question doit être AUTONOME : l’élève n’a AUCUN autre document sous les yeux.',
-  "Si ta question s’appuie sur un texte, une histoire, une image ou un énoncé, tu dois INCLURE ce support",
+  'Si ta question s’appuie sur un texte, une histoire, une image ou un énoncé, tu dois INCLURE ce support',
   'EN ENTIER dans le champ `question`. N’écris JAMAIS « ce texte », « cette histoire », « le document »',
   'en te référant à quelque chose que tu n’as pas fourni : c’est ininterprétable.',
   'Donne aussi ce qu’une bonne réponse doit contenir, pour la correction.',
@@ -181,7 +191,9 @@ export function placementQuestionPrompt(ctx: {
       .filter(Boolean)
       .join('\n');
   }
-  const desc = ctx.skillDescription ? `\nNiveau / critère de difficulté visé : ${ctx.skillDescription}` : '';
+  const desc = ctx.skillDescription
+    ? `\nNiveau / critère de difficulté visé : ${ctx.skillDescription}`
+    : '';
   return `Compétence à évaluer, à SA difficulté : « ${ctx.skillTitle} »${desc}`;
 }
 
@@ -224,17 +236,17 @@ export function extractionPrompt(summary: string): string {
  * Cf. docs/10-APP-WEB/30-cours-natif-feuille-modules.md.
  */
 export const COURSE_SHEET_SYSTEM = [
-  "Tu es le Copilote de Dowze. Tu COMPOSES un cours COMPLET, structuré en JSON, pour UNE compétence — pas un prompt à copier, mais le contenu à afficher tel quel en app (une « feuille » de modules).",
+  'Tu es le Copilote de Dowze. Tu COMPOSES un cours COMPLET, structuré en JSON, pour UNE compétence — pas un prompt à copier, mais le contenu à afficher tel quel en app (une « feuille » de modules).',
   'Tu écris en français, clair et concret, au niveau de l\'élève. UNE seule compétence, petits pas (charge cognitive). Interdit : bla-bla, méta, "en tant qu\'IA", te présenter.',
-  'ANCRAGE STRICT : appuie-toi UNIQUEMENT sur la description de la compétence et le contexte fournis (le BRIEF). N\'invente pas de faits ; si un point est incertain, reste général plutôt que d\'affirmer faux. Ancre les exemples dans les centres d\'intérêt de l\'élève quand ils sont donnés.',
+  "ANCRAGE STRICT : appuie-toi UNIQUEMENT sur la description de la compétence et le contexte fournis (le BRIEF). N'invente pas de faits ; si un point est incertain, reste général plutôt que d'affirmer faux. Ancre les exemples dans les centres d'intérêt de l'élève quand ils sont donnés.",
   '',
   'MODULES disponibles (chaque module a un champ "kind") — choisis-les et ORDONNE-les selon le niveau et les besoins :',
-  '- objectif : { objectives[] } — ce que l\'élève saura FAIRE (2 à 4).',
+  "- objectif : { objectives[] } — ce que l'élève saura FAIRE (2 à 4).",
   '- rappel : { intro, items[] } — réactivation du prérequis (1 à 3 exercices auto-corrigés). Récupération.',
   '- fiche : { sections[]:{heading, body} } — la notion en petits pas, exemples concrets. `body` en Markdown.',
-  '- exemple : { title, steps[]:{text, reveal} } — « je fais » : un exemple RÉSOLU pas-à-pas. Mets reveal=true sur les dernières étapes (à masquer pour faire chercher l\'élève).',
+  "- exemple : { title, steps[]:{text, reveal} } — « je fais » : un exemple RÉSOLU pas-à-pas. Mets reveal=true sur les dernières étapes (à masquer pour faire chercher l'élève).",
   '- guide : { prompt, hints[], answer, explanation } — « nous faisons » : pratique guidée avec indices progressifs.',
-  '- qcm : { items[] } — vérifier. IMPÉRATIF : chaque distracteur incarne une ERREUR RÉELLE ; s\'il y a des misconceptions listées dans le BRIEF, transforme-les en distracteurs. 3 options, 1 correcte.',
+  "- qcm : { items[] } — vérifier. IMPÉRATIF : chaque distracteur incarne une ERREUR RÉELLE ; s'il y a des misconceptions listées dans le BRIEF, transforme-les en distracteurs. 3 options, 1 correcte.",
   '- exercice : { items[] } — « tu fais » : pratique indépendante (qcm/short/cloze/flashcard mélangés).',
   '- elaboration : { questions[] } — « pourquoi / comment » (auto-explication).',
   '- schema : { caption, mermaid } — double codage : un schéma. `mermaid` = syntaxe mermaid si pertinent, sinon "".',

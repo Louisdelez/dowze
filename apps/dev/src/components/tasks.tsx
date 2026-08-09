@@ -25,17 +25,36 @@ const COLUMNS: { id: Status; label: string }[] = [
 ];
 const TYPES: Type[] = ['tache', 'idee', 'bug'];
 const PRIORITIES: Priority[] = ['urgente', 'haute', 'moyenne', 'basse'];
-const selectCls = 'rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-accent';
+const selectCls =
+  'rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-accent';
 
 function IconX() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
       <path d="M18 6 6 18M6 6l12 12" />
     </svg>
   );
 }
 
-function TaskCard({ task, onOpen, onDragStart }: { task: Task; onOpen: () => void; onDragStart: () => void }) {
+function TaskCard({
+  task,
+  onOpen,
+  onDragStart,
+}: {
+  task: Task;
+  onOpen: () => void;
+  onDragStart: () => void;
+}) {
   const t = TYPE_META[task.type];
   const p = PRIORITY_META[task.priority];
   const done = task.status === 'done';
@@ -51,12 +70,18 @@ function TaskCard({ task, onOpen, onDragStart }: { task: Task; onOpen: () => voi
       className={`cursor-grab rounded-xl border border-border bg-surface p-3 shadow-sm transition hover:border-foreground/40 active:cursor-grabbing ${done ? 'opacity-60' : ''}`}
     >
       <div className="mb-2 flex items-center gap-1.5">
-        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${t.cls}`}>{t.label}</span>
+        <span
+          className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${t.cls}`}
+        >
+          {t.label}
+        </span>
         <span className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
           <span className="h-2 w-2 rounded-full" style={{ background: p.dot }} /> {p.label}
         </span>
       </div>
-      <p className={`text-sm font-medium leading-snug ${done ? 'line-through' : ''}`}>{task.title}</p>
+      <p className={`text-sm font-medium leading-snug ${done ? 'line-through' : ''}`}>
+        {task.title}
+      </p>
     </div>
   );
 }
@@ -84,26 +109,50 @@ function TaskModal({
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  const created = new Date(task.createdAt).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' });
+  const created = new Date(task.createdAt).toLocaleDateString([], {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
-      <div className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-2xl border border-border bg-surface p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-2xl border border-border bg-surface p-6 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="mb-4 flex items-start justify-between gap-3">
           <div className="flex items-center gap-2">
-            <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide ${TYPE_META[type].cls}`}>{TYPE_META[type].label}</span>
+            <span
+              className={`rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide ${TYPE_META[type].cls}`}
+            >
+              {TYPE_META[type].label}
+            </span>
             <span className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
-              <span className="h-2 w-2 rounded-full" style={{ background: PRIORITY_META[priority].dot }} /> {PRIORITY_META[priority].label}
+              <span
+                className="h-2 w-2 rounded-full"
+                style={{ background: PRIORITY_META[priority].dot }}
+              />{' '}
+              {PRIORITY_META[priority].label}
             </span>
           </div>
-          <button onClick={onClose} aria-label="Fermer" className="shrink-0 rounded-full p-1.5 text-muted-foreground transition hover:bg-surface-soft hover:text-foreground">
+          <button
+            onClick={onClose}
+            aria-label="Fermer"
+            className="shrink-0 rounded-full p-1.5 text-muted-foreground transition hover:bg-surface-soft hover:text-foreground"
+          >
             <IconX />
           </button>
         </div>
 
         <div className="min-h-0 flex-1 space-y-4 overflow-auto">
           <div>
-            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">Titre</label>
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Titre
+            </label>
             <textarea
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -114,21 +163,51 @@ function TaskModal({
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div>
-              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">Type</label>
-              <select value={type} onChange={(e) => setType(e.target.value as Type)} className={`${selectCls} w-full`}>
-                {TYPES.map((x) => <option key={x} value={x}>{TYPE_META[x].label}</option>)}
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Type
+              </label>
+              <select
+                value={type}
+                onChange={(e) => setType(e.target.value as Type)}
+                className={`${selectCls} w-full`}
+              >
+                {TYPES.map((x) => (
+                  <option key={x} value={x}>
+                    {TYPE_META[x].label}
+                  </option>
+                ))}
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">Priorité</label>
-              <select value={priority} onChange={(e) => setPriority(e.target.value as Priority)} className={`${selectCls} w-full`}>
-                {PRIORITIES.map((x) => <option key={x} value={x}>{PRIORITY_META[x].label}</option>)}
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Priorité
+              </label>
+              <select
+                value={priority}
+                onChange={(e) => setPriority(e.target.value as Priority)}
+                className={`${selectCls} w-full`}
+              >
+                {PRIORITIES.map((x) => (
+                  <option key={x} value={x}>
+                    {PRIORITY_META[x].label}
+                  </option>
+                ))}
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">Statut</label>
-              <select value={status} onChange={(e) => setStatus(e.target.value as Status)} className={`${selectCls} w-full`}>
-                {COLUMNS.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Statut
+              </label>
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value as Status)}
+                className={`${selectCls} w-full`}
+              >
+                {COLUMNS.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.label}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -143,17 +222,33 @@ function TaskModal({
           >
             Enregistrer
           </button>
-          <button onClick={onClose} className="rounded-lg border border-border px-4 py-2 text-sm font-semibold transition hover:border-foreground">
+          <button
+            onClick={onClose}
+            className="rounded-lg border border-border px-4 py-2 text-sm font-semibold transition hover:border-foreground"
+          >
             Annuler
           </button>
           {confirmDel ? (
             <span className="ml-auto flex items-center gap-2">
               <span className="text-xs font-medium text-muted-foreground">Supprimer ?</span>
-              <button onClick={onDelete} className="rounded-lg bg-[#ef4444] px-3 py-2 text-sm font-semibold text-white transition hover:opacity-90">Oui, supprimer</button>
-              <button onClick={() => setConfirmDel(false)} className="rounded-lg border border-border px-3 py-2 text-sm font-semibold">Non</button>
+              <button
+                onClick={onDelete}
+                className="rounded-lg bg-[#ef4444] px-3 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+              >
+                Oui, supprimer
+              </button>
+              <button
+                onClick={() => setConfirmDel(false)}
+                className="rounded-lg border border-border px-3 py-2 text-sm font-semibold"
+              >
+                Non
+              </button>
             </span>
           ) : (
-            <button onClick={() => setConfirmDel(true)} className="ml-auto rounded-lg px-4 py-2 text-sm font-semibold text-[#ef4444] transition hover:bg-block-pink">
+            <button
+              onClick={() => setConfirmDel(true)}
+              className="ml-auto rounded-lg px-4 py-2 text-sm font-semibold text-[#ef4444] transition hover:bg-block-pink"
+            >
               Supprimer
             </button>
           )}
@@ -190,7 +285,9 @@ export function Tasks() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ title: t, type, priority, status: 'todo' }),
-    }).then((r) => r.json()).catch(() => null);
+    })
+      .then((r) => r.json())
+      .catch(() => null);
     if (res?.task) setTasks((prev) => [res.task, ...prev]);
   }
 
@@ -218,7 +315,9 @@ export function Tasks() {
   }
 
   const byCol = useMemo(() => {
-    const sort = (a: Task, b: Task) => PRIORITY_META[a.priority].order - PRIORITY_META[b.priority].order || b.createdAt - a.createdAt;
+    const sort = (a: Task, b: Task) =>
+      PRIORITY_META[a.priority].order - PRIORITY_META[b.priority].order ||
+      b.createdAt - a.createdAt;
     return COLUMNS.map((c) => ({ ...c, items: tasks.filter((t) => t.status === c.id).sort(sort) }));
   }, [tasks]);
 
@@ -234,13 +333,32 @@ export function Tasks() {
           placeholder="Nouvelle tâche, idée, bug…"
           className="min-w-[220px] flex-1 rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
         />
-        <select value={type} onChange={(e) => setType(e.target.value as Type)} className={selectCls}>
-          {TYPES.map((t) => <option key={t} value={t}>{TYPE_META[t].label}</option>)}
+        <select
+          value={type}
+          onChange={(e) => setType(e.target.value as Type)}
+          className={selectCls}
+        >
+          {TYPES.map((t) => (
+            <option key={t} value={t}>
+              {TYPE_META[t].label}
+            </option>
+          ))}
         </select>
-        <select value={priority} onChange={(e) => setPriority(e.target.value as Priority)} className={selectCls}>
-          {PRIORITIES.map((p) => <option key={p} value={p}>{PRIORITY_META[p].label}</option>)}
+        <select
+          value={priority}
+          onChange={(e) => setPriority(e.target.value as Priority)}
+          className={selectCls}
+        >
+          {PRIORITIES.map((p) => (
+            <option key={p} value={p}>
+              {PRIORITY_META[p].label}
+            </option>
+          ))}
         </select>
-        <button type="submit" className="rounded-lg bg-foreground px-4 py-2 text-sm font-semibold text-white transition hover:bg-accent">
+        <button
+          type="submit"
+          className="rounded-lg bg-foreground px-4 py-2 text-sm font-semibold text-white transition hover:bg-accent"
+        >
           Ajouter
         </button>
       </form>
@@ -250,20 +368,37 @@ export function Tasks() {
         {byCol.map((col) => (
           <div
             key={col.id}
-            onDragOver={(e) => { e.preventDefault(); if (overCol !== col.id) setOverCol(col.id); }}
-            onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setOverCol((c) => (c === col.id ? null : c)); }}
+            onDragOver={(e) => {
+              e.preventDefault();
+              if (overCol !== col.id) setOverCol(col.id);
+            }}
+            onDragLeave={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node))
+                setOverCol((c) => (c === col.id ? null : c));
+            }}
             onDrop={(e) => drop(e, col.id)}
             className={`flex min-h-0 flex-col rounded-2xl border p-3 transition ${overCol === col.id ? 'border-accent bg-accent/5' : 'border-border bg-surface-soft/60'}`}
           >
             <div className="mb-2 flex items-center gap-2 px-1">
               <h2 className="text-sm font-bold">{col.label}</h2>
-              <span className="rounded-full bg-surface px-2 py-0.5 text-[11px] font-semibold tabular-nums text-muted-foreground">{col.items.length}</span>
+              <span className="rounded-full bg-surface px-2 py-0.5 text-[11px] font-semibold tabular-nums text-muted-foreground">
+                {col.items.length}
+              </span>
             </div>
             <div className="flex-1 space-y-2 overflow-auto">
               {col.items.map((task) => (
-                <TaskCard key={task.id} task={task} onOpen={() => setModalId(task.id)} onDragStart={() => setDragId(task.id)} />
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  onOpen={() => setModalId(task.id)}
+                  onDragStart={() => setDragId(task.id)}
+                />
               ))}
-              {col.items.length === 0 && <p className="select-none px-1 py-8 text-center text-xs text-muted-foreground">Déposez une tâche ici</p>}
+              {col.items.length === 0 && (
+                <p className="select-none px-1 py-8 text-center text-xs text-muted-foreground">
+                  Déposez une tâche ici
+                </p>
+              )}
             </div>
           </div>
         ))}
@@ -274,8 +409,14 @@ export function Tasks() {
       {modalTask && (
         <TaskModal
           task={modalTask}
-          onSave={(p) => { patch(modalTask.id, p); setModalId(null); }}
-          onDelete={() => { remove(modalTask.id); setModalId(null); }}
+          onSave={(p) => {
+            patch(modalTask.id, p);
+            setModalId(null);
+          }}
+          onDelete={() => {
+            remove(modalTask.id);
+            setModalId(null);
+          }}
           onClose={() => setModalId(null)}
         />
       )}

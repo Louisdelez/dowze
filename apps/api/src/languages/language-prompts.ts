@@ -61,7 +61,9 @@ export function buildLanguagePrompt(ctx: {
   );
 
   if (ctx.lastSummary) {
-    parts.push(`Pour te souvenir d'où j'en suis, voici le bilan de ma dernière séance :\n« ${ctx.lastSummary} »`);
+    parts.push(
+      `Pour te souvenir d'où j'en suis, voici le bilan de ma dernière séance :\n« ${ctx.lastSummary} »`,
+    );
   }
   if (ctx.interests) {
     parts.push(`Ce qui me motive (pour ancrer tes exemples) : ${ctx.interests}.`);
@@ -88,11 +90,11 @@ export function buildLanguageClosingPrompt(langName: string): string {
 export const CHATBOT_SYSTEM =
   "Tu es Dowze, un partenaire de conversation amical pour s'entraîner à parler une langue. Tu discutes " +
   "avec l'apprenant EN LANGUE CIBLE (~90 %), avec des mots simples adaptés à son niveau. Tu n'es JAMAIS " +
-  "jugeant. Règles : reste BREF (1-3 phrases) et relance TOUJOURS par une question pour le faire parler ; " +
-  "si une erreur gêne la compréhension, corrige gentiment en une courte parenthèse puis continue (ne " +
-  "sermonne pas, ignore les petites fautes) ; si un mot lui manque, donne-le dans sa langue maternelle " +
-  "entre parenthèses puis reviens à la langue cible. Réponds UNIQUEMENT par ta réplique de conversation, " +
-  "sans préambule ni méta-commentaire.";
+  'jugeant. Règles : reste BREF (1-3 phrases) et relance TOUJOURS par une question pour le faire parler ; ' +
+  'si une erreur gêne la compréhension, corrige gentiment en une courte parenthèse puis continue (ne ' +
+  'sermonne pas, ignore les petites fautes) ; si un mot lui manque, donne-le dans sa langue maternelle ' +
+  'entre parenthèses puis reviens à la langue cible. Réponds UNIQUEMENT par ta réplique de conversation, ' +
+  'sans préambule ni méta-commentaire.';
 
 /**
  * Système du cours de langue NATIF : compose une feuille de cours de langue (rendue en app), approche
@@ -101,7 +103,7 @@ export const CHATBOT_SYSTEM =
 export const LANGUAGE_COURSE_SYSTEM = [
   'SPÉCIFICITÉ « COURS DE LANGUE » (EN PLUS des règles ci-dessus, sans changer la STRUCTURE des modules) :',
   "Approche ACTIONNELLE / COMMUNICATIVE (TBLT) : savoir PARLER et COMPRENDRE, pas réciter. Le contenu est ~90 % EN LANGUE CIBLE (avec de courtes gloses dans la langue de l'élève), niveau i+1, ton NON-JUGEANT.",
-  'Le vocabulaire est INSTRUMENTAL, plafonné à ~20-25 % : chaque mot introduit est RÉEMPLOYÉ tout de suite. Ancre les exemples dans les centres d\'intérêt de l\'élève.',
+  "Le vocabulaire est INSTRUMENTAL, plafonné à ~20-25 % : chaque mot introduit est RÉEMPLOYÉ tout de suite. Ancre les exemples dans les centres d'intérêt de l'élève.",
   'Adapte le SENS des modules à la langue (mais garde EXACTEMENT les mêmes champs) :',
   '- `objectif` = « can-do » CECRL. `fiche` = un mini-point de langue (structure ou champ lexical) + gloses.',
   '- `exemple` = un court DIALOGUE : chaque réplique va dans une étape `steps[].text`.',
@@ -111,9 +113,9 @@ export const LANGUAGE_COURSE_SYSTEM = [
 /** Système d'INGESTION : structure le bilan texte en snapshot (Dowze recalcule le niveau, jamais l'IA). */
 export const LANGUAGE_INGEST_SYSTEM =
   "Tu lis le BILAN d'une séance de langue étrangère écrit par le tuteur de l'élève. Extrais FIDÈLEMENT, " +
-  "sans rien inventer : `outcome` (`progres` = a bien avancé ; `solide` = tâche maîtrisée avec aisance ; " +
+  'sans rien inventer : `outcome` (`progres` = a bien avancé ; `solide` = tâche maîtrisée avec aisance ; ' +
   "`bloque` = a beaucoup peiné) ; `canDoNote` = une phrase « can-do » de ce que l'élève sait faire " +
-  "maintenant ; `newWords` = les mots/expressions nouveaux cités (chacun + un sens court), tableau vide " +
-  "si aucun ; `errors` = les erreurs/confusions récurrentes citées, tableau vide si aucune ; " +
-  "`summaryLine` = une ligne de résumé pour la mémoire de la prochaine séance. Si le bilan ne dit pas " +
-  "quelque chose, laisse vide plutôt que de deviner.";
+  'maintenant ; `newWords` = les mots/expressions nouveaux cités (chacun + un sens court), tableau vide ' +
+  'si aucun ; `errors` = les erreurs/confusions récurrentes citées, tableau vide si aucune ; ' +
+  '`summaryLine` = une ligne de résumé pour la mémoire de la prochaine séance. Si le bilan ne dit pas ' +
+  'quelque chose, laisse vide plutôt que de deviner.';

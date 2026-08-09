@@ -62,7 +62,10 @@ export function CourseSheetView({
     if (closed || busy) return;
     const score = total > 0 ? correct / total : 1;
     const outcome: Outcome = score >= 0.8 ? 'maitrise' : score >= 0.5 ? 'progres' : 'bloque';
-    const note = total > 0 ? `Cours natif « ${sheet.title} » : ${correct}/${total} réussis.` : `Cours natif « ${sheet.title} » lu.`;
+    const note =
+      total > 0
+        ? `Cours natif « ${sheet.title} » : ${correct}/${total} réussis.`
+        : `Cours natif « ${sheet.title} » lu.`;
     try {
       await onComplete(outcome, note);
       // Verrouillé UNIQUEMENT après enregistrement réussi (sinon : travail perdu sur échec réseau).
@@ -93,7 +96,9 @@ export function CourseSheetView({
       {/* Barre de clôture : progrès + « Terminer ». */}
       <div className="mx-auto flex max-w-3xl items-center justify-between rounded-lg border border-border bg-surface px-4 py-3">
         <span className="text-sm text-muted-foreground">
-          {expected > 0 ? `${total} / ${expected} répondu${total > 1 ? 's' : ''}` : 'Lis la feuille'}
+          {expected > 0
+            ? `${total} / ${expected} répondu${total > 1 ? 's' : ''}`
+            : 'Lis la feuille'}
           {total > 0 && ` · ${correct} réussi${correct > 1 ? 's' : ''}`}
         </span>
         <Button onClick={terminer} disabled={busy || closed || (expected > 0 && total < expected)}>
@@ -160,7 +165,14 @@ const ModuleView = memo(function ModuleView({
       return <ExempleView title={mod.title} steps={mod.steps} />;
 
     case 'guide':
-      return <GuideView prompt={mod.prompt} hints={mod.hints} answer={mod.answer} explanation={mod.explanation} />;
+      return (
+        <GuideView
+          prompt={mod.prompt}
+          hints={mod.hints}
+          answer={mod.answer}
+          explanation={mod.explanation}
+        />
+      );
 
     case 'qcm':
       return (
@@ -206,7 +218,9 @@ const ModuleView = memo(function ModuleView({
           <ModuleLabel>Schéma</ModuleLabel>
           <div className="rounded-lg border border-border bg-muted/40 p-4 text-sm">
             {mod.mermaid ? (
-              <pre className="overflow-x-auto whitespace-pre-wrap text-xs text-muted-foreground">{mod.mermaid}</pre>
+              <pre className="overflow-x-auto whitespace-pre-wrap text-xs text-muted-foreground">
+                {mod.mermaid}
+              </pre>
             ) : null}
             <p className="mt-2 text-muted-foreground">{mod.caption}</p>
           </div>
@@ -227,7 +241,15 @@ const ModuleView = memo(function ModuleView({
               {mod.flashcards.map((fc, i) => (
                 <ExerciseCard
                   key={i}
-                  item={{ ...fc, type: 'flashcard', competenceId: skillId, bloomLevel: 'comprendre', sourceRef: '' } as ExerciseItem}
+                  item={
+                    {
+                      ...fc,
+                      type: 'flashcard',
+                      competenceId: skillId,
+                      bloomLevel: 'comprendre',
+                      sourceRef: '',
+                    } as ExerciseItem
+                  }
                   onGraded={onGraded}
                 />
               ))}
@@ -238,7 +260,13 @@ const ModuleView = memo(function ModuleView({
   }
 });
 
-function ExempleView({ title, steps }: { title: string; steps: { text: string; reveal: boolean }[] }) {
+function ExempleView({
+  title,
+  steps,
+}: {
+  title: string;
+  steps: { text: string; reveal: boolean }[];
+}) {
   const [shown, setShown] = useState(false);
   return (
     <>
@@ -248,9 +276,7 @@ function ExempleView({ title, steps }: { title: string; steps: { text: string; r
         <ol className="list-decimal space-y-1 pl-6 text-sm">
           {steps.map((s, i) =>
             // La 1re étape est TOUJOURS visible (le LLM peut marquer toutes les étapes `reveal` → liste vide).
-            s.reveal && !shown && i > 0 ? null : (
-              <li key={i}>{s.text}</li>
-            ),
+            s.reveal && !shown && i > 0 ? null : <li key={i}>{s.text}</li>,
           )}
         </ol>
         {steps.some((s) => s.reveal) && !shown && (

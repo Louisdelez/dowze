@@ -1,4 +1,14 @@
-import { Controller, Get, Inject, Param, Post, Query, Sse, UseGuards, type MessageEvent } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Inject,
+  Param,
+  Post,
+  Query,
+  Sse,
+  UseGuards,
+  type MessageEvent,
+} from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { z } from 'zod';
 import { ENV } from '../config/config.module';
@@ -21,7 +31,10 @@ export class RealtimeController {
    * d'en-tête, le jeton passe en `?token=` et est vérifié ici.
    */
   @Sse(':profileId/stream')
-  stream(@Param('profileId') profileId: string, @Query('token') token = ''): Observable<MessageEvent> {
+  stream(
+    @Param('profileId') profileId: string,
+    @Query('token') token = '',
+  ): Observable<MessageEvent> {
     const pid = uuid.parse(profileId);
     return new Observable<MessageEvent>((observer) => {
       let teardown: (() => void) | null = null;
@@ -30,7 +43,10 @@ export class RealtimeController {
       const start = () => {
         teardown = this.realtime.subscribe(pid, (e) => observer.next({ data: e } as MessageEvent));
         // Commentaire keep-alive pour éviter la fermeture par les proxys.
-        keepAlive = setInterval(() => observer.next({ data: { type: 'ping' } } as MessageEvent), 25000);
+        keepAlive = setInterval(
+          () => observer.next({ data: { type: 'ping' } } as MessageEvent),
+          25000,
+        );
         observer.next({ data: { type: 'ready' } } as MessageEvent);
       };
 
@@ -59,9 +75,15 @@ export class RealtimeController {
 
   @Get(':profileId/presence')
   @UseGuards(SupabaseAuthGuard)
-  presence(@Param('profileId') profileId: string, @Query('ids') ids = ''): Promise<Record<string, boolean>> {
+  presence(
+    @Param('profileId') profileId: string,
+    @Query('ids') ids = '',
+  ): Promise<Record<string, boolean>> {
     uuid.parse(profileId);
-    const list = ids.split(',').map((s) => s.trim()).filter((s) => uuid.safeParse(s).success);
+    const list = ids
+      .split(',')
+      .map((s) => s.trim())
+      .filter((s) => uuid.safeParse(s).success);
     return this.realtime.online(list);
   }
 }

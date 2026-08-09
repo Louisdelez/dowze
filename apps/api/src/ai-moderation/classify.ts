@@ -25,16 +25,51 @@ interface Rule {
 // Motifs (frontières de mots quand pertinent). Volontairement sobres et extensibles.
 const RULES: Rule[] = [
   // Menaces (grave/critique)
-  { re: /\b(je vais te (tuer|frapper|défoncer|casser)|tu vas (mourir|le regretter)|je te retrouve|je sais où tu habites)\b/i, category: 'menace', severity: 'critique', label: 'menace explicite' },
-  { re: /\b(i('| a)?m gonna kill you|i will kill you|kill yourself|kys)\b/i, category: 'menace', severity: 'critique', label: 'menace / incitation' },
+  {
+    re: /\b(je vais te (tuer|frapper|défoncer|casser)|tu vas (mourir|le regretter)|je te retrouve|je sais où tu habites)\b/i,
+    category: 'menace',
+    severity: 'critique',
+    label: 'menace explicite',
+  },
+  {
+    re: /\b(i('| a)?m gonna kill you|i will kill you|kill yourself|kys)\b/i,
+    category: 'menace',
+    severity: 'critique',
+    label: 'menace / incitation',
+  },
   // Contenu inapproprié envers un mineur (grave)
-  { re: /\b(envoie( |-)?(moi )?(une |des )?(photo|nude)s?|t('| es| e)s bonne|montre( |-)?toi|on se voit en vrai\b.*\bseul)/i, category: 'inapproprie', severity: 'grave', label: 'sollicitation inappropriée' },
+  {
+    re: /\b(envoie( |-)?(moi )?(une |des )?(photo|nude)s?|t('| es| e)s bonne|montre( |-)?toi|on se voit en vrai\b.*\bseul)/i,
+    category: 'inapproprie',
+    severity: 'grave',
+    label: 'sollicitation inappropriée',
+  },
   // Insultes (moyen)
-  { re: /\b(connard|conasse|salope|pute|enculé|enfoiré|fdp|ntm|ta gueule|ferme ta gueule|tg|débile|abruti|crétin|attardé)\b/i, category: 'insulte', severity: 'moyen', label: 'insulte' },
-  { re: /\b(fuck you|asshole|bitch|retard|moron|stupid idiot|shut the fuck up|stfu)\b/i, category: 'insulte', severity: 'moyen', label: 'insulte (EN)' },
-  { re: /\b(arschloch|halt('s| die) (maul|klappe)|hurensohn|schlampe)\b/i, category: 'insulte', severity: 'moyen', label: 'insulte (DE)' },
+  {
+    re: /\b(connard|conasse|salope|pute|enculé|enfoiré|fdp|ntm|ta gueule|ferme ta gueule|tg|débile|abruti|crétin|attardé)\b/i,
+    category: 'insulte',
+    severity: 'moyen',
+    label: 'insulte',
+  },
+  {
+    re: /\b(fuck you|asshole|bitch|retard|moron|stupid idiot|shut the fuck up|stfu)\b/i,
+    category: 'insulte',
+    severity: 'moyen',
+    label: 'insulte (EN)',
+  },
+  {
+    re: /\b(arschloch|halt('s| die) (maul|klappe)|hurensohn|schlampe)\b/i,
+    category: 'insulte',
+    severity: 'moyen',
+    label: 'insulte (DE)',
+  },
   // Harcèlement (moyen/grave)
-  { re: /\b(t('| es| e)s (nul|moche|gros|grosse|useless)|personne (ne )?t('| e)aime|tue( |-)?toi|va(-| )te (pendre|tuer)|dégage de (l('| )?école|ici))\b/i, category: 'harcelement', severity: 'grave', label: 'harcèlement' },
+  {
+    re: /\b(t('| es| e)s (nul|moche|gros|grosse|useless)|personne (ne )?t('| e)aime|tue( |-)?toi|va(-| )te (pendre|tuer)|dégage de (l('| )?école|ici))\b/i,
+    category: 'harcelement',
+    severity: 'grave',
+    label: 'harcèlement',
+  },
 ];
 
 export function classifyText(text: string): ClassifyResult {

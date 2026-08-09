@@ -5,8 +5,20 @@ import { useEffect, useState } from 'react';
 /** Catégorie de temps → pilote les effets sur la map (pluie/neige/brouillard/orage). */
 export type WeatherCategory = 'clear' | 'clouds' | 'fog' | 'rain' | 'snow' | 'storm';
 
-export interface WeatherHour { time: string; tempC: number; code: number; pop: number; isDay: boolean }
-export interface WeatherDay { date: string; min: number; max: number; code: number; pop: number }
+export interface WeatherHour {
+  time: string;
+  tempC: number;
+  code: number;
+  pop: number;
+  isDay: boolean;
+}
+export interface WeatherDay {
+  date: string;
+  min: number;
+  max: number;
+  code: number;
+  pop: number;
+}
 
 export interface WeatherState {
   loading: boolean;
@@ -51,9 +63,13 @@ export function wmoCategory(code: number): WeatherCategory {
 }
 
 /** Codes WMO (Open-Meteo) → catégorie + libellé FR + icône. */
-function classify(code: number, isDay: boolean): { category: WeatherCategory; label: string; icon: string } {
+function classify(
+  code: number,
+  isDay: boolean,
+): { category: WeatherCategory; label: string; icon: string } {
   if (code === 0) return { category: 'clear', label: 'Ciel clair', icon: isDay ? 'sun' : 'moon' };
-  if (code === 1) return { category: 'clear', label: 'Plutôt clair', icon: isDay ? 'cloudSun' : 'moon' };
+  if (code === 1)
+    return { category: 'clear', label: 'Plutôt clair', icon: isDay ? 'cloudSun' : 'moon' };
   if (code === 2) return { category: 'clouds', label: 'Partiellement nuageux', icon: 'cloudSun' };
   if (code === 3) return { category: 'clouds', label: 'Couvert', icon: 'cloud' };
   if (code === 45 || code === 48) return { category: 'fog', label: 'Brouillard', icon: 'cloudFog' };
@@ -61,7 +77,8 @@ function classify(code: number, isDay: boolean): { category: WeatherCategory; la
   if (code >= 61 && code <= 67) return { category: 'rain', label: 'Pluie', icon: 'cloudRain' };
   if (code >= 71 && code <= 77) return { category: 'snow', label: 'Neige', icon: 'cloudSnow' };
   if (code >= 80 && code <= 82) return { category: 'rain', label: 'Averses', icon: 'cloudRain' };
-  if (code === 85 || code === 86) return { category: 'snow', label: 'Averses de neige', icon: 'cloudSnow' };
+  if (code === 85 || code === 86)
+    return { category: 'snow', label: 'Averses de neige', icon: 'cloudSnow' };
   if (code >= 95) return { category: 'storm', label: 'Orage', icon: 'cloudLightning' };
   return { category: 'clouds', label: 'Nuageux', icon: 'cloud' };
 }
@@ -164,12 +181,24 @@ export function useLocalWeather(): WeatherState {
         const hourly: WeatherHour[] = times.slice(start, start + 12).map((tt, i) => {
           const idx = start + i;
           const hh = Number(tt.slice(11, 13));
-          return { time: tt, tempC: Math.round(Number(H.temperature_2m?.[idx] ?? 0)), code: Number(H.weather_code?.[idx] ?? 0), pop: Number(H.precipitation_probability?.[idx] ?? 0), isDay: hh >= 7 && hh < 20 };
+          return {
+            time: tt,
+            tempC: Math.round(Number(H.temperature_2m?.[idx] ?? 0)),
+            code: Number(H.weather_code?.[idx] ?? 0),
+            pop: Number(H.precipitation_probability?.[idx] ?? 0),
+            isDay: hh >= 7 && hh < 20,
+          };
         });
         // Prévisions journalières : 6 jours.
         const D = j.daily ?? {};
         const dts: string[] = Array.isArray(D.time) ? D.time : [];
-        const daily: WeatherDay[] = dts.slice(0, 6).map((d, i) => ({ date: d, min: Math.round(Number(D.temperature_2m_min?.[i] ?? 0)), max: Math.round(Number(D.temperature_2m_max?.[i] ?? 0)), code: Number(D.weather_code?.[i] ?? 0), pop: Number(D.precipitation_probability_max?.[i] ?? 0) }));
+        const daily: WeatherDay[] = dts.slice(0, 6).map((d, i) => ({
+          date: d,
+          min: Math.round(Number(D.temperature_2m_min?.[i] ?? 0)),
+          max: Math.round(Number(D.temperature_2m_max?.[i] ?? 0)),
+          code: Number(D.weather_code?.[i] ?? 0),
+          pop: Number(D.precipitation_probability_max?.[i] ?? 0),
+        }));
         setState({
           loading: false,
           tempC: Number.isFinite(t) ? Math.round(t) : null,
@@ -178,7 +207,10 @@ export function useLocalWeather(): WeatherState {
           city: cityName,
           lat: c.lat,
           lon: c.lon,
-          feelsC: num(cur.apparent_temperature) != null ? Math.round(Number(cur.apparent_temperature)) : null,
+          feelsC:
+            num(cur.apparent_temperature) != null
+              ? Math.round(Number(cur.apparent_temperature))
+              : null,
           humidity: num(cur.relative_humidity_2m),
           windKmh: num(cur.wind_speed_10m) != null ? Math.round(Number(cur.wind_speed_10m)) : null,
           precipMm: num(cur.precipitation),

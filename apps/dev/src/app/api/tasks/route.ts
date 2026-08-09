@@ -8,7 +8,8 @@ import { SESSION_COOKIE, verifySession } from '@/lib/session';
 
 export const runtime = 'nodejs';
 
-const DATA_DIR = process.env.DEV_DATA_DIR || (process.env.NODE_ENV === 'production' ? '/data' : os.tmpdir());
+const DATA_DIR =
+  process.env.DEV_DATA_DIR || (process.env.NODE_ENV === 'production' ? '/data' : os.tmpdir());
 const FILE = path.join(DATA_DIR, 'tasks.json');
 
 const TYPES = ['tache', 'idee', 'bug'] as const;
@@ -43,7 +44,9 @@ async function currentUser(): Promise<string | null> {
 }
 
 function oneOf<T extends readonly string[]>(vals: T, v: unknown, fallback: T[number]): T[number] {
-  return (typeof v === 'string' && (vals as readonly string[]).includes(v) ? v : fallback) as T[number];
+  return (
+    typeof v === 'string' && (vals as readonly string[]).includes(v) ? v : fallback
+  ) as T[number];
 }
 
 export async function GET() {

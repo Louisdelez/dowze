@@ -1,4 +1,10 @@
-import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { and, desc, eq, gte, inArray, ne, or } from 'drizzle-orm';
 import type {
   ChatMessage,
@@ -59,7 +65,10 @@ export class SocialService {
 
   async block(profileId: string, target: string): Promise<{ ok: true }> {
     if (target === profileId) throw new BadRequestException('on ne se bloque pas soi-même');
-    await this.db.insert(blocks).values({ blockerId: profileId, blockedId: target }).onConflictDoNothing();
+    await this.db
+      .insert(blocks)
+      .values({ blockerId: profileId, blockedId: target })
+      .onConflictDoNothing();
     return { ok: true as const };
   }
 
@@ -77,7 +86,8 @@ export class SocialService {
     reason: string,
     conversationId: string | null,
   ): Promise<{ ok: true }> {
-    if (reportedProfileId === profileId) throw new BadRequestException('on ne se signale pas soi-même');
+    if (reportedProfileId === profileId)
+      throw new BadRequestException('on ne se signale pas soi-même');
 
     // Anti-brigading : plafond de signalements par 24 h + dédoublonnage d'une cible déjà signalée.
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
@@ -93,7 +103,9 @@ export class SocialService {
       return { ok: true as const };
     }
 
-    await this.db.insert(userReports).values({ reporterId: profileId, reportedId: reportedProfileId, reason, conversationId });
+    await this.db
+      .insert(userReports)
+      .values({ reporterId: profileId, reportedId: reportedProfileId, reason, conversationId });
     return { ok: true as const };
   }
 
@@ -105,7 +117,9 @@ export class SocialService {
   ): Promise<{ supervised: boolean; accountId: string } | null> {
     const p = (await this.db.select().from(profiles).where(eq(profiles.id, profileId)))[0];
     if (!p) return null;
-    const g = (await this.db.select().from(guardians).where(eq(guardians.minorAccountId, p.accountId)))[0];
+    const g = (
+      await this.db.select().from(guardians).where(eq(guardians.minorAccountId, p.accountId))
+    )[0];
     return g ? { supervised: g.supervised, accountId: p.accountId } : null;
   }
 
@@ -154,12 +168,19 @@ export class SocialService {
       const other = r.userLow === profileId ? r.userHigh : r.userLow;
       if (blocked.has(other)) continue; // masquage bidirectionnel
       const meta = await this.metaOf(other);
-      const base = { profileId: other, name: meta.name, tag: meta.tag, level: await this.xp.level(other) };
+      const base = {
+        profileId: other,
+        name: meta.name,
+        tag: meta.tag,
+        level: await this.xp.level(other),
+      };
       if (r.status === 'accepted') friends.push({ ...base, status: 'friends' });
       else if (r.status === 'blocked') continue;
-      else if (r.status === 'held_out') outgoing.push({ ...base, status: 'outgoing' }); // supervisé : en attente parent
+      else if (r.status === 'held_out')
+        outgoing.push({ ...base, status: 'outgoing' }); // supervisé : en attente parent
       else if (r.requestedBy === profileId) outgoing.push({ ...base, status: 'outgoing' });
-      else if (heldReq.has(other)) continue; // demande entrante cachée jusqu'à validation parentale
+      else if (heldReq.has(other))
+        continue; // demande entrante cachée jusqu'à validation parentale
       else incoming.push({ ...base, status: 'incoming' });
     }
     const me = await this.metaOf(profileId);
@@ -206,10 +227,14 @@ export class SocialService {
     if (!existing) {
       // Sortant supervisé → retenu (held_out) jusqu'à validation parentale.
       const status = senderSupervised ? 'held_out' : 'pending';
-      await this.db.insert(friendships).values({ userLow: low, userHigh: high, requestedBy: profileId, status });
-      if (senderSupervised) await this.enqueueSupervision(profileId, 'out', 'friend_request', null, target);
+      await this.db
+        .insert(friendships)
+        .values({ userLow: low, userHigh: high, requestedBy: profileId, status });
+      if (senderSupervised)
+        await this.enqueueSupervision(profileId, 'out', 'friend_request', null, target);
       // Entrant supervisé côté cible → caché à l'enfant jusqu'à validation.
-      else if (targetSupervised) await this.enqueueSupervision(target, 'in', 'friend_request', null, profileId);
+      else if (targetSupervised)
+        await this.enqueueSupervision(target, 'in', 'friend_request', null, profileId);
     } else if (existing.status === 'pending' && existing.requestedBy !== profileId) {
       await this.setStatus(low, high, 'accepted');
     }
@@ -251,7 +276,13 @@ export class SocialService {
     const { low, high } = pair(profileId, target);
     await this.db
       .delete(friendships)
-      .where(and(eq(friendships.userLow, low), eq(friendships.userHigh, high), ne(friendships.status, 'blocked')));
+      .where(
+        and(
+          eq(friendships.userLow, low),
+          eq(friendships.userHigh, high),
+          ne(friendships.status, 'blocked'),
+        ),
+      );
     return this.overview(profileId);
   }
 
@@ -301,7 +332,9 @@ export class SocialService {
       .where(or(eq(friendships.userLow, profileId), eq(friendships.userHigh, profileId)));
     const blocked = await this.blockedSet(profileId);
 
-    const statusWith = (other: string): 'friends' | 'incoming' | 'outgoing' | 'blocked' | 'none' => {
+    const statusWith = (
+      other: string,
+    ): 'friends' | 'incoming' | 'outgoing' | 'blocked' | 'none' => {
       const { low, high } = pair(profileId, other);
       const r = rels.find((x) => x.userLow === low && x.userHigh === high);
       if (!r) return 'none';
@@ -322,7 +355,13 @@ export class SocialService {
       if (!match) continue;
       const st = statusWith(p.id);
       if (st === 'blocked') continue;
-      out.push({ profileId: p.id, name: p.displayName, tag: p.tag, level: await this.xp.level(p.id), status: st });
+      out.push({
+        profileId: p.id,
+        name: p.displayName,
+        tag: p.tag,
+        level: await this.xp.level(p.id),
+        status: st,
+      });
       if (out.length >= 20) break;
     }
     return out;
@@ -338,10 +377,11 @@ export class SocialService {
       .where(eq(conversationParticipants.profileId, profileId));
     if (mine.length === 0) return [];
     const convIds = mine.map((m) => m.conversationId);
-    const convs = await this.db.select().from(conversations).where(inArray(conversations.id, convIds));
-    convs.sort(
-      (a, b) => (b.lastMessageAt?.getTime() ?? 0) - (a.lastMessageAt?.getTime() ?? 0),
-    );
+    const convs = await this.db
+      .select()
+      .from(conversations)
+      .where(inArray(conversations.id, convIds));
+    convs.sort((a, b) => (b.lastMessageAt?.getTime() ?? 0) - (a.lastMessageAt?.getTime() ?? 0));
     const blocked = await this.blockedSet(profileId);
     const heldIn = await this.heldIncomingMessageIds(profileId);
 
@@ -390,7 +430,11 @@ export class SocialService {
   }
 
   /** Dans un MP, l'autre participant est-il masqué (bloqué) ? */
-  private async otherIsBlocked(conversationId: string, viewerId: string, blocked: Set<string>): Promise<boolean> {
+  private async otherIsBlocked(
+    conversationId: string,
+    viewerId: string,
+    blocked: Set<string>,
+  ): Promise<boolean> {
     const parts = await this.db
       .select()
       .from(conversationParticipants)
@@ -416,11 +460,16 @@ export class SocialService {
   /** Voir une conversation + ses chatMessages (marque comme lu). */
   async conversation(profileId: string, conversationId: string): Promise<ConversationView> {
     await this.assertParticipant(conversationId, profileId);
-    const c = (await this.db.select().from(conversations).where(eq(conversations.id, conversationId)))[0];
+    const c = (
+      await this.db.select().from(conversations).where(eq(conversations.id, conversationId))
+    )[0];
     if (!c) throw new NotFoundException('conversation introuvable');
 
     // MP avec un utilisateur bloqué : conversation masquée.
-    if (c.type === 'direct' && (await this.otherIsBlocked(c.id, profileId, await this.blockedSet(profileId))))
+    if (
+      c.type === 'direct' &&
+      (await this.otherIsBlocked(c.id, profileId, await this.blockedSet(profileId)))
+    )
       throw new ForbiddenException('conversation indisponible');
 
     const heldIn = await this.heldIncomingMessageIds(profileId);
@@ -463,10 +512,19 @@ export class SocialService {
       otherId = parts.find((p) => p.profileId !== profileId)?.profileId ?? null;
     }
 
-    return { id: c.id, type: c.type as ConversationView['type'], title: await this.titleFor(c, profileId), otherId, messages: msgs };
+    return {
+      id: c.id,
+      type: c.type as ConversationView['type'],
+      title: await this.titleFor(c, profileId),
+      otherId,
+      messages: msgs,
+    };
   }
 
-  private async toChatMessage(m: typeof chatMessages.$inferSelect, viewerId: string): Promise<ChatMessage> {
+  private async toChatMessage(
+    m: typeof chatMessages.$inferSelect,
+    viewerId: string,
+  ): Promise<ChatMessage> {
     return {
       id: m.id,
       senderId: m.senderId,
@@ -482,12 +540,21 @@ export class SocialService {
   }
 
   /** Envoyer un message (les chatMessages sont immuables : pas d'édition/suppression, cf. doc 26 §7.0). */
-  async send(profileId: string, conversationId: string, input: SendMessageInput): Promise<ChatMessage> {
+  async send(
+    profileId: string,
+    conversationId: string,
+    input: SendMessageInput,
+  ): Promise<ChatMessage> {
     await this.assertParticipant(conversationId, profileId);
 
     // MP avec un utilisateur bloqué : envoi impossible.
-    const conv = (await this.db.select().from(conversations).where(eq(conversations.id, conversationId)))[0];
-    if (conv?.type === 'direct' && (await this.otherIsBlocked(conversationId, profileId, await this.blockedSet(profileId))))
+    const conv = (
+      await this.db.select().from(conversations).where(eq(conversations.id, conversationId))
+    )[0];
+    if (
+      conv?.type === 'direct' &&
+      (await this.otherIsBlocked(conversationId, profileId, await this.blockedSet(profileId)))
+    )
       throw new ForbiddenException('conversation indisponible');
 
     // Mode supervisé : si l'expéditeur est supervisé, le message est RETENU jusqu'à validation parentale.
@@ -556,7 +623,12 @@ export class SocialService {
       .where(eq(conversationParticipants.conversationId, conversationId));
     for (const p of parts) {
       if (p.profileId === profileId) continue;
-      void this.realtime.publishToUser(p.profileId, { type: 'typing', conversationId, from: profileId, name });
+      void this.realtime.publishToUser(p.profileId, {
+        type: 'typing',
+        conversationId,
+        from: profileId,
+        name,
+      });
     }
     return { ok: true as const };
   }
@@ -568,7 +640,10 @@ export class SocialService {
   }
 
   /** Démarrer (ou retrouver) un MP avec un ami. */
-  async startDirect(profileId: string, friendProfileId: string): Promise<{ conversationId: string }> {
+  async startDirect(
+    profileId: string,
+    friendProfileId: string,
+  ): Promise<{ conversationId: string }> {
     if ((await this.blockedSet(profileId)).has(friendProfileId))
       throw new ForbiddenException('utilisateur indisponible');
     if (!(await this.areFriends(profileId, friendProfileId)))
@@ -580,7 +655,9 @@ export class SocialService {
       .from(conversationParticipants)
       .where(eq(conversationParticipants.profileId, profileId));
     for (const m of mine) {
-      const c = (await this.db.select().from(conversations).where(eq(conversations.id, m.conversationId)))[0];
+      const c = (
+        await this.db.select().from(conversations).where(eq(conversations.id, m.conversationId))
+      )[0];
       if (c?.type !== 'direct') continue;
       const parts = await this.db
         .select()
@@ -592,7 +669,10 @@ export class SocialService {
     }
 
     const conv = (
-      await this.db.insert(conversations).values({ type: 'direct', createdBy: profileId }).returning()
+      await this.db
+        .insert(conversations)
+        .values({ type: 'direct', createdBy: profileId })
+        .returning()
     )[0];
     if (!conv) throw new BadRequestException('création impossible');
     await this.db.insert(conversationParticipants).values([
@@ -603,25 +683,38 @@ export class SocialService {
   }
 
   /** Créer un groupe avec des amis. */
-  async createGroup(profileId: string, name: string, memberIds: string[]): Promise<{ conversationId: string }> {
+  async createGroup(
+    profileId: string,
+    name: string,
+    memberIds: string[],
+  ): Promise<{ conversationId: string }> {
     const uniqueMembers = [...new Set(memberIds.filter((id) => id !== profileId))];
     for (const id of uniqueMembers) {
       if (!(await this.areFriends(profileId, id)))
         throw new ForbiddenException('on ne peut ajouter que des amis à un groupe');
     }
     const conv = (
-      await this.db.insert(conversations).values({ type: 'group', name, createdBy: profileId }).returning()
+      await this.db
+        .insert(conversations)
+        .values({ type: 'group', name, createdBy: profileId })
+        .returning()
     )[0];
     if (!conv) throw new BadRequestException('création impossible');
-    await this.db.insert(conversationParticipants).values([
-      { conversationId: conv.id, profileId, role: 'admin' },
-      ...uniqueMembers.map((id) => ({ conversationId: conv.id, profileId: id })),
-    ]);
+    await this.db
+      .insert(conversationParticipants)
+      .values([
+        { conversationId: conv.id, profileId, role: 'admin' },
+        ...uniqueMembers.map((id) => ({ conversationId: conv.id, profileId: id })),
+      ]);
     return { conversationId: conv.id };
   }
 
   /** Option 3 de la validation : partager un sujet in-app vers une conversation. */
-  async shareSubject(profileId: string, conversationId: string, subjectId: string): Promise<ChatMessage> {
+  async shareSubject(
+    profileId: string,
+    conversationId: string,
+    subjectId: string,
+  ): Promise<ChatMessage> {
     const subject = (
       await this.db.select().from(validationSubjects).where(eq(validationSubjects.id, subjectId))
     )[0];

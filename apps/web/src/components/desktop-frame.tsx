@@ -10,7 +10,9 @@ import { DesktopTitlebar } from '@/components/desktop-titlebar';
  */
 export function DesktopFrame({ children }: { children: ReactNode }) {
   const [desktop, setDesktop] = useState(false);
-  useEffect(() => { setDesktop(isDesktop()); }, []);
+  useEffect(() => {
+    setDesktop(isDesktop());
+  }, []);
 
   if (!desktop) return <>{children}</>;
 

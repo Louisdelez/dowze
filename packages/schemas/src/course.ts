@@ -138,11 +138,17 @@ export type CourseSheetGen = z.infer<typeof courseSheetGenSchema>;
 
 /** Revue de la feuille par l'« Évaluateur » (contrôle qualité) : dans le sujet ? correcte ? QCM bien corrigés ? */
 export const courseReviewSchema = z.object({
-  ok: z.boolean().describe('Vrai si la feuille est pédagogiquement correcte ET reste dans le sujet de la compétence.'),
+  ok: z
+    .boolean()
+    .describe(
+      'Vrai si la feuille est pédagogiquement correcte ET reste dans le sujet de la compétence.',
+    ),
   issues: z
     .array(z.string())
     .default([])
-    .describe('Problèmes CONCRETS à corriger : contenu faux/hors-sujet, QCM dont la bonne réponse est fausse, distracteur non plausible, étape d\'exemple erronée. Vide si ok.'),
+    .describe(
+      "Problèmes CONCRETS à corriger : contenu faux/hors-sujet, QCM dont la bonne réponse est fausse, distracteur non plausible, étape d'exemple erronée. Vide si ok.",
+    ),
 });
 export type CourseReview = z.infer<typeof courseReviewSchema>;
 

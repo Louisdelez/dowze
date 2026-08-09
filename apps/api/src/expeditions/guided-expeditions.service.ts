@@ -12,12 +12,7 @@ import {
   type PhaseGuidance,
 } from '@dowze/schemas';
 import { DB, type Database } from '../db/drizzle.module';
-import {
-  expeditionPhaseNotes,
-  learnerDossiers,
-  learnerExpeditions,
-  profiles,
-} from '../db/schema';
+import { expeditionPhaseNotes, learnerDossiers, learnerExpeditions, profiles } from '../db/schema';
 import { CopiloteService } from '../copilote/copilote.service';
 import {
   EXPEDITION_PHASE_SYSTEM,
@@ -45,7 +40,9 @@ export class GuidedExpeditionsService {
   }
 
   /** 3 propositions différenciées, calibrées au dossier + à l'âge de l'élève. */
-  async propose(profileId: string): Promise<{ propositions: ExpeditionProposal[]; creditsSpent: number }> {
+  async propose(
+    profileId: string,
+  ): Promise<{ propositions: ExpeditionProposal[]; creditsSpent: number }> {
     const prof = (await this.db.select().from(profiles).where(eq(profiles.id, profileId)))[0];
     const dossierRow = (
       await this.db.select().from(learnerDossiers).where(eq(learnerDossiers.profileId, profileId))
@@ -107,7 +104,9 @@ export class GuidedExpeditionsService {
   }
 
   /** Génère le guidage de la phase courante (explication + prompt + pistes) et le stocke. */
-  async phaseGuide(id: string): Promise<{ phase: ExpeditionPhase; guidance: PhaseGuidance; creditsSpent: number }> {
+  async phaseGuide(
+    id: string,
+  ): Promise<{ phase: ExpeditionPhase; guidance: PhaseGuidance; creditsSpent: number }> {
     const exp = await this.require(id);
     const phase = exp.phase as ExpeditionPhase;
 
@@ -128,7 +127,11 @@ export class GuidedExpeditionsService {
         schema: phaseGuidanceSchema,
         schemaName: 'PhaseGuidance',
         system: EXPEDITION_PHASE_SYSTEM,
-        prompt: expeditionPhasePrompt({ title: exp.title, grandeQuestion: exp.grandeQuestion, phase }),
+        prompt: expeditionPhasePrompt({
+          title: exp.title,
+          grandeQuestion: exp.grandeQuestion,
+          phase,
+        }),
         temperature: 0.6,
         ref: `expedition-phase-${phase}`,
       },

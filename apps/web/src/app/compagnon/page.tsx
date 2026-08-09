@@ -12,7 +12,10 @@ export default function CompagnonPage() {
       <div className="flex h-full items-center justify-center p-8 text-center">
         <div>
           <p className="text-lg font-semibold">Connecte-toi pour retrouver ton compagnon</p>
-          <Link href="/connexion" className="mt-3 inline-block rounded-full bg-accent px-5 py-2 text-sm font-medium text-accent-foreground">
+          <Link
+            href="/connexion"
+            className="mt-3 inline-block rounded-full bg-accent px-5 py-2 text-sm font-medium text-accent-foreground"
+          >
             Se connecter
           </Link>
         </div>

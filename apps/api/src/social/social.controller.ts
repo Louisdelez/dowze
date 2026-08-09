@@ -58,7 +58,11 @@ export class SocialController {
   @Post(':profileId/report')
   report(@Param('profileId') profileId: string, @Body() body: unknown) {
     const { reportedProfileId, reason, conversationId } = parseOr400(
-      z.object({ reportedProfileId: uuid, reason: z.string().min(3).max(2000), conversationId: uuid.nullable().default(null) }),
+      z.object({
+        reportedProfileId: uuid,
+        reason: z.string().min(3).max(2000),
+        conversationId: uuid.nullable().default(null),
+      }),
       body,
     );
     return this.service.report(uuid.parse(profileId), reportedProfileId, reason, conversationId);
@@ -71,7 +75,10 @@ export class SocialController {
   }
 
   @Get(':profileId/conversation/:conversationId')
-  conversation(@Param('profileId') profileId: string, @Param('conversationId') conversationId: string) {
+  conversation(
+    @Param('profileId') profileId: string,
+    @Param('conversationId') conversationId: string,
+  ) {
     return this.service.conversation(uuid.parse(profileId), uuid.parse(conversationId));
   }
 

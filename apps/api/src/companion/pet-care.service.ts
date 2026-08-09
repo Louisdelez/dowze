@@ -30,7 +30,15 @@ function sanitizeItems(raw: unknown): RoomItem[] {
     const item = typeof o.item === 'string' ? o.item.slice(0, 40) : '';
     const c = Math.round(Number(o.c));
     const r = Math.round(Number(o.r));
-    if (item && Number.isInteger(c) && Number.isInteger(r) && c >= 0 && c < MAX_COORD && r >= 0 && r < MAX_COORD) {
+    if (
+      item &&
+      Number.isInteger(c) &&
+      Number.isInteger(r) &&
+      c >= 0 &&
+      c < MAX_COORD &&
+      r >= 0 &&
+      r < MAX_COORD
+    ) {
       out.push({ item, c, r });
     }
   }
@@ -96,7 +104,8 @@ function sanitizeStock(raw: unknown): Record<string, number> {
   }
   if (raw && typeof raw === 'object') {
     for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
-      if (k in SHOP_PRICES && typeof v === 'number' && v > 0) out[k] = Math.min(9999, Math.floor(v));
+      if (k in SHOP_PRICES && typeof v === 'number' && v > 0)
+        out[k] = Math.min(9999, Math.floor(v));
     }
   }
   return out;
@@ -116,7 +125,13 @@ export interface CareState {
 
 const clamp = (n: number) => Math.max(0, Math.min(100, Math.round(n)));
 
-function moodOf(s: { satiety: number; happiness: number; energy: number; hygiene: number; health: number }): PetMood {
+function moodOf(s: {
+  satiety: number;
+  happiness: number;
+  energy: number;
+  hygiene: number;
+  health: number;
+}): PetMood {
   if (s.health <= 20) return 'malade';
   if (s.energy <= 20) return 'fatigue';
   if (s.satiety <= 20) return 'affame';
@@ -191,11 +206,28 @@ interface AgentRow {
 /** Décroissance d'un agent (réutilise `decayed` en fournissant gold/owned factices, ignorés). */
 function decayedAgent(row: AgentRow, now: Date): AgentRow {
   const d = decayed({ ...row, gold: 0, owned: [] } as unknown as Row, now);
-  return { ...row, satiety: d.satiety, happiness: d.happiness, energy: d.energy, hygiene: d.hygiene, health: d.health, lastTick: d.lastTick };
+  return {
+    ...row,
+    satiety: d.satiety,
+    happiness: d.happiness,
+    energy: d.energy,
+    hygiene: d.hygiene,
+    health: d.health,
+    lastTick: d.lastTick,
+  };
 }
 function toAgentState(row: AgentRow, now: Date): AgentCareState {
   const ageDays = Math.floor((now.getTime() - row.bornAt.getTime()) / 86_400_000);
-  return { agentId: row.agentId, satiety: row.satiety, happiness: row.happiness, energy: row.energy, hygiene: row.hygiene, health: row.health, ageDays, mood: moodOf(row) };
+  return {
+    agentId: row.agentId,
+    satiety: row.satiety,
+    happiness: row.happiness,
+    energy: row.energy,
+    hygiene: row.hygiene,
+    health: row.health,
+    ageDays,
+    mood: moodOf(row),
+  };
 }
 
 @Injectable()
@@ -204,24 +236,42 @@ export class PetCareService {
 
   /** Vérifie que l'agent appartient au profil de l'utilisateur (sinon 400). */
   private async assertOwnedAgent(profileId: string, agentId: string): Promise<void> {
-    const a = (await this.db.select({ pid: companionAgents.profileId }).from(companionAgents).where(eq(companionAgents.id, agentId)))[0];
+    const a = (
+      await this.db
+        .select({ pid: companionAgents.profileId })
+        .from(companionAgents)
+        .where(eq(companionAgents.id, agentId))
+    )[0];
     if (!a || a.pid !== profileId) throw new BadRequestException('Compagnon introuvable.');
   }
 
   /** Récupère (ou crée) la ligne de care d'un agent. Création idempotente (anti-course : deux requêtes concurrentes). */
   private async agentCareRow(agentId: string): Promise<AgentRow> {
-    let row = (await this.db.select().from(companionCare).where(eq(companionCare.agentId, agentId)))[0];
+    let row = (
+      await this.db.select().from(companionCare).where(eq(companionCare.agentId, agentId))
+    )[0];
     if (!row) {
       await this.db.insert(companionCare).values({ agentId }).onConflictDoNothing();
-      row = (await this.db.select().from(companionCare).where(eq(companionCare.agentId, agentId)))[0]!;
+      row = (
+        await this.db.select().from(companionCare).where(eq(companionCare.agentId, agentId))
+      )[0]!;
     }
     return row as AgentRow;
   }
 
   private async persistAgent(row: AgentRow, now: Date): Promise<void> {
-    await this.db.update(companionCare).set({
-      satiety: row.satiety, happiness: row.happiness, energy: row.energy, hygiene: row.hygiene, health: row.health, lastTick: now, updatedAt: now,
-    }).where(eq(companionCare.agentId, row.agentId));
+    await this.db
+      .update(companionCare)
+      .set({
+        satiety: row.satiety,
+        happiness: row.happiness,
+        energy: row.energy,
+        hygiene: row.hygiene,
+        health: row.health,
+        lastTick: now,
+        updatedAt: now,
+      })
+      .where(eq(companionCare.agentId, row.agentId));
   }
 
   /** Care d'UN compagnon (après décroissance, persistée). */
@@ -244,7 +294,8 @@ export class PetCareService {
     const now = new Date();
     const base = decayedAgent(await this.agentCareRow(agentId), now);
     const applied: AgentRow = { ...base };
-    for (const [k, v] of Object.entries(effect)) applied[k as Stat] = clamp((base[k as Stat] as number) + (v as number));
+    for (const [k, v] of Object.entries(effect))
+      applied[k as Stat] = clamp((base[k as Stat] as number) + (v as number));
     await this.persistAgent(applied, now);
     return toAgentState(applied, now);
   }
@@ -255,7 +306,15 @@ export class PetCareService {
     const agents = await this.db
       .select({ id: companionAgents.id })
       .from(companionAgents)
-      .where(and(eq(companionAgents.profileId, profileId), eq(companionAgents.space, space), eq(companionAgents.isPrimary, false), ne(companionAgents.mode, 'relay'), eq(companionAgents.status, 'active')));
+      .where(
+        and(
+          eq(companionAgents.profileId, profileId),
+          eq(companionAgents.space, space),
+          eq(companionAgents.isPrimary, false),
+          ne(companionAgents.mode, 'relay'),
+          eq(companionAgents.status, 'active'),
+        ),
+      );
     const now = new Date();
     const out: AgentCareState[] = [];
     for (const a of agents) {
@@ -371,12 +430,18 @@ export class PetCareService {
   /** « Maison » : enregistre la pièce courante + les meubles PAR pièce. */
   async setRoom(authId: string, room: string, rooms: unknown): Promise<RoomState> {
     const profileId = await this.profileIdForAuth(authId);
-    const clean: RoomState = { room: (room || 'chambre').slice(0, 40), rooms: sanitizeRoomMap(rooms) };
+    const clean: RoomState = {
+      room: (room || 'chambre').slice(0, 40),
+      rooms: sanitizeRoomMap(rooms),
+    };
     const now = new Date();
     await this.db
       .insert(petRoom)
       .values({ profileId, room: clean.room, items: clean.rooms, updatedAt: now })
-      .onConflictDoUpdate({ target: petRoom.profileId, set: { room: clean.room, items: clean.rooms, updatedAt: now } });
+      .onConflictDoUpdate({
+        target: petRoom.profileId,
+        set: { room: clean.room, items: clean.rooms, updatedAt: now },
+      });
     return clean;
   }
 }

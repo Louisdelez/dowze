@@ -17,9 +17,18 @@ import type { CopiloteService } from '../copilote/copilote.service';
 //   power  = primary ('^' unary)?            (^ associatif à droite)
 //   primary= number | const | func '(' expr ')' | '(' expr ')'
 const FUNCS: Record<string, (x: number) => number> = {
-  sqrt: Math.sqrt, abs: Math.abs, ln: Math.log, log: Math.log10, log10: Math.log10,
-  sin: Math.sin, cos: Math.cos, tan: Math.tan, exp: Math.exp,
-  round: Math.round, floor: Math.floor, ceil: Math.ceil,
+  sqrt: Math.sqrt,
+  abs: Math.abs,
+  ln: Math.log,
+  log: Math.log10,
+  log10: Math.log10,
+  sin: Math.sin,
+  cos: Math.cos,
+  tan: Math.tan,
+  exp: Math.exp,
+  round: Math.round,
+  floor: Math.floor,
+  ceil: Math.ceil,
 };
 const CONSTS: Record<string, number> = { pi: Math.PI, e: Math.E, tau: Math.PI * 2 };
 
@@ -35,16 +44,22 @@ export function evalExpression(input: string): number {
   if (src.length > 200) throw new Error('Expression trop longue.');
 
   let i = 0;
-  const skip = () => { while (i < src.length && /\s/.test(src[i]!)) i++; };
+  const skip = () => {
+    while (i < src.length && /\s/.test(src[i]!)) i++;
+  };
 
   function parseExpr(): number {
     let v = parseTerm();
     for (;;) {
       skip();
       const c = src[i];
-      if (c === '+') { i++; v += parseTerm(); }
-      else if (c === '-') { i++; v -= parseTerm(); }
-      else break;
+      if (c === '+') {
+        i++;
+        v += parseTerm();
+      } else if (c === '-') {
+        i++;
+        v -= parseTerm();
+      } else break;
     }
     return v;
   }
@@ -53,23 +68,43 @@ export function evalExpression(input: string): number {
     for (;;) {
       skip();
       const c = src[i];
-      if (c === '*') { i++; v *= parseUnary(); }
-      else if (c === '/') { i++; const d = parseUnary(); if (d === 0) throw new Error('Division par zéro.'); v /= d; }
-      else if (c === '%') { i++; const d = parseUnary(); if (d === 0) throw new Error('Modulo par zéro.'); v %= d; }
-      else break;
+      if (c === '*') {
+        i++;
+        v *= parseUnary();
+      } else if (c === '/') {
+        i++;
+        const d = parseUnary();
+        if (d === 0) throw new Error('Division par zéro.');
+        v /= d;
+      } else if (c === '%') {
+        i++;
+        const d = parseUnary();
+        if (d === 0) throw new Error('Modulo par zéro.');
+        v %= d;
+      } else break;
     }
     return v;
   }
   function parseUnary(): number {
     skip();
-    if (src[i] === '+') { i++; return parseUnary(); }
-    if (src[i] === '-') { i++; return -parseUnary(); }
+    if (src[i] === '+') {
+      i++;
+      return parseUnary();
+    }
+    if (src[i] === '-') {
+      i++;
+      return -parseUnary();
+    }
     return parsePower();
   }
   function parsePower(): number {
     const base = parsePrimary();
     skip();
-    if (src[i] === '^') { i++; const exp = parseUnary(); return Math.pow(base, exp); }
+    if (src[i] === '^') {
+      i++;
+      const exp = parseUnary();
+      return Math.pow(base, exp);
+    }
     return base;
   }
   function parsePrimary(): number {
@@ -85,7 +120,10 @@ export function evalExpression(input: string): number {
     }
     const rest = src.slice(i);
     const num = /^[0-9]*\.?[0-9]+(?:[eE][-+]?[0-9]+)?/.exec(rest);
-    if (num) { i += num[0].length; return parseFloat(num[0]); }
+    if (num) {
+      i += num[0].length;
+      return parseFloat(num[0]);
+    }
     const id = /^[a-zA-Z][a-zA-Z0-9]*/.exec(rest);
     if (id) {
       const name = id[0].toLowerCase();
@@ -126,10 +164,15 @@ export const TOOL_LABELS: Record<string, string> = {
 };
 
 /** Instance SearXNG (interne au réseau docker par défaut : pas d'auth ni TLS depuis l'API). */
-const SEARXNG_URL = (process.env.DOWZE_SEARXNG_INTERNAL_URL || 'http://searxng:8080').replace(/\/$/, '');
+const SEARXNG_URL = (process.env.DOWZE_SEARXNG_INTERNAL_URL || 'http://searxng:8080').replace(
+  /\/$/,
+  '',
+);
 
 /** Recherche web via SearXNG (JSON). Renvoie les meilleurs résultats normalisés ; [] en cas d'échec. */
-async function searchWeb(query: string): Promise<{ title: string; url: string; snippet: string }[]> {
+async function searchWeb(
+  query: string,
+): Promise<{ title: string; url: string; snippet: string }[]> {
   const u = new URL(`${SEARXNG_URL}/search`);
   u.searchParams.set('q', query);
   u.searchParams.set('format', 'json');
@@ -137,7 +180,9 @@ async function searchWeb(query: string): Promise<{ title: string; url: string; s
   u.searchParams.set('safesearch', '1');
   const res = await fetch(u, { signal: AbortSignal.timeout(10000) });
   if (!res.ok) throw new Error(`searxng ${res.status}`);
-  const j = (await res.json()) as { results?: { title?: string; url?: string; content?: string }[] };
+  const j = (await res.json()) as {
+    results?: { title?: string; url?: string; content?: string }[];
+  };
   return (j.results ?? [])
     .filter((r) => r.title && r.url)
     .slice(0, 5)
@@ -161,7 +206,10 @@ export function buildAgentTools(deps: {
       description:
         "Calcule le résultat exact d'une expression mathématique (+, -, *, /, %, ^, parenthèses ; fonctions sqrt, abs, ln, log, sin, cos, tan, exp, round, floor, ceil ; constantes pi, e). Utilise-le DÈS qu'un calcul est nécessaire — ne calcule jamais de tête.",
       parameters: z.object({
-        expression: z.string().max(200).describe('L\'expression à calculer, ex : « (3+4)*2 » ou « sqrt(2)^2 ».'),
+        expression: z
+          .string()
+          .max(200)
+          .describe("L'expression à calculer, ex : « (3+4)*2 » ou « sqrt(2)^2 »."),
       }),
       execute: async ({ expression }) => {
         try {
@@ -193,7 +241,8 @@ export function buildAgentTools(deps: {
       }),
       execute: async ({ requete }) => {
         const hits = await copilote.searchKnowledge(profileId, requete, 5).catch(() => []);
-        if (!hits.length) return { resultats: [], note: 'Aucune connaissance indexée pour cette requête.' };
+        if (!hits.length)
+          return { resultats: [], note: 'Aucune connaissance indexée pour cette requête.' };
         return { resultats: hits };
       },
     }),
@@ -201,7 +250,12 @@ export function buildAgentTools(deps: {
       description:
         "Cherche sur le WEB (actualité, faits récents, chiffres à jour, infos que tu ne connais pas de façon fiable) et renvoie les meilleurs résultats (titre, extrait, lien). Utilise-le DÈS que la question porte sur quelque chose de récent, de factuel, de vérifiable, ou dont tu n'es pas certain — ne réponds jamais de mémoire sur l'actualité.",
       parameters: z.object({
-        requete: z.string().max(200).describe('La requête de recherche, en quelques mots (comme dans un moteur de recherche).'),
+        requete: z
+          .string()
+          .max(200)
+          .describe(
+            'La requête de recherche, en quelques mots (comme dans un moteur de recherche).',
+          ),
       }),
       execute: async ({ requete }) => {
         const resultats = await searchWeb(requete).catch(() => []);
@@ -216,11 +270,17 @@ export function buildAgentTools(deps: {
       description:
         "Cherche dans la BASE DE CONNAISSANCES de TON organisation (les documents, faits, règles et décisions propres à cette entreprise/école/projet). Utilise-le EN PRIORITÉ pour toute question qui concerne le projet, les règles internes, les données ou l'historique de l'organisation — avant de répondre de mémoire ou de chercher sur le web.",
       parameters: z.object({
-        requete: z.string().max(200).describe('Ce que tu cherches dans les connaissances de l’organisation, en quelques mots.'),
+        requete: z
+          .string()
+          .max(200)
+          .describe(
+            'Ce que tu cherches dans les connaissances de l’organisation, en quelques mots.',
+          ),
       }),
       execute: async ({ requete }) => {
         const resultats = await orgSearch(requete).catch(() => []);
-        if (!resultats.length) return { resultats: [], note: 'Rien dans la base de l’organisation pour cette requête.' };
+        if (!resultats.length)
+          return { resultats: [], note: 'Rien dans la base de l’organisation pour cette requête.' };
         return { resultats };
       },
     });

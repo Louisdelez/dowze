@@ -1,10 +1,22 @@
 import { randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
-import { computeWeeklyPlanning, dailyBudget, nextPrescribedSkill, type PlanningOutput } from '@dowze/core';
+import {
+  computeWeeklyPlanning,
+  dailyBudget,
+  nextPrescribedSkill,
+  type PlanningOutput,
+} from '@dowze/core';
 import type { DailyBudgetView, Slot } from '@dowze/schemas';
 import { DB, type Database } from '../db/drizzle.module';
-import { availabilitySlots, electives, sm2Cards, masteryStates, planningEntries, profiles } from '../db/schema';
+import {
+  availabilitySlots,
+  electives,
+  sm2Cards,
+  masteryStates,
+  planningEntries,
+  profiles,
+} from '../db/schema';
 import { SkillGraphService } from '../skill-graph/skill-graph.service';
 import { buildPlanningItems } from './planning-items';
 

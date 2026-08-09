@@ -41,7 +41,13 @@ const ANIM: Record<CompanionState, string> = {
   offline: 'cmp-tilt',
 };
 
-const THINKING = new Set<CompanionState>(['reading', 'thinking', 'preparing', 'organizing', 'almost']);
+const THINKING = new Set<CompanionState>([
+  'reading',
+  'thinking',
+  'preparing',
+  'organizing',
+  'almost',
+]);
 
 function mouthPath(state: CompanionState): string {
   if (state === 'error' || state === 'offline') return 'M19 31 H29'; // bouche plate (désolé)
@@ -52,7 +58,14 @@ function mouthPath(state: CompanionState): string {
 /** Le personnage SVG (décoratif — `aria-hidden`). */
 function Face({ state, size }: { state: CompanionState; size: number }) {
   return (
-    <svg viewBox="0 0 48 48" width={size} height={size} aria-hidden="true" focusable="false" className="cmp-face">
+    <svg
+      viewBox="0 0 48 48"
+      width={size}
+      height={size}
+      aria-hidden="true"
+      focusable="false"
+      className="cmp-face"
+    >
       {/* étincelle Dowze au-dessus de la tête (idle/done) */}
       {(state === 'idle' || state === 'done') && (
         <path
@@ -75,10 +88,20 @@ function Face({ state, size }: { state: CompanionState; size: number }) {
         <circle cx="29.5" cy="23" r="2.5" />
       </g>
       {/* bouche */}
-      <path d={mouthPath(state)} fill="none" stroke="var(--color-foreground)" strokeWidth="2" strokeLinecap="round" />
+      <path
+        d={mouthPath(state)}
+        fill="none"
+        stroke="var(--color-foreground)"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
       {/* petite goutte (souci) */}
       {(state === 'error' || state === 'offline') && (
-        <path d="M35 14 q2 3 0 4.5 q-2 -1.5 0 -4.5 z" fill="var(--color-accent)" fillOpacity="0.6" />
+        <path
+          d="M35 14 q2 3 0 4.5 q-2 -1.5 0 -4.5 z"
+          fill="var(--color-accent)"
+          fillOpacity="0.6"
+        />
       )}
       {/* points « je réfléchis » */}
       {THINKING.has(state) && (
@@ -99,7 +122,9 @@ export function Companion({ snapshot }: { snapshot: CompanionSnapshot }) {
   const companionName = useCompanionPet((s) => s.companionName);
   const [pos, setPos] = useState<Pos | null>(null);
   const [dismissed, setDismissed] = useState<string | null>(null);
-  const drag = useRef<{ sx: number; sy: number; ox: number; oy: number; moved: boolean } | null>(null);
+  const drag = useRef<{ sx: number; sy: number; ox: number; oy: number; moved: boolean } | null>(
+    null,
+  );
   const snapStateRef = useRef<CompanionState>(snapshot.state);
   snapStateRef.current = snapshot.state;
 
@@ -108,13 +133,32 @@ export function Companion({ snapshot }: { snapshot: CompanionSnapshot }) {
   const [autoMsg, setAutoMsg] = useState<string | null>(null);
   const [hop, setHop] = useState(0);
   const ctxRef = useRef<BrainCtx>({
-    name: 'Dowze', mood: 'ok', satiety: 60, happiness: 60, energy: 60, hygiene: 60, health: 60,
-    hour: 12, isDay: true, weather: 'clear', tempC: null, room: '',
+    name: 'Dowze',
+    mood: 'ok',
+    satiety: 60,
+    happiness: 60,
+    energy: 60,
+    hygiene: 60,
+    health: 60,
+    hour: 12,
+    isDay: true,
+    weather: 'clear',
+    tempC: null,
+    room: '',
   });
   ctxRef.current = {
-    name: companionName?.trim() || 'Dowze', mood: 'ok',
-    satiety: 60, happiness: 60, energy: 60, hygiene: 60, health: 60,
-    hour: amb.hour, isDay: amb.isDay, weather: amb.weather, tempC: amb.tempC, room: '',
+    name: companionName?.trim() || 'Dowze',
+    mood: 'ok',
+    satiety: 60,
+    happiness: 60,
+    energy: 60,
+    hygiene: 60,
+    health: 60,
+    hour: amb.hour,
+    isDay: amb.isDay,
+    weather: amb.weather,
+    tempC: amb.tempC,
+    room: '',
   };
   const lastLine = useRef<string[]>([]); // 6 dernières répliques (anti-répétition)
   const say = useCallback((line: string) => {
@@ -153,7 +197,6 @@ export function Companion({ snapshot }: { snapshot: CompanionSnapshot }) {
       /* ignore */
     }
     setPos(clampPos(initial, dispW, dispH));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Re-clampe la position quand la taille (pet ou cam) change ou au redimensionnement de la fenêtre.
@@ -221,7 +264,8 @@ export function Companion({ snapshot }: { snapshot: CompanionSnapshot }) {
   // Au repos, la parole spontanée/au-clic (autoMsg) prime ; sinon le message du bus (IA).
   const spontaneous = snapshot.state === 'idle' ? autoMsg : null;
   const rawMsg = spontaneous ?? snapshot.message;
-  const showBubble = Boolean(rawMsg) && rawMsg !== dismissed && (meta.talks || Boolean(spontaneous));
+  const showBubble =
+    Boolean(rawMsg) && rawMsg !== dismissed && (meta.talks || Boolean(spontaneous));
 
   const below = pos.y < 96;
   const nearLeft = pos.x < 140;
@@ -241,7 +285,10 @@ export function Companion({ snapshot }: { snapshot: CompanionSnapshot }) {
         {alertMsg}
       </div>
 
-      <div className="pointer-events-auto absolute" style={{ left: pos.x, top: pos.y, width: dispW }}>
+      <div
+        className="pointer-events-auto absolute"
+        style={{ left: pos.x, top: pos.y, width: dispW }}
+      >
         {showBubble && (
           <div
             className={`absolute ${alignX} ${below ? 'top-full mt-2' : 'bottom-full mb-2'} w-max max-w-[220px]`}
@@ -252,7 +299,15 @@ export function Companion({ snapshot }: { snapshot: CompanionSnapshot }) {
                 aria-label="Fermer"
                 className="pointer-events-auto absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-400 hover:text-slate-700"
               >
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <svg
+                  width="11"
+                  height="11"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                >
                   <path d="M6 6l12 12M18 6L6 18" />
                 </svg>
               </button>

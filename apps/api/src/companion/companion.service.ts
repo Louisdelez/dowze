@@ -4,11 +4,35 @@ import { createHash, randomBytes } from 'node:crypto';
 import { and, asc, count, desc, eq, gt, ilike, inArray, lt, ne, or, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { DB, type Database } from '../db/drizzle.module';
-import { accounts, profiles, companionPets, companionAgents, companionSpaces, companionSpaceKnowledge, companionMessages, companionRelayTokens, companionAgentMerges, learnerRank, masteryStates, specializations, skills } from '../db/schema';
+import {
+  accounts,
+  profiles,
+  companionPets,
+  companionAgents,
+  companionSpaces,
+  companionSpaceKnowledge,
+  companionMessages,
+  companionRelayTokens,
+  companionAgentMerges,
+  learnerRank,
+  masteryStates,
+  specializations,
+  skills,
+} from '../db/schema';
 import { disciplineOf, DISCIPLINES } from '../results/ranks';
 import { CopiloteService } from '../copilote/copilote.service';
 import { buildAgentTools } from './agent-tools';
-import { ORG_TEMPLATES, templateByKey, roleByKey, academieAdmin, academieTeacher, teacherRoleKey, rankMeta, type RolePreset, type OrgTemplate } from './roles.catalog';
+import {
+  ORG_TEMPLATES,
+  templateByKey,
+  roleByKey,
+  academieAdmin,
+  academieTeacher,
+  teacherRoleKey,
+  rankMeta,
+  type RolePreset,
+  type OrgTemplate,
+} from './roles.catalog';
 
 /** Planche max après validation (une sprite sheet Codex ~1,5–2,5 Mo). */
 const MAX_BYTES = 6 * 1024 * 1024;
@@ -41,7 +65,8 @@ export interface AgentPersonality {
   rules?: string[];
 }
 /** Détecte un message d'ENSEIGNEMENT (« retiens que… », « dorénavant… », « je préfère que… »). */
-const TEACH_RE = /\b(retiens|rappelle[- ]toi|souviens[- ]toi|dor[eé]navant|d[eé]sormais|à l['’]avenir|je pr[eé]f[eè]re que|à partir de maintenant|note que|n['’]oublie pas que)\b/i;
+const TEACH_RE =
+  /\b(retiens|rappelle[- ]toi|souviens[- ]toi|dor[eé]navant|d[eé]sormais|à l['’]avenir|je pr[eé]f[eè]re que|à partir de maintenant|note que|n['’]oublie pas que)\b/i;
 export interface CompanionAgentDTO {
   id: string;
   name: string;
@@ -83,7 +108,8 @@ export interface UploadedPetFile {
 function detectImage(buf: Buffer): 'image/webp' | 'image/png' | null {
   if (buf.length < 16) return null;
   if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) return 'image/png';
-  if (buf.toString('ascii', 0, 4) === 'RIFF' && buf.toString('ascii', 8, 12) === 'WEBP') return 'image/webp';
+  if (buf.toString('ascii', 0, 4) === 'RIFF' && buf.toString('ascii', 8, 12) === 'WEBP')
+    return 'image/webp';
   return null;
 }
 
@@ -129,7 +155,8 @@ function zipEntries(zip: Buffer): ZipEntry[] {
 /** Décompresse une entrée .zip (stored ou deflate). Anti zip-bomb via maxOutputLength. */
 function inflateEntry(zip: Buffer, e: ZipEntry): Buffer {
   const lh = e.local;
-  if (lh + 30 > zip.length || zip.readUInt32LE(lh) !== 0x04034b50) throw new BadRequestException('Archive .zip invalide.');
+  if (lh + 30 > zip.length || zip.readUInt32LE(lh) !== 0x04034b50)
+    throw new BadRequestException('Archive .zip invalide.');
   const lNameLen = zip.readUInt16LE(lh + 26);
   const lExtraLen = zip.readUInt16LE(lh + 28);
   const start = lh + 30 + lNameLen + lExtraLen;
@@ -184,34 +211,89 @@ const AGENT_CONFIG_SCHEMA = z.object({
   tone: z.string().describe('Son ton en quelques mots (ex : « joyeux et encourageant »).'),
   traits: z.array(z.string()).describe('3 à 6 traits de caractère en un mot chacun.'),
   specialization: z.string().describe('Sa spécialité / ce dans quoi il aide (court).'),
-  systemPrompt: z.string().describe('Le « personnage » : 3–6 phrases décrivant sa personnalité, son rôle et son style (court, naturel, sans markdown). C’est ce qui pilotera ses réponses.'),
+  systemPrompt: z
+    .string()
+    .describe(
+      'Le « personnage » : 3–6 phrases décrivant sa personnalité, son rôle et son style (court, naturel, sans markdown). C’est ce qui pilotera ses réponses.',
+    ),
 });
 /** Plan d'orchestration : pour chaque sous-tâche, mobiliser une abeille EXISTANTE ou en CRÉER une précise. */
 const ORCH_PLAN_SCHEMA = z.object({
-  direct: z.string().describe('Si tu peux répondre TOI-MÊME correctement sans spécialiste : la réponse directe courte. Sinon, chaîne vide.'),
-  delegations: z.array(z.object({
-    existing: z.number().int().describe('NUMÉRO d’une abeille EXISTANTE qui correspond PRÉCISÉMENT à la sous-tâche (voir la liste). Mets 0 si aucune ne convient vraiment et qu’il faut en créer une.'),
-    create: z.string().describe('Si existing = 0 : description PRÉCISE et ÉTROITE de l’abeille spécialiste à créer pour cette sous-tâche (son domaine exact, une phrase). Sinon, chaîne vide.'),
-    spaceName: z.string().describe('Si existing = 0 : le nom de l’OPEN-SPACE métier où ranger la nouvelle abeille selon sa compétence (ex : « Code & Dev », « Cours & École », « Langues », « Rédaction », « Business & Admin », « Vie quotidienne », « Santé & Sport », « Créativité »). Réutilise EXACTEMENT le nom d’un open-space existant s’il correspond ; sinon un nom court. JAMAIS « Maison ». Sinon, chaîne vide.'),
-    subtask: z.string().describe('La sous-tâche / question précise confiée à cette abeille.'),
-  })).describe('0 à 3 délégations. Décompose la demande en sous-tâches précises ; pour chacune, réutilise une abeille existante si elle correspond VRAIMENT, sinon demande d’en créer une très ciblée (rangée dans son open-space métier).'),
+  direct: z
+    .string()
+    .describe(
+      'Si tu peux répondre TOI-MÊME correctement sans spécialiste : la réponse directe courte. Sinon, chaîne vide.',
+    ),
+  delegations: z
+    .array(
+      z.object({
+        existing: z
+          .number()
+          .int()
+          .describe(
+            'NUMÉRO d’une abeille EXISTANTE qui correspond PRÉCISÉMENT à la sous-tâche (voir la liste). Mets 0 si aucune ne convient vraiment et qu’il faut en créer une.',
+          ),
+        create: z
+          .string()
+          .describe(
+            'Si existing = 0 : description PRÉCISE et ÉTROITE de l’abeille spécialiste à créer pour cette sous-tâche (son domaine exact, une phrase). Sinon, chaîne vide.',
+          ),
+        spaceName: z
+          .string()
+          .describe(
+            'Si existing = 0 : le nom de l’OPEN-SPACE métier où ranger la nouvelle abeille selon sa compétence (ex : « Code & Dev », « Cours & École », « Langues », « Rédaction », « Business & Admin », « Vie quotidienne », « Santé & Sport », « Créativité »). Réutilise EXACTEMENT le nom d’un open-space existant s’il correspond ; sinon un nom court. JAMAIS « Maison ». Sinon, chaîne vide.',
+          ),
+        subtask: z.string().describe('La sous-tâche / question précise confiée à cette abeille.'),
+      }),
+    )
+    .describe(
+      '0 à 3 délégations. Décompose la demande en sous-tâches précises ; pour chacune, réutilise une abeille existante si elle correspond VRAIMENT, sinon demande d’en créer une très ciblée (rangée dans son open-space métier).',
+    ),
 });
 // Orchestration SCOPÉE à un open-space = organisation : le leader délègue à l'effectif FIXE
 // du space (par numéro de membre — aucune création, l'équipe est déjà en place).
 const SPACE_PLAN_SCHEMA = z.object({
-  direct: z.string().describe('Si TU (le leader) peux répondre correctement toi-même sans mobiliser un membre : la réponse directe courte. Sinon, chaîne vide.'),
-  delegations: z.array(z.object({
-    member: z.number().int().describe('NUMÉRO du membre de l’équipe (voir la liste) à qui confier cette sous-tâche — celui dont c’est EXACTEMENT la spécialité/matière.'),
-    subtask: z.string().describe('La sous-tâche / question précise confiée à ce membre.'),
-  })).describe('0 à 3 délégations. Décompose la demande et confie chaque sous-tâche au membre dont c’est le métier. Ne délègue qu’aux membres réellement pertinents.'),
+  direct: z
+    .string()
+    .describe(
+      'Si TU (le leader) peux répondre correctement toi-même sans mobiliser un membre : la réponse directe courte. Sinon, chaîne vide.',
+    ),
+  delegations: z
+    .array(
+      z.object({
+        member: z
+          .number()
+          .int()
+          .describe(
+            'NUMÉRO du membre de l’équipe (voir la liste) à qui confier cette sous-tâche — celui dont c’est EXACTEMENT la spécialité/matière.',
+          ),
+        subtask: z.string().describe('La sous-tâche / question précise confiée à ce membre.'),
+      }),
+    )
+    .describe(
+      '0 à 3 délégations. Décompose la demande et confie chaque sous-tâche au membre dont c’est le métier. Ne délègue qu’aux membres réellement pertinents.',
+    ),
 });
 // P4 — CHANTIER (SOP) : un objectif est découpé en tâches confiées aux membres, chacun PRODUIT un livrable.
 const PROJECT_PLAN_SCHEMA = z.object({
-  tasks: z.array(z.object({
-    member: z.number().int().describe('NUMÉRO du membre (voir la liste) chargé de cette partie du projet — celui dont c’est la spécialité.'),
-    task: z.string().describe('La partie du projet confiée à ce membre.'),
-    produces: z.string().describe('Le LIVRABLE concret attendu (ex. « cahier des charges », « plan de cours », « maquette décrite », « plan de test »).'),
-  })).describe('2 à 5 tâches confiées aux bons membres pour réaliser le projet de bout en bout.'),
+  tasks: z
+    .array(
+      z.object({
+        member: z
+          .number()
+          .int()
+          .describe(
+            'NUMÉRO du membre (voir la liste) chargé de cette partie du projet — celui dont c’est la spécialité.',
+          ),
+        task: z.string().describe('La partie du projet confiée à ce membre.'),
+        produces: z
+          .string()
+          .describe(
+            'Le LIVRABLE concret attendu (ex. « cahier des charges », « plan de cours », « maquette décrite », « plan de test »).',
+          ),
+      }),
+    )
+    .describe('2 à 5 tâches confiées aux bons membres pour réaliser le projet de bout en bout.'),
 });
 const BUILD_AGENT_SYSTEM = `Tu conçois un « compagnon » (assistant-personnage) à partir d'une courte description donnée par l'utilisateur.
 Le compagnon peut aider dans N'IMPORTE QUEL domaine (études, travail, code, projets, business, vie quotidienne, administratif, créativité, sport, santé, voyage, etc.) — il n'est PAS limité à l'éducation.
@@ -220,7 +302,10 @@ Contraintes : le compagnon est bienveillant et respectueux, parle FRANÇAIS, ada
 
 @Injectable()
 export class CompanionService {
-  constructor(@Inject(DB) private readonly db: Database, private readonly copilote: CopiloteService) {}
+  constructor(
+    @Inject(DB) private readonly db: Database,
+    private readonly copilote: CopiloteService,
+  ) {}
 
   private async profileIdForAuth(authId: string): Promise<string> {
     const acc = (await this.db.select().from(accounts).where(eq(accounts.authUserId, authId)))[0];
@@ -228,7 +313,11 @@ export class CompanionService {
     // `orderBy` : sans lui, l'ordre Postgres est non déterministe → le « 1er profil » pouvait changer
     // d'un appel à l'autre (audit 08-2026).
     const prof = (
-      await this.db.select().from(profiles).where(eq(profiles.accountId, acc.id)).orderBy(asc(profiles.createdAt))
+      await this.db
+        .select()
+        .from(profiles)
+        .where(eq(profiles.accountId, acc.id))
+        .orderBy(asc(profiles.createdAt))
     )[0];
     if (!prof) throw new BadRequestException('Profil introuvable.');
     return prof.id;
@@ -269,16 +358,26 @@ export class CompanionService {
     const raw = isZip ? extractSheet(b) : b;
 
     const mime = detectImage(raw);
-    if (!mime) throw new BadRequestException("Ce n'est pas un .zip de pet ni une planche d'image (.webp/.png) valide.");
+    if (!mime)
+      throw new BadRequestException(
+        "Ce n'est pas un .zip de pet ni une planche d'image (.webp/.png) valide.",
+      );
     if (raw.length > MAX_BYTES) throw new BadRequestException('Planche trop lourde.');
 
     const fallback = (file.originalname || '').replace(/\.[^.]+$/, '').slice(0, 60) || 'Mon pet';
     const name = isZip ? cleanName(nameFromZip(b), fallback) : cleanName(fallback, 'Mon pet');
 
     const profileId = await this.profileIdForAuth(authId);
-    const existing = (await this.db.select({ n: count() }).from(companionPets).where(eq(companionPets.profileId, profileId)))[0];
+    const existing = (
+      await this.db
+        .select({ n: count() })
+        .from(companionPets)
+        .where(eq(companionPets.profileId, profileId))
+    )[0];
     if ((existing?.n ?? 0) >= MAX_PETS) {
-      throw new BadRequestException(`Limite atteinte (${MAX_PETS} pets). Supprime-en un avant d'en ajouter.`);
+      throw new BadRequestException(
+        `Limite atteinte (${MAX_PETS} pets). Supprime-en un avant d'en ajouter.`,
+      );
     }
 
     const now = new Date();
@@ -296,7 +395,12 @@ export class CompanionService {
   async list(authId: string): Promise<PetListItem[]> {
     const profileId = await this.profileIdForAuth(authId);
     const rows = await this.db
-      .select({ id: companionPets.id, name: companionPets.name, createdAt: companionPets.createdAt, updatedAt: companionPets.updatedAt })
+      .select({
+        id: companionPets.id,
+        name: companionPets.name,
+        createdAt: companionPets.createdAt,
+        updatedAt: companionPets.updatedAt,
+      })
       .from(companionPets)
       .where(eq(companionPets.profileId, profileId))
       .orderBy(desc(companionPets.createdAt));
@@ -324,7 +428,9 @@ export class CompanionService {
   /** Supprime un pet (l'utilisateur doit en être propriétaire). */
   async remove(authId: string, id: string): Promise<{ ok: true }> {
     const profileId = await this.profileIdForAuth(authId);
-    await this.db.delete(companionPets).where(and(eq(companionPets.id, id), eq(companionPets.profileId, profileId)));
+    await this.db
+      .delete(companionPets)
+      .where(and(eq(companionPets.id, id), eq(companionPets.profileId, profileId)));
     return { ok: true };
   }
 
@@ -341,7 +447,14 @@ export class CompanionService {
     // On NE renvoie PAS le systemPrompt au client (interne).
     const p = (r.personality as (AgentPersonality & { systemPrompt?: string }) | null) ?? null;
     const personality: AgentPersonality | null = p
-      ? { tone: p.tone, traits: p.traits, description: p.description, emoji: p.emoji, greeting: p.greeting, rules: p.rules }
+      ? {
+          tone: p.tone,
+          traits: p.traits,
+          description: p.description,
+          emoji: p.emoji,
+          greeting: p.greeting,
+          rules: p.rules,
+        }
       : null;
     return {
       id: r.id,
@@ -359,36 +472,56 @@ export class CompanionService {
       lastUsedAt: r.lastUsedAt ? r.lastUsedAt.getTime() : null,
       quality: r.qualityEma,
       protected: r.protected,
-      promptVersions: Array.isArray((p as { promptHistory?: unknown[] } | null)?.promptHistory) ? (p as { promptHistory: unknown[] }).promptHistory.length : 0,
+      promptVersions: Array.isArray((p as { promptHistory?: unknown[] } | null)?.promptHistory)
+        ? (p as { promptHistory: unknown[] }).promptHistory.length
+        : 0,
     };
   }
 
   /** S'assure que le compagnon PRINCIPAL existe (semé depuis `profiles.companion` la 1re fois). */
   private async ensurePrimary(profileId: string): Promise<void> {
     const primary = (
-      await this.db.select({ id: companionAgents.id }).from(companionAgents)
+      await this.db
+        .select({ id: companionAgents.id })
+        .from(companionAgents)
         .where(and(eq(companionAgents.profileId, profileId), eq(companionAgents.isPrimary, true)))
     )[0];
     if (primary) return;
-    const prof = (await this.db.select({ companion: profiles.companion }).from(profiles).where(eq(profiles.id, profileId)))[0];
+    const prof = (
+      await this.db
+        .select({ companion: profiles.companion })
+        .from(profiles)
+        .where(eq(profiles.id, profileId))
+    )[0];
     const comp = (prof?.companion ?? {}) as { url?: string; size?: number; name?: string };
-    await this.db.insert(companionAgents).values({
-      profileId,
-      name: (comp.name || 'Dowze').slice(0, 40),
-      skinUrl: comp.url ?? null,
-      size: typeof comp.size === 'number' ? comp.size : 96,
-      isPrimary: true,
-      space: 'home',
-      mode: 'pnj',
-    }).onConflictDoNothing();
+    await this.db
+      .insert(companionAgents)
+      .values({
+        profileId,
+        name: (comp.name || 'Dowze').slice(0, 40),
+        skinUrl: comp.url ?? null,
+        size: typeof comp.size === 'number' ? comp.size : 96,
+        isPrimary: true,
+        space: 'home',
+        mode: 'pnj',
+      })
+      .onConflictDoNothing();
   }
 
   /** Liste les compagnons d'un espace (défaut : la Maison). Sème le principal au besoin. */
   async listAgents(authId: string, space = 'home'): Promise<CompanionAgentDTO[]> {
     const profileId = await this.profileIdForAuth(authId);
     await this.ensurePrimary(profileId);
-    const rows = await this.db.select().from(companionAgents)
-      .where(and(eq(companionAgents.profileId, profileId), eq(companionAgents.space, space.slice(0, 60)), eq(companionAgents.status, 'active')))
+    const rows = await this.db
+      .select()
+      .from(companionAgents)
+      .where(
+        and(
+          eq(companionAgents.profileId, profileId),
+          eq(companionAgents.space, space.slice(0, 60)),
+          eq(companionAgents.status, 'active'),
+        ),
+      )
       .orderBy(desc(companionAgents.isPrimary), asc(companionAgents.createdAt));
     return rows.map((r) => this.toAgent(r));
   }
@@ -398,28 +531,37 @@ export class CompanionService {
     const profileId = await this.profileIdForAuth(authId);
     const now = new Date();
     const row = (
-      await this.db.insert(companionAgents).values({
-        profileId,
-        name: (input.name || 'Compagnon').slice(0, 40),
-        skinUrl: this.skinForSpace(input.space || 'home', input.skinUrl),
-        size: input.size ?? 96,
-        personality: input.personality ?? null,
-        role: input.role ?? null,
-        space: (input.space || 'home').slice(0, 60),
-        room: (input.room?.slice(0, 60)) || (await this.pickRoomFor(profileId, (input.space || 'home').slice(0, 60))),
-        pos: input.pos ?? null,
-        isPrimary: false,
-        mode: input.mode ?? 'pnj',
-        createdAt: now,
-        updatedAt: now,
-      }).returning()
+      await this.db
+        .insert(companionAgents)
+        .values({
+          profileId,
+          name: (input.name || 'Compagnon').slice(0, 40),
+          skinUrl: this.skinForSpace(input.space || 'home', input.skinUrl),
+          size: input.size ?? 96,
+          personality: input.personality ?? null,
+          role: input.role ?? null,
+          space: (input.space || 'home').slice(0, 60),
+          room:
+            input.room?.slice(0, 60) ||
+            (await this.pickRoomFor(profileId, (input.space || 'home').slice(0, 60))),
+          pos: input.pos ?? null,
+          isPrimary: false,
+          mode: input.mode ?? 'pnj',
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning()
     )[0];
     if (!row) throw new BadRequestException('Création impossible.');
     return this.toAgent(row);
   }
 
   /** Met à jour un compagnon (propriétaire requis ; le statut « principal » n'est pas modifiable ici). */
-  async updateAgent(authId: string, id: string, patch: UpdateAgentInput): Promise<CompanionAgentDTO> {
+  async updateAgent(
+    authId: string,
+    id: string,
+    patch: UpdateAgentInput,
+  ): Promise<CompanionAgentDTO> {
     const profileId = await this.profileIdForAuth(authId);
     const set: Partial<typeof companionAgents.$inferInsert> = { updatedAt: new Date() };
     if (patch.name !== undefined) set.name = String(patch.name).slice(0, 40);
@@ -430,7 +572,9 @@ export class CompanionService {
     if (patch.space !== undefined) set.space = patch.space.slice(0, 60);
     if (patch.pos !== undefined) set.pos = patch.pos;
     if (patch.mode !== undefined) set.mode = patch.mode;
-    const res = await this.db.update(companionAgents).set(set)
+    const res = await this.db
+      .update(companionAgents)
+      .set(set)
       .where(and(eq(companionAgents.id, id), eq(companionAgents.profileId, profileId)))
       .returning();
     if (!res[0]) throw new NotFoundException('Compagnon introuvable.');
@@ -440,11 +584,18 @@ export class CompanionService {
   /** Supprime un compagnon (le principal est protégé). */
   async deleteAgent(authId: string, id: string): Promise<{ ok: true }> {
     const profileId = await this.profileIdForAuth(authId);
-    const row = (await this.db.select({ isPrimary: companionAgents.isPrimary }).from(companionAgents)
-      .where(and(eq(companionAgents.id, id), eq(companionAgents.profileId, profileId))))[0];
+    const row = (
+      await this.db
+        .select({ isPrimary: companionAgents.isPrimary })
+        .from(companionAgents)
+        .where(and(eq(companionAgents.id, id), eq(companionAgents.profileId, profileId)))
+    )[0];
     if (!row) throw new NotFoundException('Compagnon introuvable.');
-    if (row.isPrimary) throw new BadRequestException('Le compagnon principal ne peut pas être supprimé.');
-    await this.db.delete(companionAgents).where(and(eq(companionAgents.id, id), eq(companionAgents.profileId, profileId)));
+    if (row.isPrimary)
+      throw new BadRequestException('Le compagnon principal ne peut pas être supprimé.');
+    await this.db
+      .delete(companionAgents)
+      .where(and(eq(companionAgents.id, id), eq(companionAgents.profileId, profileId)));
     return { ok: true };
   }
 
@@ -504,20 +655,25 @@ export class CompanionService {
     // Salle : open-space → workspace <100 places (déborde) ; Maison → chambre.
     const room = await this.pickRoomFor(profileId, space);
     const now = new Date();
-    const row = (await this.db.insert(companionAgents).values({
-      profileId,
-      name: (object.name || 'Assistant').slice(0, 40),
-      skinUrl: finalSkin,
-      size: 96,
-      personality,
-      role: object.specialization?.slice(0, 60) ?? null,
-      space: space.slice(0, 60),
-      room,
-      isPrimary: false,
-      mode: 'agent',
-      createdAt: now,
-      updatedAt: now,
-    }).returning())[0];
+    const row = (
+      await this.db
+        .insert(companionAgents)
+        .values({
+          profileId,
+          name: (object.name || 'Assistant').slice(0, 40),
+          skinUrl: finalSkin,
+          size: 96,
+          personality,
+          role: object.specialization?.slice(0, 60) ?? null,
+          space: space.slice(0, 60),
+          room,
+          isPrimary: false,
+          mode: 'agent',
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning()
+    )[0];
     if (!row) throw new BadRequestException('Création impossible.');
     // Embedding sémantique (best-effort) → l'abeille devient trouvable par le SENS.
     await this.embedAgent(profileId, row.id, row.name, row.role, personality.description);
@@ -529,36 +685,65 @@ export class CompanionService {
    * des abeilles créées par la ruche selon leur compétence. Renvoie l'id de l'open-space.
    */
   private async ensureSpaceByName(profileId: string, name: string): Promise<string> {
-    const nm = ((name || '').trim().slice(0, 40)) || 'Ruche';
-    const rows = await this.db.select({ id: companionSpaces.id, name: companionSpaces.name }).from(companionSpaces).where(eq(companionSpaces.profileId, profileId));
+    const nm = (name || '').trim().slice(0, 40) || 'Ruche';
+    const rows = await this.db
+      .select({ id: companionSpaces.id, name: companionSpaces.name })
+      .from(companionSpaces)
+      .where(eq(companionSpaces.profileId, profileId));
     const hit = rows.find((s) => s.name.toLowerCase() === nm.toLowerCase());
     if (hit) return hit.id;
     // Aucune limite d'open-spaces (spécialisations) : on en crée un nouveau à chaque nouveau domaine.
     // Anti-race (index unique (profile_id, lower(name)), migration 0067) : deux requêtes simultanées ne
     // dupliquent plus l'espace — le perdant du conflit re-lit celui du gagnant.
     const created = (
-      await this.db.insert(companionSpaces).values({ profileId, name: nm }).onConflictDoNothing().returning()
+      await this.db
+        .insert(companionSpaces)
+        .values({ profileId, name: nm })
+        .onConflictDoNothing()
+        .returning()
     )[0];
     if (created) return created.id;
-    const again = (await this.db.select({ id: companionSpaces.id, name: companionSpaces.name }).from(companionSpaces).where(eq(companionSpaces.profileId, profileId)))
-      .find((s) => s.name.toLowerCase() === nm.toLowerCase());
+    const again = (
+      await this.db
+        .select({ id: companionSpaces.id, name: companionSpaces.name })
+        .from(companionSpaces)
+        .where(eq(companionSpaces.profileId, profileId))
+    ).find((s) => s.name.toLowerCase() === nm.toLowerCase());
     if (!again) throw new BadRequestException('Création d’open-space impossible.');
     return again.id;
   }
 
   /** Auto-builder : construit un compagnon-AGENT depuis une courte description (IA), et l'enregistre. */
-  async buildAgent(authId: string, input: { description: string; skinUrl?: string | null; space?: string }): Promise<CompanionAgentDTO> {
+  async buildAgent(
+    authId: string,
+    input: { description: string; skinUrl?: string | null; space?: string },
+  ): Promise<CompanionAgentDTO> {
     const profileId = await this.profileIdForAuth(authId);
-    const row = await this.createAgentFromDescription(profileId, input.description, input.space || 'home', input.skinUrl ?? null);
+    const row = await this.createAgentFromDescription(
+      profileId,
+      input.description,
+      input.space || 'home',
+      input.skinUrl ?? null,
+    );
     return this.toAgent(row);
   }
 
   /** Chat IA avec un compagnon-agent : mémoire persistante + apprentissage de règles, réponse courte et humaine. */
-  async chatAgent(authId: string, id: string, message: string): Promise<{ reply: string; learned?: string; toolsUsed?: string[] }> {
+  async chatAgent(
+    authId: string,
+    id: string,
+    message: string,
+  ): Promise<{ reply: string; learned?: string; toolsUsed?: string[] }> {
     const profileId = await this.profileIdForAuth(authId);
-    const agent = (await this.db.select().from(companionAgents).where(and(eq(companionAgents.id, id), eq(companionAgents.profileId, profileId))))[0];
+    const agent = (
+      await this.db
+        .select()
+        .from(companionAgents)
+        .where(and(eq(companionAgents.id, id), eq(companionAgents.profileId, profileId)))
+    )[0];
     if (!agent) throw new NotFoundException('Compagnon introuvable.');
-    const persona = (agent.personality as (AgentPersonality & { systemPrompt?: string }) | null) ?? {};
+    const persona =
+      (agent.personality as (AgentPersonality & { systemPrompt?: string }) | null) ?? {};
 
     // Apprentissage : si l'utilisateur ENSEIGNE quelque chose, on le retient comme règle durable.
     let rules = Array.isArray(persona.rules) ? persona.rules.slice(0, 30) : [];
@@ -568,14 +753,24 @@ export class CompanionService {
       if (!rules.some((r) => r.toLowerCase() === rule.toLowerCase())) {
         rules = [...rules, rule].slice(-20);
         learned = rule;
-        await this.db.update(companionAgents).set({ personality: { ...persona, rules }, updatedAt: new Date() }).where(eq(companionAgents.id, id));
+        await this.db
+          .update(companionAgents)
+          .set({ personality: { ...persona, rules }, updatedAt: new Date() })
+          .where(eq(companionAgents.id, id));
       }
     }
 
     // Historique persistant (les 12 derniers messages) = la mémoire du compagnon.
-    const past = await this.db.select({ sender: companionMessages.sender, text: companionMessages.text }).from(companionMessages)
-      .where(eq(companionMessages.agentId, id)).orderBy(desc(companionMessages.createdAt)).limit(12);
-    const hist = past.reverse().map((m) => `${m.sender === 'me' ? 'Utilisateur' : agent.name} : ${m.text.slice(0, 300)}`).join('\n');
+    const past = await this.db
+      .select({ sender: companionMessages.sender, text: companionMessages.text })
+      .from(companionMessages)
+      .where(eq(companionMessages.agentId, id))
+      .orderBy(desc(companionMessages.createdAt))
+      .limit(12);
+    const hist = past
+      .reverse()
+      .map((m) => `${m.sender === 'me' ? 'Utilisateur' : agent.name} : ${m.text.slice(0, 300)}`)
+      .join('\n');
 
     const rulesBlock = rules.length
       ? `\n\nRÈGLES APPRISES (l'utilisateur t'a enseigné ceci — respecte-les scrupuleusement) :\n${rules.map((r) => `- ${r}`).join('\n')}`
@@ -590,9 +785,10 @@ export class CompanionService {
     let toolsUsed: string[] = [];
     try {
       // Agent d'une ORGANISATION (open-space) → il peut consulter la base de connaissances de SON space.
-      const orgSearch = agent.space && agent.space !== 'home'
-        ? (query: string) => this.searchSpaceKnowledge(profileId, agent.space, query)
-        : undefined;
+      const orgSearch =
+        agent.space && agent.space !== 'home'
+          ? (query: string) => this.searchSpaceKnowledge(profileId, agent.space, query)
+          : undefined;
       const out = await this.copilote.runWithTools(profileId, {
         system: sys,
         prompt,
@@ -606,7 +802,11 @@ export class CompanionService {
       if (!reply) throw new Error('empty-final'); // finit sur un outil sans rédiger → repli
     } catch {
       const { object } = await this.copilote.generateStructured(profileId, {
-        schema: z.object({ reply: z.string().describe('La réponse du compagnon, en une à deux phrases, sans markdown.') }),
+        schema: z.object({
+          reply: z
+            .string()
+            .describe('La réponse du compagnon, en une à deux phrases, sans markdown.'),
+        }),
         schemaName: 'CompanionReply',
         system: sys,
         prompt,
@@ -620,12 +820,20 @@ export class CompanionService {
     const now = new Date();
     await this.db.insert(companionMessages).values([
       { profileId, agentId: id, sender: 'me', text: message.slice(0, 1000), createdAt: now },
-      { profileId, agentId: id, sender: 'agent', text: reply, createdAt: new Date(now.getTime() + 1) },
+      {
+        profileId,
+        agentId: id,
+        sender: 'agent',
+        text: reply,
+        createdAt: new Date(now.getTime() + 1),
+      },
     ]);
     // Efficacité : compte l'usage (chaque mobilisation OU chat direct passe ici).
-    await this.db.update(companionAgents)
+    await this.db
+      .update(companionAgents)
       .set({ useCount: sql`${companionAgents.useCount} + 1`, lastUsedAt: now })
-      .where(eq(companionAgents.id, id)).catch(() => undefined);
+      .where(eq(companionAgents.id, id))
+      .catch(() => undefined);
     return { reply, learned, toolsUsed: toolsUsed.length ? toolsUsed : undefined };
   }
 
@@ -634,12 +842,18 @@ export class CompanionService {
    * `chatAgent` (réponse courte façon WhatsApp), ici on veut un livrable structuré et concret, jamais un
    * refus. Persona + outils + RAG de l'org conservés ; pas de persistance en mémoire (c'est du travail).
    */
-  private async agentProduce(profileId: string, agent: typeof companionAgents.$inferSelect, instruction: string): Promise<{ text: string; toolsUsed: string[] }> {
-    const persona = (agent.personality as (AgentPersonality & { systemPrompt?: string }) | null) ?? {};
+  private async agentProduce(
+    profileId: string,
+    agent: typeof companionAgents.$inferSelect,
+    instruction: string,
+  ): Promise<{ text: string; toolsUsed: string[] }> {
+    const persona =
+      (agent.personality as (AgentPersonality & { systemPrompt?: string }) | null) ?? {};
     const sys = `${persona.systemPrompt || `Tu es ${agent.name}, spécialiste dans ton domaine.`}\n\nTu travailles au sein de ton organisation et tu dois PRODUIRE un livrable de travail. RÈGLES : réalise concrètement ce qui t'est demandé, dans TA spécialité — ne refuse JAMAIS et ne réponds pas de façon méta (« je vois que tu veux… ») : produis directement le contenu. Livrable clair, complet et directement utilisable (plusieurs phrases ou courts paragraphes). Si un point sort de ta spécialité, concentre-toi sur ta part. Français.`;
-    const orgSearch = agent.space && agent.space !== 'home'
-      ? (query: string) => this.searchSpaceKnowledge(profileId, agent.space, query)
-      : undefined;
+    const orgSearch =
+      agent.space && agent.space !== 'home'
+        ? (query: string) => this.searchSpaceKnowledge(profileId, agent.space, query)
+        : undefined;
     try {
       const out = await this.copilote.runWithTools(profileId, {
         system: sys,
@@ -670,21 +884,58 @@ export class CompanionService {
    * puis synthétise DANS SA VOIX. Les abeilles (open-spaces) sont les travailleuses ; la Maison, ce sont les leaders.
    * `leaderId` absent → le principal. `leaderId` = un compagnon de la Maison → il mène la ruche à sa façon.
    */
-  async orchestrate(authId: string, message: string, leaderId?: string): Promise<{ reply: string; delegates: { name: string; role: string | null; said: string }[]; created: string[]; toolsUsed: string[] }> {
+  async orchestrate(
+    authId: string,
+    message: string,
+    leaderId?: string,
+  ): Promise<{
+    reply: string;
+    delegates: { name: string; role: string | null; said: string }[];
+    created: string[];
+    toolsUsed: string[];
+  }> {
     const profileId = await this.profileIdForAuth(authId);
     // Outils réellement mobilisés par le leader et/ou les abeilles (boucle ReAct) → trace/caption.
     const toolsUsed = new Set<string>();
 
     // Résoudre le LEADER : un compagnon de la MAISON (space='home'). Seuls eux dirigent la ruche. Défaut = principal.
-    let leader: { id: string; name: string; isPrimary: boolean; systemPrompt?: string } | null = null;
+    let leader: { id: string; name: string; isPrimary: boolean; systemPrompt?: string } | null =
+      null;
     if (leaderId) {
-      const row = (await this.db.select().from(companionAgents)
-        .where(and(eq(companionAgents.id, leaderId), eq(companionAgents.profileId, profileId), eq(companionAgents.space, 'home'))))[0];
-      if (row) leader = { id: row.id, name: row.name, isPrimary: row.isPrimary, systemPrompt: (row.personality as { systemPrompt?: string } | null)?.systemPrompt };
+      const row = (
+        await this.db
+          .select()
+          .from(companionAgents)
+          .where(
+            and(
+              eq(companionAgents.id, leaderId),
+              eq(companionAgents.profileId, profileId),
+              eq(companionAgents.space, 'home'),
+            ),
+          )
+      )[0];
+      if (row)
+        leader = {
+          id: row.id,
+          name: row.name,
+          isPrimary: row.isPrimary,
+          systemPrompt: (row.personality as { systemPrompt?: string } | null)?.systemPrompt,
+        };
     }
     if (!leader) {
-      const prim = (await this.db.select().from(companionAgents).where(and(eq(companionAgents.profileId, profileId), eq(companionAgents.isPrimary, true))))[0];
-      if (prim) leader = { id: prim.id, name: prim.name, isPrimary: prim.isPrimary, systemPrompt: (prim.personality as { systemPrompt?: string } | null)?.systemPrompt };
+      const prim = (
+        await this.db
+          .select()
+          .from(companionAgents)
+          .where(and(eq(companionAgents.profileId, profileId), eq(companionAgents.isPrimary, true)))
+      )[0];
+      if (prim)
+        leader = {
+          id: prim.id,
+          name: prim.name,
+          isPrimary: prim.isPrimary,
+          systemPrompt: (prim.personality as { systemPrompt?: string } | null)?.systemPrompt,
+        };
     }
     const leaderName = leader?.name || 'Dowze';
     // Un leader-AGENT (compagnon de la Maison non principal) a sa propre mémoire/persona → réponses directes via chatAgent.
@@ -693,12 +944,22 @@ export class CompanionService {
     // La ruche = les abeilles des open-spaces (les compagnons de la Maison sont des LEADERS, pas des travailleuses).
     // RUCHE INFINIE : on ne charge JAMAIS toutes les abeilles. On récupère une SHORT-LIST pertinente à la demande
     // (match par mots-clés sur le nom/rôle, plafonnée) → le prompt reste borné même avec des millions d'abeilles.
-    const keywords = [...new Set((message.toLowerCase().match(/[a-zàâäéèêëïîôöùûüç0-9]{4,}/g) ?? []))].slice(0, 8);
+    const keywords = [
+      ...new Set(message.toLowerCase().match(/[a-zàâäéèêëïîôöùûüç0-9]{4,}/g) ?? []),
+    ].slice(0, 8);
     const HIVE_SHORTLIST = 40;
-    const baseWhere = and(eq(companionAgents.profileId, profileId), eq(companionAgents.mode, 'agent'), ne(companionAgents.space, 'home'), eq(companionAgents.status, 'active'));
+    const baseWhere = and(
+      eq(companionAgents.profileId, profileId),
+      eq(companionAgents.mode, 'agent'),
+      ne(companionAgents.space, 'home'),
+      eq(companionAgents.status, 'active'),
+    );
     let specialists: { id: string; name: string; role: string | null }[] = [];
     if (keywords.length) {
-      const matchConds = keywords.flatMap((w) => [ilike(companionAgents.name, `%${w}%`), ilike(companionAgents.role, `%${w}%`)]);
+      const matchConds = keywords.flatMap((w) => [
+        ilike(companionAgents.name, `%${w}%`),
+        ilike(companionAgents.role, `%${w}%`),
+      ]);
       specialists = await this.db
         .select({ id: companionAgents.id, name: companionAgents.name, role: companionAgents.role })
         .from(companionAgents)
@@ -714,12 +975,16 @@ export class CompanionService {
         .where(baseWhere)
         .orderBy(desc(companionAgents.updatedAt))
         .limit(HIVE_SHORTLIST);
-      for (const r of recent) { if (!seen.has(r.id) && specialists.length < HIVE_SHORTLIST) specialists.push(r); }
+      for (const r of recent) {
+        if (!seen.has(r.id) && specialists.length < HIVE_SHORTLIST) specialists.push(r);
+      }
     }
 
     // SÉMANTIQUE (pgvector) : les abeilles les plus proches du SENS de la demande, EN TÊTE de la short-list.
     // (« corrige mon email en anglais » retrouve une abeille « relecture / traduction » même sans mot-clé commun.)
-    const qvec = (await this.copilote.embed(profileId, [message.slice(0, 512)]).catch(() => null))?.[0];
+    const qvec = (
+      await this.copilote.embed(profileId, [message.slice(0, 512)]).catch(() => null)
+    )?.[0];
     if (qvec && qvec.length === HIVE_EMBED_DIM) {
       const lit = `[${qvec.join(',')}]`;
       const sem = (await this.db.execute(sql`
@@ -729,7 +994,10 @@ export class CompanionService {
       `)) as unknown as { id: string; name: string; role: string | null }[];
       if (sem.length) {
         const seen = new Set(sem.map((s) => s.id));
-        specialists = [...sem, ...specialists.filter((s) => !seen.has(s.id))].slice(0, HIVE_SHORTLIST);
+        specialists = [...sem, ...specialists.filter((s) => !seen.has(s.id))].slice(
+          0,
+          HIVE_SHORTLIST,
+        );
       }
     }
 
@@ -738,9 +1006,15 @@ export class CompanionService {
       : `Tu es ${leaderName}, l'assistant personnel principal de l'utilisateur (la « reine » de sa ruche). Tu peux traiter N'IMPORTE QUELLE demande, dans N'IMPORTE QUEL domaine (travail, code, projets, business, études, vie quotidienne, administratif, créativité, sport, santé, etc.). Tu réponds toujours de façon COURTE et humaine (1 à 2 phrases), sans markdown ni listes. Français.`;
 
     // Open-spaces métier (bornés : on n'en liste jamais des milliers dans le prompt — les plus récents suffisent à la réutilisation).
-    const openSpaces = await this.db.select({ name: companionSpaces.name }).from(companionSpaces)
-      .where(eq(companionSpaces.profileId, profileId)).orderBy(desc(companionSpaces.createdAt)).limit(50);
-    const spaceList = openSpaces.length ? openSpaces.map((s) => `« ${s.name} »`).join(', ') : '(aucun pour l’instant)';
+    const openSpaces = await this.db
+      .select({ name: companionSpaces.name })
+      .from(companionSpaces)
+      .where(eq(companionSpaces.profileId, profileId))
+      .orderBy(desc(companionSpaces.createdAt))
+      .limit(50);
+    const spaceList = openSpaces.length
+      ? openSpaces.map((s) => `« ${s.name} »`).join(', ')
+      : '(aucun pour l’instant)';
 
     // 1) Plan : décomposer + pour chaque sous-tâche, une abeille EXISTANTE ou une NOUVELLE à créer (rangée dans son open-space métier).
     const roster = specialists.length
@@ -762,7 +1036,9 @@ export class CompanionService {
           const r = await this.chatAgent(authId, leaderAgentId, message);
           r.toolsUsed?.forEach((t) => toolsUsed.add(t));
           return r.reply;
-        } catch { /* repli */ }
+        } catch {
+          /* repli */
+        }
       } else {
         // Principal (la reine) : réponse directe AGENTIQUE — peut calculer, dater, s'ancrer via les outils
         // au lieu de répondre « de tête » (le plan avait proposé `plan.direct` sans outil).
@@ -777,14 +1053,20 @@ export class CompanionService {
           });
           out.toolsUsed.forEach((t) => toolsUsed.add(t));
           if (out.text) return out.text.slice(0, 600);
-        } catch { /* repli vers la réponse directe du plan */ }
+        } catch {
+          /* repli vers la réponse directe du plan */
+        }
       }
       return (plan.direct || '…').slice(0, 600);
     };
 
     // Ne garde que les délégations exploitables : abeille existante valide OU demande de création non vide.
     const dels = (plan.delegations || [])
-      .filter((d) => (Number.isInteger(d.existing) && d.existing >= 1 && d.existing <= specialists.length) || (typeof d.create === 'string' && d.create.trim().length > 0))
+      .filter(
+        (d) =>
+          (Number.isInteger(d.existing) && d.existing >= 1 && d.existing <= specialists.length) ||
+          (typeof d.create === 'string' && d.create.trim().length > 0),
+      )
       .slice(0, 3);
     if (dels.length === 0) {
       return { reply: await directReply(), delegates: [], created: [], toolsUsed: [...toolsUsed] };
@@ -808,11 +1090,17 @@ export class CompanionService {
           } else {
             // Nouvelle abeille : rangée dans son OPEN-SPACE métier (auto-créé au besoin), JAMAIS dans la Maison.
             const spaceId = await this.ensureSpaceByName(profileId, d.spaceName || 'Ruche');
-            const row = await this.createAgentFromDescription(profileId, d.create.slice(0, 300), spaceId);
+            const row = await this.createAgentFromDescription(
+              profileId,
+              d.create.slice(0, 300),
+              spaceId,
+            );
             sp = { id: row.id, name: row.name, role: row.role };
             created.push(row.name);
           }
-        } catch { /* IA indispo → on saute cette abeille */ }
+        } catch {
+          /* IA indispo → on saute cette abeille */
+        }
       }
       if (sp) jobs.push({ sp, subtask: d.subtask.slice(0, 500) });
     }
@@ -820,23 +1108,32 @@ export class CompanionService {
     // 2b) Déléguer EN PARALLÈLE (les appels IA sont le coût dominant : ~sec chacun) — l'ORDRE est préservé
     // (Promise.all garde l'index → les notes d'utilité de la synthèse restent alignées). Une abeille qui
     // échoue tombe à null et ne bloque pas les autres.
-    const settled = await Promise.all(jobs.map(async (j) => {
-      try {
-        const r = await this.chatAgent(authId, j.sp.id, j.subtask);
-        r.toolsUsed?.forEach((t) => toolsUsed.add(t));
-        return { id: j.sp.id, name: j.sp.name, role: j.sp.role, said: r.reply };
-      } catch {
-        return null; // une abeille indisponible ne bloque pas les autres
-      }
-    }));
-    const results = settled.filter((r): r is { id: string; name: string; role: string | null; said: string } => r !== null);
-    if (results.length === 0) return { reply: await directReply(), delegates: [], created, toolsUsed: [...toolsUsed] };
+    const settled = await Promise.all(
+      jobs.map(async (j) => {
+        try {
+          const r = await this.chatAgent(authId, j.sp.id, j.subtask);
+          r.toolsUsed?.forEach((t) => toolsUsed.add(t));
+          return { id: j.sp.id, name: j.sp.name, role: j.sp.role, said: r.reply };
+        } catch {
+          return null; // une abeille indisponible ne bloque pas les autres
+        }
+      }),
+    );
+    const results = settled.filter(
+      (r): r is { id: string; name: string; role: string | null; said: string } => r !== null,
+    );
+    if (results.length === 0)
+      return { reply: await directReply(), delegates: [], created, toolsUsed: [...toolsUsed] };
 
     // 3) Synthèse DANS LA VOIX DU LEADER + notation de l'utilité de chaque abeille (LLM-as-judge, gratuit).
     const { object: synth } = await this.copilote.generateStructured(profileId, {
       schema: z.object({
         reply: z.string(),
-        ratings: z.array(z.number()).describe(`Une note d'UTILITÉ entre 0 et 1 pour CHAQUE abeille, dans l'ordre de la liste (0 = inutile/hors sujet, 1 = très utile). ${results.length} notes.`),
+        ratings: z
+          .array(z.number())
+          .describe(
+            `Une note d'UTILITÉ entre 0 et 1 pour CHAQUE abeille, dans l'ordre de la liste (0 = inutile/hors sujet, 1 = très utile). ${results.length} notes.`,
+          ),
       }),
       schemaName: 'AssistantSynthesis',
       system: `${ASSISTANT}\n\nTes abeilles viennent de te rapporter leurs réponses. (1) Fais une SYNTHÈSE courte et naturelle pour l'utilisateur (1 à 3 phrases), comme ${leaderName} qui fait le point après avoir mobilisé son équipe ; tu peux mentionner qui a aidé ; pas de markdown ni de listes. (2) Note l'utilité de chaque abeille (champ "ratings", même ordre).`,
@@ -845,22 +1142,44 @@ export class CompanionService {
     });
     // Qualité glissante (EMA α=0.3) par abeille mobilisée → nourrit le tri/merge/prune du « jardinage ».
     const ratings = Array.isArray(synth.ratings) ? synth.ratings : [];
-    await Promise.all(results.map((r, i) => {
-      const raw = ratings[i];
-      if (typeof raw !== 'number' || Number.isNaN(raw)) return Promise.resolve(undefined);
-      const q = Math.max(0, Math.min(1, raw));
-      return this.db.update(companionAgents)
-        .set({ qualityEma: sql`case when ${companionAgents.qualityEma} is null then ${q} else 0.3 * ${q} + 0.7 * ${companionAgents.qualityEma} end`, ratingCount: sql`${companionAgents.ratingCount} + 1` })
-        .where(eq(companionAgents.id, r.id)).catch(() => undefined);
-    }));
+    await Promise.all(
+      results.map((r, i) => {
+        const raw = ratings[i];
+        if (typeof raw !== 'number' || Number.isNaN(raw)) return Promise.resolve(undefined);
+        const q = Math.max(0, Math.min(1, raw));
+        return this.db
+          .update(companionAgents)
+          .set({
+            qualityEma: sql`case when ${companionAgents.qualityEma} is null then ${q} else 0.3 * ${q} + 0.7 * ${companionAgents.qualityEma} end`,
+            ratingCount: sql`${companionAgents.ratingCount} + 1`,
+          })
+          .where(eq(companionAgents.id, r.id))
+          .catch(() => undefined);
+      }),
+    );
     const finalReply = (synth.reply || '…').slice(0, 700);
     // Mémoire du leader-agent : on garde la trace de l'échange (la conversation individuelle reste cohérente).
     if (leaderAgentId) {
       const now = new Date();
-      await this.db.insert(companionMessages).values([
-        { profileId, agentId: leaderAgentId, sender: 'me', text: message.slice(0, 1000), createdAt: now },
-        { profileId, agentId: leaderAgentId, sender: 'agent', text: finalReply, createdAt: new Date(now.getTime() + 1) },
-      ]).catch(() => undefined);
+      await this.db
+        .insert(companionMessages)
+        .values([
+          {
+            profileId,
+            agentId: leaderAgentId,
+            sender: 'me',
+            text: message.slice(0, 1000),
+            createdAt: now,
+          },
+          {
+            profileId,
+            agentId: leaderAgentId,
+            sender: 'agent',
+            text: finalReply,
+            createdAt: new Date(now.getTime() + 1),
+          },
+        ])
+        .catch(() => undefined);
     }
     return { reply: finalReply, delegates: results, created, toolsUsed: [...toolsUsed] };
   }
@@ -871,10 +1190,31 @@ export class CompanionService {
    * délègue chaque sous-tâche au MEMBRE dont c'est le métier (effectif FIXE, aucune création),
    * puis synthétise DANS SA VOIX. Renvoie l'id du leader + les membres mobilisés pour l'affichage.
    */
-  async orchestrateSpace(authId: string, spaceId: string, message: string): Promise<{ leadId: string; leadName: string; reply: string; delegates: { id: string; name: string; role: string | null; said: string }[]; qa?: { id: string; name: string; ok: boolean; note: string }; toolsUsed: string[] }> {
+  async orchestrateSpace(
+    authId: string,
+    spaceId: string,
+    message: string,
+  ): Promise<{
+    leadId: string;
+    leadName: string;
+    reply: string;
+    delegates: { id: string; name: string; role: string | null; said: string }[];
+    qa?: { id: string; name: string; ok: boolean; note: string };
+    toolsUsed: string[];
+  }> {
     const profileId = await this.profileIdForAuth(authId);
-    const space = (await this.db.select({ id: companionSpaces.id, name: companionSpaces.name, mission: companionSpaces.mission, type: companionSpaces.type, ownerKind: companionSpaces.ownerKind })
-      .from(companionSpaces).where(and(eq(companionSpaces.id, spaceId), eq(companionSpaces.profileId, profileId))))[0];
+    const space = (
+      await this.db
+        .select({
+          id: companionSpaces.id,
+          name: companionSpaces.name,
+          mission: companionSpaces.mission,
+          type: companionSpaces.type,
+          ownerKind: companionSpaces.ownerKind,
+        })
+        .from(companionSpaces)
+        .where(and(eq(companionSpaces.id, spaceId), eq(companionSpaces.profileId, profileId)))
+    )[0];
     if (!space) throw new NotFoundException('Espace introuvable.');
     const toolsUsed = new Set<string>();
 
@@ -885,10 +1225,25 @@ export class CompanionService {
     }
 
     // Effectif COMPLET du space (petit : école ≈ 13, entreprise ≈ 8 → pas de short-list nécessaire).
-    const roster = await this.db.select({ id: companionAgents.id, name: companionAgents.name, role: companionAgents.role, roleKey: companionAgents.roleKey, personality: companionAgents.personality })
+    const roster = await this.db
+      .select({
+        id: companionAgents.id,
+        name: companionAgents.name,
+        role: companionAgents.role,
+        roleKey: companionAgents.roleKey,
+        personality: companionAgents.personality,
+      })
       .from(companionAgents)
-      .where(and(eq(companionAgents.profileId, profileId), eq(companionAgents.space, spaceId), eq(companionAgents.mode, 'agent'), eq(companionAgents.status, 'active')))
-      .orderBy(asc(companionAgents.createdAt)).limit(64);
+      .where(
+        and(
+          eq(companionAgents.profileId, profileId),
+          eq(companionAgents.space, spaceId),
+          eq(companionAgents.mode, 'agent'),
+          eq(companionAgents.status, 'active'),
+        ),
+      )
+      .orderBy(asc(companionAgents.createdAt))
+      .limit(64);
     if (!roster.length) throw new BadRequestException('Cet espace n’a pas encore d’équipe.');
 
     // Leader = membre au rôle `lead` (Directeur/CEO), sinon le premier.
@@ -899,10 +1254,14 @@ export class CompanionService {
       : `Tu diriges l'organisation « ${space.name} »${space.mission ? ` — ${space.mission}` : ''}. Tu réponds court (1 à 2 phrases), sans markdown ni listes. Français.`;
 
     // Le VÉRIFICATEUR (QA/évaluateur) est RÉSERVÉ à la relecture → jamais délégable (sinon plus de QA indépendant).
-    const qaMember = roster.find((a) => (a.roleKey === 'qa' || a.roleKey === 'evaluateur') && a.id !== lead.id);
+    const qaMember = roster.find(
+      (a) => (a.roleKey === 'qa' || a.roleKey === 'evaluateur') && a.id !== lead.id,
+    );
     // Membres délégables = tous sauf le leader et le vérificateur.
     const members = roster.filter((a) => a.id !== lead.id && a.id !== qaMember?.id);
-    const rosterList = members.length ? members.map((m, i) => `${i + 1}. ${m.name} — ${m.role || 'membre'}`).join('\n') : '(aucun autre membre)';
+    const rosterList = members.length
+      ? members.map((m, i) => `${i + 1}. ${m.name} — ${m.role || 'membre'}`).join('\n')
+      : '(aucun autre membre)';
 
     // 1) Plan : à qui déléguer (par numéro de membre), ou réponse directe du leader.
     const { object: plan } = await this.copilote.generateStructured(profileId, {
@@ -918,43 +1277,82 @@ export class CompanionService {
         const r = await this.chatAgent(authId, lead.id, message);
         r.toolsUsed?.forEach((t) => toolsUsed.add(t));
         return r.reply;
-      } catch { return (plan.direct || '…').slice(0, 600); }
+      } catch {
+        return (plan.direct || '…').slice(0, 600);
+      }
     };
 
     const dels = (plan.delegations || [])
-      .filter((d) => Number.isInteger(d.member) && d.member >= 1 && d.member <= members.length && typeof d.subtask === 'string' && d.subtask.trim().length > 0)
+      .filter(
+        (d) =>
+          Number.isInteger(d.member) &&
+          d.member >= 1 &&
+          d.member <= members.length &&
+          typeof d.subtask === 'string' &&
+          d.subtask.trim().length > 0,
+      )
       .slice(0, 3);
     if (dels.length === 0) {
-      return { leadId: lead.id, leadName: lead.name, reply: await directReply(), delegates: [], toolsUsed: [...toolsUsed] };
+      return {
+        leadId: lead.id,
+        leadName: lead.name,
+        reply: await directReply(),
+        delegates: [],
+        toolsUsed: [...toolsUsed],
+      };
     }
 
     // 2) Déléguer au bon membre (chatAgent = persona + mémoire + outils + RAG de l'org). `delegate` est
     // réutilisable pour l'AUTO-CORRECTION (retry avec le feedback QA).
     const jobs = dels.map((d) => ({ m: members[d.member - 1]!, subtask: d.subtask.slice(0, 500) }));
     const delegate = async (subtaskOf: (subtask: string) => string) =>
-      (await Promise.all(jobs.map(async (j) => {
-        try {
-          const r = await this.chatAgent(authId, j.m.id, subtaskOf(j.subtask));
-          r.toolsUsed?.forEach((t) => toolsUsed.add(t));
-          return { id: j.m.id, name: j.m.name, role: j.m.role, said: r.reply };
-        } catch { return null; }
-      }))).filter((r): r is { id: string; name: string; role: string | null; said: string } => r !== null);
+      (
+        await Promise.all(
+          jobs.map(async (j) => {
+            try {
+              const r = await this.chatAgent(authId, j.m.id, subtaskOf(j.subtask));
+              r.toolsUsed?.forEach((t) => toolsUsed.add(t));
+              return { id: j.m.id, name: j.m.name, role: j.m.role, said: r.reply };
+            } catch {
+              return null;
+            }
+          }),
+        )
+      ).filter(
+        (r): r is { id: string; name: string; role: string | null; said: string } => r !== null,
+      );
 
     let results = await delegate((s) => s);
     if (results.length === 0) {
-      return { leadId: lead.id, leadName: lead.name, reply: await directReply(), delegates: [], toolsUsed: [...toolsUsed] };
+      return {
+        leadId: lead.id,
+        leadName: lead.name,
+        reply: await directReply(),
+        delegates: [],
+        toolsUsed: [...toolsUsed],
+      };
     }
 
     // 2b) QA (garde-fou MAST) + AUTO-CORRECTION BORNÉE : l'Évaluateur (réservé, non délégable) relit ;
     // s'il rejette, l'équipe RE-PRODUIT UNE FOIS avec le feedback, puis le QA revérifie (1 seul retry).
-    const runQa = async (items: { name: string; role: string | null; said: string }[]): Promise<{ ok: boolean; note: string } | undefined> => {
+    const runQa = async (
+      items: { name: string; role: string | null; said: string }[],
+    ): Promise<{ ok: boolean; note: string } | undefined> => {
       if (!qaMember) return undefined;
       const qaPrompt = (qaMember.personality as { systemPrompt?: string } | null)?.systemPrompt;
       try {
         const { object: v } = await this.copilote.generateStructured(profileId, {
           schema: z.object({
-            ok: z.boolean().describe('true si les réponses de l’équipe sont correctes, complètes et adaptées ; false si un problème doit être corrigé.'),
-            note: z.string().describe('Une phrase : ce qui va, ou précisément ce qui cloche et comment le corriger.'),
+            ok: z
+              .boolean()
+              .describe(
+                'true si les réponses de l’équipe sont correctes, complètes et adaptées ; false si un problème doit être corrigé.',
+              ),
+            note: z
+              .string()
+              .describe(
+                'Une phrase : ce qui va, ou précisément ce qui cloche et comment le corriger.',
+              ),
           }),
           schemaName: 'QaVerdict',
           system: `${qaPrompt ?? 'Tu es le contrôle qualité de l’organisation.'}\n\nTu es le VÉRIFICATEUR : tu contrôles les réponses de l'équipe AVANT qu'elles soient données à l'utilisateur. Sois juste mais exigeant. Réponds en UNE phrase.`,
@@ -962,16 +1360,27 @@ export class CompanionService {
           temperature: 0.2,
         });
         return { ok: v.ok, note: (v.note || '').slice(0, 400) };
-      } catch { return undefined; }
+      } catch {
+        return undefined;
+      }
     };
 
     let verdict = await runQa(results);
     if (verdict && !verdict.ok) {
       const fb = verdict.note;
-      const retried = await delegate((s) => `${s}\n\n[Le contrôle qualité a demandé une correction : ${fb}. Reprends ta réponse et corrige/complète-la en conséquence.]`);
-      if (retried.length) { results = retried; verdict = (await runQa(results)) ?? verdict; }
+      const retried = await delegate(
+        (s) =>
+          `${s}\n\n[Le contrôle qualité a demandé une correction : ${fb}. Reprends ta réponse et corrige/complète-la en conséquence.]`,
+      );
+      if (retried.length) {
+        results = retried;
+        verdict = (await runQa(results)) ?? verdict;
+      }
     }
-    const qa = verdict && qaMember ? { id: qaMember.id, name: qaMember.name, ok: verdict.ok, note: verdict.note } : undefined;
+    const qa =
+      verdict && qaMember
+        ? { id: qaMember.id, name: qaMember.name, ok: verdict.ok, note: verdict.note }
+        : undefined;
 
     // 3) Synthèse DANS LA VOIX DU LEADER, en tenant compte du verdict QA final.
     const qaLine = qa
@@ -984,7 +1393,14 @@ export class CompanionService {
       prompt: `Demande de l'utilisateur : ${message.slice(0, 1000)}\n\nRéponses de ton équipe :\n${results.map((r, i) => `${i + 1}. ${r.name} (${r.role || 'membre'}) : ${r.said}`).join('\n')}`,
       temperature: 0.6,
     });
-    return { leadId: lead.id, leadName: lead.name, reply: (synth.reply || '…').slice(0, 700), delegates: results, qa, toolsUsed: [...toolsUsed] };
+    return {
+      leadId: lead.id,
+      leadName: lead.name,
+      reply: (synth.reply || '…').slice(0, 700),
+      delegates: results,
+      qa,
+      toolsUsed: [...toolsUsed],
+    };
   }
 
   /**
@@ -992,25 +1408,62 @@ export class CompanionService {
    * PRODUIT son livrable (en s'appuyant sur la base de connaissances de l'org) → l'Évaluateur relit →
    * le leader ASSEMBLE un livrable final, qui est ARCHIVÉ dans la base de connaissances (artefact/mémoire).
    */
-  async runProject(authId: string, spaceId: string, goal: string): Promise<{ deliverable: string; steps: { id: string; name: string; role: string | null; produces: string; said: string }[]; qa?: { name: string; ok: boolean; note: string }; knowledgeId?: string; toolsUsed: string[] }> {
+  async runProject(
+    authId: string,
+    spaceId: string,
+    goal: string,
+  ): Promise<{
+    deliverable: string;
+    steps: { id: string; name: string; role: string | null; produces: string; said: string }[];
+    qa?: { name: string; ok: boolean; note: string };
+    knowledgeId?: string;
+    toolsUsed: string[];
+  }> {
     const profileId = await this.profileIdForAuth(authId);
-    const space = (await this.db.select({ id: companionSpaces.id, name: companionSpaces.name, mission: companionSpaces.mission })
-      .from(companionSpaces).where(and(eq(companionSpaces.id, spaceId), eq(companionSpaces.profileId, profileId))))[0];
+    const space = (
+      await this.db
+        .select({
+          id: companionSpaces.id,
+          name: companionSpaces.name,
+          mission: companionSpaces.mission,
+        })
+        .from(companionSpaces)
+        .where(and(eq(companionSpaces.id, spaceId), eq(companionSpaces.profileId, profileId)))
+    )[0];
     if (!space) throw new NotFoundException('Espace introuvable.');
     const toolsUsed = new Set<string>();
 
-    const roster = await this.db.select({ id: companionAgents.id, name: companionAgents.name, role: companionAgents.role, roleKey: companionAgents.roleKey, personality: companionAgents.personality })
+    const roster = await this.db
+      .select({
+        id: companionAgents.id,
+        name: companionAgents.name,
+        role: companionAgents.role,
+        roleKey: companionAgents.roleKey,
+        personality: companionAgents.personality,
+      })
       .from(companionAgents)
-      .where(and(eq(companionAgents.profileId, profileId), eq(companionAgents.space, spaceId), eq(companionAgents.mode, 'agent'), eq(companionAgents.status, 'active')))
-      .orderBy(asc(companionAgents.createdAt)).limit(64);
+      .where(
+        and(
+          eq(companionAgents.profileId, profileId),
+          eq(companionAgents.space, spaceId),
+          eq(companionAgents.mode, 'agent'),
+          eq(companionAgents.status, 'active'),
+        ),
+      )
+      .orderBy(asc(companionAgents.createdAt))
+      .limit(64);
     if (!roster.length) throw new BadRequestException('Cet espace n’a pas encore d’équipe.');
     const lead = roster.find((a) => roleByKey(a.roleKey)?.lead) ?? roster[0]!;
     const leadPrompt = (lead.personality as { systemPrompt?: string } | null)?.systemPrompt;
     const leadSystem = `${leadPrompt ?? `Tu diriges « ${space.name} ».`}\n\nTu diriges l'organisation « ${space.name} »${space.mission ? ` — ${space.mission}` : ''}. Français.`;
     // Le VÉRIFICATEUR (QA/évaluateur) est RÉSERVÉ à la relecture → jamais chargé de produire.
-    const qaMember = roster.find((a) => (a.roleKey === 'qa' || a.roleKey === 'evaluateur') && a.id !== lead.id);
+    const qaMember = roster.find(
+      (a) => (a.roleKey === 'qa' || a.roleKey === 'evaluateur') && a.id !== lead.id,
+    );
     const members = roster.filter((a) => a.id !== lead.id && a.id !== qaMember?.id);
-    const rosterList = members.length ? members.map((m, i) => `${i + 1}. ${m.name} — ${m.role || 'membre'}`).join('\n') : '(aucun autre membre)';
+    const rosterList = members.length
+      ? members.map((m, i) => `${i + 1}. ${m.name} — ${m.role || 'membre'}`).join('\n')
+      : '(aucun autre membre)';
 
     // 1) Plan de chantier : tâches + livrables, confiés aux bons membres.
     const { object: plan } = await this.copilote.generateStructured(profileId, {
@@ -1021,7 +1474,14 @@ export class CompanionService {
       temperature: 0.4,
     });
     const tasks = (plan.tasks || [])
-      .filter((t) => Number.isInteger(t.member) && t.member >= 1 && t.member <= members.length && typeof t.task === 'string' && t.task.trim().length > 0)
+      .filter(
+        (t) =>
+          Number.isInteger(t.member) &&
+          t.member >= 1 &&
+          t.member <= members.length &&
+          typeof t.task === 'string' &&
+          t.task.trim().length > 0,
+      )
       .slice(0, 5);
 
     // 2) Chaque membre PRODUIT son livrable (parallèle ; il peut consulter la base de l'org). `produce`
@@ -1029,26 +1489,57 @@ export class CompanionService {
     // Charge une fois les lignes complètes des membres mobilisés (persona/space) pour la PRODUCTION.
     const memberIds = [...new Set(tasks.map((t) => members[t.member - 1]!.id))];
     const fullRows = memberIds.length
-      ? await this.db.select().from(companionAgents).where(and(eq(companionAgents.profileId, profileId), inArray(companionAgents.id, memberIds)))
+      ? await this.db
+          .select()
+          .from(companionAgents)
+          .where(
+            and(eq(companionAgents.profileId, profileId), inArray(companionAgents.id, memberIds)),
+          )
       : [];
     const fullById = new Map(fullRows.map((r) => [r.id, r]));
     const produce = async (extra: (task: string, produces: string) => string) =>
-      (await Promise.all(tasks.map(async (t) => {
-        const m = members[t.member - 1]!;
-        const full = fullById.get(m.id);
-        if (!full) return null;
-        try {
-          const r = await this.agentProduce(profileId, full, extra(t.task.slice(0, 400), t.produces.slice(0, 120)));
-          r.toolsUsed.forEach((x) => toolsUsed.add(x));
-          return { id: m.id, name: m.name, role: m.role, produces: t.produces.slice(0, 120), said: r.text };
-        } catch { return null; }
-      }))).filter((s): s is { id: string; name: string; role: string | null; produces: string; said: string } => s !== null);
+      (
+        await Promise.all(
+          tasks.map(async (t) => {
+            const m = members[t.member - 1]!;
+            const full = fullById.get(m.id);
+            if (!full) return null;
+            try {
+              const r = await this.agentProduce(
+                profileId,
+                full,
+                extra(t.task.slice(0, 400), t.produces.slice(0, 120)),
+              );
+              r.toolsUsed.forEach((x) => toolsUsed.add(x));
+              return {
+                id: m.id,
+                name: m.name,
+                role: m.role,
+                produces: t.produces.slice(0, 120),
+                said: r.text,
+              };
+            } catch {
+              return null;
+            }
+          }),
+        )
+      ).filter(
+        (
+          s,
+        ): s is { id: string; name: string; role: string | null; produces: string; said: string } =>
+          s !== null,
+      );
 
-    let steps = await produce((task, produces) => `Pour le projet « ${goal.slice(0, 300)} », produis ${produces} : ${task}. Sois concret et complet.`);
+    let steps = await produce(
+      (task, produces) =>
+        `Pour le projet « ${goal.slice(0, 300)} », produis ${produces} : ${task}. Sois concret et complet.`,
+    );
 
     // 3) QA (garde-fou) + AUTO-CORRECTION BORNÉE : l'Évaluateur (réservé, non producteur) relit ; s'il
     // rejette, l'équipe re-produit UNE FOIS avec le feedback, puis le QA revérifie (1 seul retry).
-    const runQa = async (items: { name: string; produces: string; said: string }[]): Promise<{ ok: boolean; note: string } | undefined> => {
+    const runQa = async (
+      items: { name: string; produces: string; said: string }[],
+    ): Promise<{ ok: boolean; note: string } | undefined> => {
       if (!items.length || !qaMember) return undefined;
       const qaPrompt = (qaMember.personality as { systemPrompt?: string } | null)?.systemPrompt;
       try {
@@ -1060,19 +1551,30 @@ export class CompanionService {
           temperature: 0.2,
         });
         return { ok: v.ok, note: (v.note || '').slice(0, 400) };
-      } catch { return undefined; }
+      } catch {
+        return undefined;
+      }
     };
 
     let verdict = await runQa(steps);
     if (verdict && !verdict.ok && steps.length) {
       const fb = verdict.note;
-      const retried = await produce((task, produces) => `Pour le projet « ${goal.slice(0, 300)} », produis ${produces} : ${task}. Sois concret et complet.\n\n[Le contrôle qualité a demandé une correction : ${fb}. Corrige/complète ton livrable en conséquence.]`);
-      if (retried.length) { steps = retried; verdict = (await runQa(steps)) ?? verdict; }
+      const retried = await produce(
+        (task, produces) =>
+          `Pour le projet « ${goal.slice(0, 300)} », produis ${produces} : ${task}. Sois concret et complet.\n\n[Le contrôle qualité a demandé une correction : ${fb}. Corrige/complète ton livrable en conséquence.]`,
+      );
+      if (retried.length) {
+        steps = retried;
+        verdict = (await runQa(steps)) ?? verdict;
+      }
     }
-    const qa = verdict && qaMember ? { name: qaMember.name, ok: verdict.ok, note: verdict.note } : undefined;
+    const qa =
+      verdict && qaMember ? { name: qaMember.name, ok: verdict.ok, note: verdict.note } : undefined;
 
     // 4) Le leader ASSEMBLE un livrable final structuré (tient compte du verdict QA).
-    const qaLine = qa ? `\n\nVerdict de ton évaluateur ${qa.name} : ${qa.ok ? 'VALIDÉ' : 'À CORRIGER'} — « ${qa.note} ». ${qa.ok ? '' : 'Corrige/complète en conséquence.'}` : '';
+    const qaLine = qa
+      ? `\n\nVerdict de ton évaluateur ${qa.name} : ${qa.ok ? 'VALIDÉ' : 'À CORRIGER'} — « ${qa.note} ». ${qa.ok ? '' : 'Corrige/complète en conséquence.'}`
+      : '';
     const base = steps.length
       ? `${leadSystem}\n\nTon équipe a produit les livrables ci-dessous. ASSEMBLE-les en UN livrable final clair, concret et directement utilisable pour l'utilisateur (plusieurs phrases ou courts paragraphes ; pas de markdown lourd). Tu peux mentionner qui a fait quoi.${qaLine}`
       : `${leadSystem}\n\nProduis toi-même un livrable clair et concret pour ce projet (plusieurs phrases).`;
@@ -1090,23 +1592,53 @@ export class CompanionService {
     // 5) ARCHIVE le livrable dans la base de connaissances de l'org (artefact/mémoire de projet).
     let knowledgeId: string | undefined;
     try {
-      const row = (await this.db.insert(companionSpaceKnowledge)
-        .values({ profileId, space: spaceId, title: `Projet : ${goal.slice(0, 140)}`, content: deliverable })
-        .returning({ id: companionSpaceKnowledge.id }))[0];
+      const row = (
+        await this.db
+          .insert(companionSpaceKnowledge)
+          .values({
+            profileId,
+            space: spaceId,
+            title: `Projet : ${goal.slice(0, 140)}`,
+            content: deliverable,
+          })
+          .returning({ id: companionSpaceKnowledge.id })
+      )[0];
       knowledgeId = row?.id;
-      if (row) void this.copilote.embed(profileId, [`Projet : ${goal}. ${deliverable}`.slice(0, 2000)]).then((v) => this.storeKnowledgeEmbedding(row.id, v?.[0])).catch(() => undefined);
-    } catch { /* archivage best-effort */ }
+      if (row)
+        void this.copilote
+          .embed(profileId, [`Projet : ${goal}. ${deliverable}`.slice(0, 2000)])
+          .then((v) => this.storeKnowledgeEmbedding(row.id, v?.[0]))
+          .catch(() => undefined);
+    } catch {
+      /* archivage best-effort */
+    }
 
     return { deliverable, steps, qa, knowledgeId, toolsUsed: [...toolsUsed] };
   }
 
   /** Historique de conversation persistant d'un compagnon-agent. */
-  async getAgentMessages(authId: string, id: string): Promise<{ sender: string; text: string; at: number }[]> {
+  async getAgentMessages(
+    authId: string,
+    id: string,
+  ): Promise<{ sender: string; text: string; at: number }[]> {
     const profileId = await this.profileIdForAuth(authId);
-    const owns = (await this.db.select({ id: companionAgents.id }).from(companionAgents).where(and(eq(companionAgents.id, id), eq(companionAgents.profileId, profileId))))[0];
+    const owns = (
+      await this.db
+        .select({ id: companionAgents.id })
+        .from(companionAgents)
+        .where(and(eq(companionAgents.id, id), eq(companionAgents.profileId, profileId)))
+    )[0];
     if (!owns) throw new NotFoundException('Compagnon introuvable.');
-    const rows = await this.db.select({ sender: companionMessages.sender, text: companionMessages.text, createdAt: companionMessages.createdAt }).from(companionMessages)
-      .where(eq(companionMessages.agentId, id)).orderBy(asc(companionMessages.createdAt)).limit(200);
+    const rows = await this.db
+      .select({
+        sender: companionMessages.sender,
+        text: companionMessages.text,
+        createdAt: companionMessages.createdAt,
+      })
+      .from(companionMessages)
+      .where(eq(companionMessages.agentId, id))
+      .orderBy(asc(companionMessages.createdAt))
+      .limit(200);
     return rows.map((r) => ({ sender: r.sender, text: r.text, at: r.createdAt.getTime() }));
   }
 
@@ -1117,11 +1649,21 @@ export class CompanionService {
   private async storeAgentEmbedding(agentId: string, vec: number[] | undefined): Promise<void> {
     if (!Array.isArray(vec) || vec.length !== HIVE_EMBED_DIM) return;
     const lit = `[${vec.join(',')}]`;
-    await this.db.execute(sql`update companion_agents set embedding_vec = ${lit}::vector where id = ${agentId}`).catch(() => undefined);
+    await this.db
+      .execute(
+        sql`update companion_agents set embedding_vec = ${lit}::vector where id = ${agentId}`,
+      )
+      .catch(() => undefined);
   }
 
   /** Embarque (embedding) une abeille depuis nom + rôle + spécialité. Best-effort (silencieux si pas d'embeddings). */
-  private async embedAgent(profileId: string, agentId: string, name: string, role: string | null, spec?: string | null): Promise<void> {
+  private async embedAgent(
+    profileId: string,
+    agentId: string,
+    name: string,
+    role: string | null,
+    spec?: string | null,
+  ): Promise<void> {
     const text = `${name}. ${role || ''}. ${spec || ''}`.trim().slice(0, 800);
     const vecs = await this.copilote.embed(profileId, [text]).catch(() => null);
     await this.storeAgentEmbedding(agentId, vecs?.[0]);
@@ -1131,7 +1673,10 @@ export class CompanionService {
    * DEDUP : renvoie une abeille active TRÈS proche d'une description, sinon null.
    * SÉMANTIQUE d'abord (pgvector, comprend le SENS : « fraction » ≈ « mathématiques ») ; repli LEXICAL (trigram).
    */
-  private async findSimilarAgent(profileId: string, text: string): Promise<{ id: string; name: string; role: string | null } | null> {
+  private async findSimilarAgent(
+    profileId: string,
+    text: string,
+  ): Promise<{ id: string; name: string; role: string | null } | null> {
     const t = (text || '').trim().slice(0, 200);
     if (t.length < 4) return null;
     // 1) Sémantique : plus proche voisin par le sens (si embeddings configurés).
@@ -1145,13 +1690,26 @@ export class CompanionService {
         order by embedding_vec <=> ${lit}::vector limit 1
       `)) as unknown as { id: string; name: string; role: string | null; dist: number }[];
       const top = rows[0];
-      if (top && Number(top.dist) < 0.18) return { id: top.id, name: top.name, role: top.role ?? null }; // cosinus > 0.82
+      if (top && Number(top.dist) < 0.18)
+        return { id: top.id, name: top.name, role: top.role ?? null }; // cosinus > 0.82
     }
     // 2) Repli lexical (trigram sur rôle/nom).
     const rows2 = await this.db
-      .select({ id: companionAgents.id, name: companionAgents.name, role: companionAgents.role, s: sql<number>`greatest(similarity(coalesce(${companionAgents.role}, ''), ${t}), similarity(${companionAgents.name}, ${t}))` })
+      .select({
+        id: companionAgents.id,
+        name: companionAgents.name,
+        role: companionAgents.role,
+        s: sql<number>`greatest(similarity(coalesce(${companionAgents.role}, ''), ${t}), similarity(${companionAgents.name}, ${t}))`,
+      })
       .from(companionAgents)
-      .where(and(eq(companionAgents.profileId, profileId), eq(companionAgents.mode, 'agent'), eq(companionAgents.status, 'active'), ne(companionAgents.space, 'home')))
+      .where(
+        and(
+          eq(companionAgents.profileId, profileId),
+          eq(companionAgents.mode, 'agent'),
+          eq(companionAgents.status, 'active'),
+          ne(companionAgents.space, 'home'),
+        ),
+      )
       .orderBy(sql`s desc`)
       .limit(1);
     const top2 = rows2[0];
@@ -1168,15 +1726,34 @@ export class CompanionService {
   }
 
   /** Fusionne l'abeille `absorbedId` DANS `survivorId` (system prompt unifié par IA, union des règles, migration mémoire + stats). */
-  private async mergeAgents(profileId: string, survivorId: string, absorbedId: string, reason: string): Promise<boolean> {
+  private async mergeAgents(
+    profileId: string,
+    survivorId: string,
+    absorbedId: string,
+    reason: string,
+  ): Promise<boolean> {
     if (survivorId === absorbedId) return false;
-    const both = await this.db.select().from(companionAgents)
-      .where(and(eq(companionAgents.profileId, profileId), or(eq(companionAgents.id, survivorId), eq(companionAgents.id, absorbedId))));
+    const both = await this.db
+      .select()
+      .from(companionAgents)
+      .where(
+        and(
+          eq(companionAgents.profileId, profileId),
+          or(eq(companionAgents.id, survivorId), eq(companionAgents.id, absorbedId)),
+        ),
+      );
     const survivor = both.find((a) => a.id === survivorId);
     const absorbed = both.find((a) => a.id === absorbedId);
     if (!survivor || !absorbed) return false;
-    if (survivor.isPrimary || absorbed.isPrimary || survivor.mode !== 'agent' || absorbed.mode !== 'agent') return false;
-    if (absorbed.status !== 'active' || survivor.status !== 'active' || absorbed.protected) return false;
+    if (
+      survivor.isPrimary ||
+      absorbed.isPrimary ||
+      survivor.mode !== 'agent' ||
+      absorbed.mode !== 'agent'
+    )
+      return false;
+    if (absorbed.status !== 'active' || survivor.status !== 'active' || absorbed.protected)
+      return false;
 
     const sP = (survivor.personality ?? {}) as AgentPersonality & { systemPrompt?: string };
     const aP = (absorbed.personality ?? {}) as AgentPersonality & { systemPrompt?: string };
@@ -1191,41 +1768,89 @@ export class CompanionService {
         temperature: 0.4,
       });
       if (object.systemPrompt) mergedSystemPrompt = object.systemPrompt.slice(0, 4000);
-    } catch { /* repli : on garde le prompt du survivant */ }
+    } catch {
+      /* repli : on garde le prompt du survivant */
+    }
 
-    const rules = this.dedupeRules([...(Array.isArray(sP.rules) ? sP.rules : []), ...(Array.isArray(aP.rules) ? aP.rules : [])]);
+    const rules = this.dedupeRules([
+      ...(Array.isArray(sP.rules) ? sP.rules : []),
+      ...(Array.isArray(aP.rules) ? aP.rules : []),
+    ]);
     // Migration de la mémoire de conversation vers la survivante.
-    await this.db.update(companionMessages).set({ agentId: survivorId }).where(eq(companionMessages.agentId, absorbedId));
+    await this.db
+      .update(companionMessages)
+      .set({ agentId: survivorId })
+      .where(eq(companionMessages.agentId, absorbedId));
     // Combinaison des stats.
     const useCount = survivor.useCount + absorbed.useCount;
     const rc = survivor.ratingCount + absorbed.ratingCount;
-    const q = (survivor.qualityEma == null && absorbed.qualityEma == null)
-      ? null
-      : ((survivor.qualityEma ?? 0.5) * (survivor.ratingCount || 1) + (absorbed.qualityEma ?? 0.5) * (absorbed.ratingCount || 1)) / ((survivor.ratingCount || 1) + (absorbed.ratingCount || 1));
-    const lastUsedAt = [survivor.lastUsedAt, absorbed.lastUsedAt].filter(Boolean).sort((a, b) => (b as Date).getTime() - (a as Date).getTime())[0] ?? survivor.lastUsedAt;
-    await this.db.update(companionAgents).set({
-      personality: { ...sP, systemPrompt: mergedSystemPrompt, rules, promptHistory: this.pushPromptHistory(sP, sP.systemPrompt) },
-      useCount, ratingCount: rc, qualityEma: q, lastUsedAt: (lastUsedAt as Date | null) ?? null, updatedAt: new Date(),
-    }).where(eq(companionAgents.id, survivorId));
-    await this.db.update(companionAgents).set({ status: 'merged', mergedInto: survivorId, updatedAt: new Date() }).where(eq(companionAgents.id, absorbedId));
-    await this.db.insert(companionAgentMerges).values({ profileId, survivorId, absorbedId, reason }).catch(() => undefined);
+    const q =
+      survivor.qualityEma == null && absorbed.qualityEma == null
+        ? null
+        : ((survivor.qualityEma ?? 0.5) * (survivor.ratingCount || 1) +
+            (absorbed.qualityEma ?? 0.5) * (absorbed.ratingCount || 1)) /
+          ((survivor.ratingCount || 1) + (absorbed.ratingCount || 1));
+    const lastUsedAt =
+      [survivor.lastUsedAt, absorbed.lastUsedAt]
+        .filter(Boolean)
+        .sort((a, b) => (b as Date).getTime() - (a as Date).getTime())[0] ?? survivor.lastUsedAt;
+    await this.db
+      .update(companionAgents)
+      .set({
+        personality: {
+          ...sP,
+          systemPrompt: mergedSystemPrompt,
+          rules,
+          promptHistory: this.pushPromptHistory(sP, sP.systemPrompt),
+        },
+        useCount,
+        ratingCount: rc,
+        qualityEma: q,
+        lastUsedAt: (lastUsedAt as Date | null) ?? null,
+        updatedAt: new Date(),
+      })
+      .where(eq(companionAgents.id, survivorId));
+    await this.db
+      .update(companionAgents)
+      .set({ status: 'merged', mergedInto: survivorId, updatedAt: new Date() })
+      .where(eq(companionAgents.id, absorbedId));
+    await this.db
+      .insert(companionAgentMerges)
+      .values({ profileId, survivorId, absorbedId, reason })
+      .catch(() => undefined);
     return true;
   }
 
   /** Choix de la survivante d'un groupe de doublons : la plus « efficace » (qualité × log(usage)). */
-  private survivorScore(a: { useCount: number; qualityEma: number | null; createdAt: Date }): number {
+  private survivorScore(a: {
+    useCount: number;
+    qualityEma: number | null;
+    createdAt: Date;
+  }): number {
     return (a.qualityEma ?? 0.5) * Math.log(1 + a.useCount) + (a.qualityEma ?? 0.5) * 0.1;
   }
 
   /** RÉ-ENTRAÎNEMENT (sans fine-tuning) : consolide les règles + réécrit le system prompt depuis l'historique. */
   async retrainAgent(authId: string, id: string): Promise<CompanionAgentDTO> {
     const profileId = await this.profileIdForAuth(authId);
-    const agent = (await this.db.select().from(companionAgents).where(and(eq(companionAgents.id, id), eq(companionAgents.profileId, profileId))))[0];
+    const agent = (
+      await this.db
+        .select()
+        .from(companionAgents)
+        .where(and(eq(companionAgents.id, id), eq(companionAgents.profileId, profileId)))
+    )[0];
     if (!agent || agent.mode !== 'agent') throw new NotFoundException('Abeille introuvable.');
     const persona = (agent.personality ?? {}) as AgentPersonality & { systemPrompt?: string };
-    const past = await this.db.select({ sender: companionMessages.sender, text: companionMessages.text }).from(companionMessages)
-      .where(eq(companionMessages.agentId, id)).orderBy(desc(companionMessages.createdAt)).limit(30);
-    const hist = past.reverse().map((m) => `${m.sender === 'me' ? 'Utilisateur' : agent.name} : ${m.text.slice(0, 200)}`).join('\n');
+    const past = await this.db
+      .select({ sender: companionMessages.sender, text: companionMessages.text })
+      .from(companionMessages)
+      .where(eq(companionMessages.agentId, id))
+      .orderBy(desc(companionMessages.createdAt))
+      .limit(30);
+    const hist = past
+      .reverse()
+      .map((m) => `${m.sender === 'me' ? 'Utilisateur' : agent.name} : ${m.text.slice(0, 200)}`)
+      .join('\n');
     const { object } = await this.copilote.generateStructured(profileId, {
       schema: z.object({ systemPrompt: z.string(), rules: z.array(z.string()).max(12) }),
       schemaName: 'RetrainedAgent',
@@ -1233,18 +1858,33 @@ export class CompanionService {
       prompt: `Nom : ${agent.name}\nRôle : ${agent.role || ''}\nSystem prompt actuel : ${persona.systemPrompt || ''}\nRègles actuelles : ${(persona.rules || []).join(' | ') || '(aucune)'}\n\nHistorique récent :\n${hist || '(aucun)'}`,
       temperature: 0.4,
     });
-    const rules = this.dedupeRules(Array.isArray(object.rules) ? object.rules : (persona.rules ?? []));
+    const rules = this.dedupeRules(
+      Array.isArray(object.rules) ? object.rules : (persona.rules ?? []),
+    );
     const newPrompt = (object.systemPrompt || persona.systemPrompt || '').slice(0, 4000);
     // VERSIONNAGE : on archive l'ancien prompt (rollback possible), on garde les 5 derniers.
     const history = this.pushPromptHistory(persona, persona.systemPrompt);
-    const updated = (await this.db.update(companionAgents)
-      .set({ personality: { ...persona, systemPrompt: newPrompt, rules, promptHistory: history }, updatedAt: new Date() })
-      .where(eq(companionAgents.id, id)).returning())[0]!;
+    const updated = (
+      await this.db
+        .update(companionAgents)
+        .set({
+          personality: { ...persona, systemPrompt: newPrompt, rules, promptHistory: history },
+          updatedAt: new Date(),
+        })
+        .where(eq(companionAgents.id, id))
+        .returning()
+    )[0]!;
     return this.toAgent(updated);
   }
 
   /** Empile l'ancien system prompt dans l'historique (5 max), pour permettre un rollback. */
-  private pushPromptHistory(persona: AgentPersonality & { systemPrompt?: string; promptHistory?: { prompt: string; at: number }[] }, oldPrompt?: string): { prompt: string; at: number }[] {
+  private pushPromptHistory(
+    persona: AgentPersonality & {
+      systemPrompt?: string;
+      promptHistory?: { prompt: string; at: number }[];
+    },
+    oldPrompt?: string,
+  ): { prompt: string; at: number }[] {
     const prev = Array.isArray(persona.promptHistory) ? persona.promptHistory : [];
     if (!oldPrompt) return prev.slice(0, 5);
     return [{ prompt: oldPrompt, at: Date.now() }, ...prev].slice(0, 5);
@@ -1253,40 +1893,77 @@ export class CompanionService {
   /** Annule le dernier ré-entraînement/fusion : restaure le system prompt précédent (non-régression manuelle). */
   async revertAgentPrompt(authId: string, id: string): Promise<CompanionAgentDTO> {
     const profileId = await this.profileIdForAuth(authId);
-    const agent = (await this.db.select().from(companionAgents).where(and(eq(companionAgents.id, id), eq(companionAgents.profileId, profileId))))[0];
+    const agent = (
+      await this.db
+        .select()
+        .from(companionAgents)
+        .where(and(eq(companionAgents.id, id), eq(companionAgents.profileId, profileId)))
+    )[0];
     if (!agent || agent.mode !== 'agent') throw new NotFoundException('Abeille introuvable.');
-    const persona = (agent.personality ?? {}) as AgentPersonality & { systemPrompt?: string; promptHistory?: { prompt: string; at: number }[] };
+    const persona = (agent.personality ?? {}) as AgentPersonality & {
+      systemPrompt?: string;
+      promptHistory?: { prompt: string; at: number }[];
+    };
     const history = Array.isArray(persona.promptHistory) ? persona.promptHistory : [];
-    if (history.length === 0) throw new BadRequestException('Aucune version précédente à restaurer.');
+    if (history.length === 0)
+      throw new BadRequestException('Aucune version précédente à restaurer.');
     const [prev, ...rest] = history;
-    const updated = (await this.db.update(companionAgents)
-      .set({ personality: { ...persona, systemPrompt: prev!.prompt, promptHistory: rest }, updatedAt: new Date() })
-      .where(eq(companionAgents.id, id)).returning())[0]!;
+    const updated = (
+      await this.db
+        .update(companionAgents)
+        .set({
+          personality: { ...persona, systemPrompt: prev!.prompt, promptHistory: rest },
+          updatedAt: new Date(),
+        })
+        .where(eq(companionAgents.id, id))
+        .returning()
+    )[0]!;
     return this.toAgent(updated);
   }
 
   /** Retire une abeille (soft-delete : `status='retired'`). Réversible. Principal/relais/Maison protégés implicitement. */
   async retireAgent(authId: string, id: string): Promise<{ ok: true }> {
     const profileId = await this.profileIdForAuth(authId);
-    const agent = (await this.db.select({ isPrimary: companionAgents.isPrimary, mode: companionAgents.mode }).from(companionAgents)
-      .where(and(eq(companionAgents.id, id), eq(companionAgents.profileId, profileId))))[0];
+    const agent = (
+      await this.db
+        .select({ isPrimary: companionAgents.isPrimary, mode: companionAgents.mode })
+        .from(companionAgents)
+        .where(and(eq(companionAgents.id, id), eq(companionAgents.profileId, profileId)))
+    )[0];
     if (!agent) throw new NotFoundException('Abeille introuvable.');
-    if (agent.isPrimary || agent.mode === 'relay') throw new BadRequestException('Cette abeille est protégée.');
-    await this.db.update(companionAgents).set({ status: 'retired', updatedAt: new Date() }).where(and(eq(companionAgents.id, id), eq(companionAgents.profileId, profileId)));
+    if (agent.isPrimary || agent.mode === 'relay')
+      throw new BadRequestException('Cette abeille est protégée.');
+    await this.db
+      .update(companionAgents)
+      .set({ status: 'retired', updatedAt: new Date() })
+      .where(and(eq(companionAgents.id, id), eq(companionAgents.profileId, profileId)));
     return { ok: true };
   }
 
   /** Épingle/désépingle une abeille (protégée = exemptée de fusion/prune). */
-  async setAgentProtected(authId: string, id: string, isProtected: boolean): Promise<CompanionAgentDTO> {
+  async setAgentProtected(
+    authId: string,
+    id: string,
+    isProtected: boolean,
+  ): Promise<CompanionAgentDTO> {
     const profileId = await this.profileIdForAuth(authId);
-    const updated = (await this.db.update(companionAgents).set({ protected: isProtected, updatedAt: new Date() })
-      .where(and(eq(companionAgents.id, id), eq(companionAgents.profileId, profileId))).returning())[0];
+    const updated = (
+      await this.db
+        .update(companionAgents)
+        .set({ protected: isProtected, updatedAt: new Date() })
+        .where(and(eq(companionAgents.id, id), eq(companionAgents.profileId, profileId)))
+        .returning()
+    )[0];
     if (!updated) throw new NotFoundException('Abeille introuvable.');
     return this.toAgent(updated);
   }
 
   /** Fusion MANUELLE demandée par l'utilisateur. */
-  async mergeAgentsManual(authId: string, survivorId: string, absorbedId: string): Promise<{ ok: boolean }> {
+  async mergeAgentsManual(
+    authId: string,
+    survivorId: string,
+    absorbedId: string,
+  ): Promise<{ ok: boolean }> {
     const profileId = await this.profileIdForAuth(authId);
     const ok = await this.mergeAgents(profileId, survivorId, absorbedId, 'manuel');
     return { ok };
@@ -1296,7 +1973,12 @@ export class CompanionService {
    * MAINTENANCE de la ruche (« nettoyage ») : dedup → fusion des doublons → prune des abeilles obsolètes/faibles.
    * Abeilles d'open-space uniquement ; jamais la Maison, jamais les épinglées. Soft-delete (réversible).
    */
-  async maintainHive(authId: string): Promise<{ scanned: number; merged: { survivor: string; absorbed: string }[]; retired: string[]; embedded: number }> {
+  async maintainHive(authId: string): Promise<{
+    scanned: number;
+    merged: { survivor: string; absorbed: string }[];
+    retired: string[];
+    embedded: number;
+  }> {
     return this.maintainHiveCore(await this.profileIdForAuth(authId), true);
   }
 
@@ -1312,12 +1994,22 @@ export class CompanionService {
         const r = await this.maintainHiveCore(p.profile_id, false); // pas de fusion IA la nuit (coût/surprise)
         retired += r.retired.length;
         embedded += r.embedded;
-      } catch { /* un profil en échec ne bloque pas les autres */ }
+      } catch {
+        /* un profil en échec ne bloque pas les autres */
+      }
     }
     return { profiles: profs.length, retired, embedded };
   }
 
-  private async maintainHiveCore(profileId: string, doMerge: boolean): Promise<{ scanned: number; merged: { survivor: string; absorbed: string }[]; retired: string[]; embedded: number }> {
+  private async maintainHiveCore(
+    profileId: string,
+    doMerge: boolean,
+  ): Promise<{
+    scanned: number;
+    merged: { survivor: string; absorbed: string }[];
+    retired: string[];
+    embedded: number;
+  }> {
     // 0) BACKFILL des embeddings manquants (best-effort, borné) → dedup/recherche sémantiques opérants.
     let embedded = 0;
     const missing = (await this.db.execute(sql`
@@ -1326,15 +2018,29 @@ export class CompanionService {
       limit 128
     `)) as unknown as { id: string; name: string; role: string | null }[];
     if (missing.length) {
-      const vecs = await this.copilote.embed(profileId, missing.map((m) => `${m.name}. ${m.role || ''}`.trim().slice(0, 800))).catch(() => null);
-      if (vecs) await Promise.all(missing.map(async (m, i) => { const v = vecs[i]; if (v) { await this.storeAgentEmbedding(m.id, v); embedded++; } }));
+      const vecs = await this.copilote
+        .embed(
+          profileId,
+          missing.map((m) => `${m.name}. ${m.role || ''}`.trim().slice(0, 800)),
+        )
+        .catch(() => null);
+      if (vecs)
+        await Promise.all(
+          missing.map(async (m, i) => {
+            const v = vecs[i];
+            if (v) {
+              await this.storeAgentEmbedding(m.id, v);
+              embedded++;
+            }
+          }),
+        );
     }
 
     const merged: { survivor: string; absorbed: string }[] = [];
     // 1) DEDUP + FUSION — coûteux (IA) : uniquement en manuel (« Nettoyer la ruche »). La maintenance nocturne saute.
     if (doMerge) {
-    // 1a) LEXICALES (trigram sur le rôle).
-    const edges = (await this.db.execute(sql`
+      // 1a) LEXICALES (trigram sur le rôle).
+      const edges = (await this.db.execute(sql`
       select a.id as a, b.id as b
       from companion_agents a
       join companion_agents b
@@ -1345,17 +2051,17 @@ export class CompanionService {
       limit 2000
     `)) as unknown as { a: string; b: string }[];
 
-    // 1b) SÉMANTIQUES (pgvector KNN par abeille : doublons de SENS sans mot commun, ex. « correcteur » ≈ « relecteur »).
-    const semEdges: { a: string; b: string }[] = [];
-    const greyKeys = new Set<string>();
-    const grey: { a: string; b: string }[] = [];
-    const embBees = (await this.db.execute(sql`
+      // 1b) SÉMANTIQUES (pgvector KNN par abeille : doublons de SENS sans mot commun, ex. « correcteur » ≈ « relecteur »).
+      const semEdges: { a: string; b: string }[] = [];
+      const greyKeys = new Set<string>();
+      const grey: { a: string; b: string }[] = [];
+      const embBees = (await this.db.execute(sql`
       select id from companion_agents
       where profile_id = ${profileId} and mode = 'agent' and status = 'active' and space <> 'home' and protected = false and embedding_vec is not null
       limit 400
     `)) as unknown as { id: string }[];
-    for (const bee of embBees) {
-      const neigh = (await this.db.execute(sql`
+      for (const bee of embBees) {
+        const neigh = (await this.db.execute(sql`
         select b.id as id, (a.embedding_vec <=> b.embedding_vec) as dist
         from companion_agents a
         join companion_agents b
@@ -1365,66 +2071,105 @@ export class CompanionService {
         order by a.embedding_vec <=> b.embedding_vec
         limit 4
       `)) as unknown as { id: string; dist: number }[];
-      for (const n of neigh) {
-        const d = Number(n.dist);
-        if (d < 0.12) { semEdges.push({ a: bee.id, b: n.id }); continue; } // quasi-doublon → fusion directe (cosinus > 0.88)
-        if (d < 0.25) { // ZONE GRISE (cosinus 0.75–0.88) → arbitrage IA plus loin
-          const key = [bee.id, n.id].sort().join('|');
-          if (!greyKeys.has(key)) { greyKeys.add(key); grey.push({ a: bee.id, b: n.id }); }
+        for (const n of neigh) {
+          const d = Number(n.dist);
+          if (d < 0.12) {
+            semEdges.push({ a: bee.id, b: n.id });
+            continue;
+          } // quasi-doublon → fusion directe (cosinus > 0.88)
+          if (d < 0.25) {
+            // ZONE GRISE (cosinus 0.75–0.88) → arbitrage IA plus loin
+            const key = [bee.id, n.id].sort().join('|');
+            if (!greyKeys.has(key)) {
+              greyKeys.add(key);
+              grey.push({ a: bee.id, b: n.id });
+            }
+          }
         }
       }
-    }
-    // Arbitrage IA de la zone grise (borné) : « ces deux rôles font-ils vraiment doublon ? » (évite de fusionner des voisins distincts).
-    for (const pair of grey.slice(0, 20)) {
-      const roles = await this.db.select({ id: companionAgents.id, name: companionAgents.name, role: companionAgents.role })
-        .from(companionAgents).where(and(eq(companionAgents.profileId, profileId), or(eq(companionAgents.id, pair.a), eq(companionAgents.id, pair.b))));
-      const ra = roles.find((r) => r.id === pair.a); const rb = roles.find((r) => r.id === pair.b);
-      if (!ra || !rb) continue;
-      try {
-        const { object } = await this.copilote.generateStructured(profileId, {
-          schema: z.object({ redundant: z.boolean() }),
-          schemaName: 'DedupArbitration',
-          system: `Tu décides si DEUX spécialistes font DOUBLON, c'est-à-dire couvrent les mêmes tâches et sont fusionnables sans perte. Réponds redundant=true UNIQUEMENT s'ils sont vraiment redondants (pas juste dans le même domaine).`,
-          prompt: `A : ${ra.name} — ${ra.role || ''}\nB : ${rb.name} — ${rb.role || ''}\n\nCes deux abeilles font-elles doublon ?`,
-          temperature: 0,
-        });
-        if (object.redundant) semEdges.push(pair);
-      } catch { /* IA indispo → on ne fusionne pas (prudence) */ }
-    }
-
-    // Composantes connexes (lexicales ∪ sémantiques) → clusters de doublons.
-    const adj = new Map<string, Set<string>>();
-    const nodes = new Set<string>();
-    for (const e of [...edges, ...semEdges]) {
-      nodes.add(e.a); nodes.add(e.b);
-      (adj.get(e.a) ?? adj.set(e.a, new Set()).get(e.a)!).add(e.b);
-      (adj.get(e.b) ?? adj.set(e.b, new Set()).get(e.b)!).add(e.a);
-    }
-    const clusters: string[][] = [];
-    const seen = new Set<string>();
-    for (const n of nodes) {
-      if (seen.has(n)) continue;
-      const stack = [n]; const comp: string[] = [];
-      while (stack.length) {
-        const x = stack.pop()!;
-        if (seen.has(x)) continue;
-        seen.add(x); comp.push(x);
-        for (const y of adj.get(x) ?? []) if (!seen.has(y)) stack.push(y);
+      // Arbitrage IA de la zone grise (borné) : « ces deux rôles font-ils vraiment doublon ? » (évite de fusionner des voisins distincts).
+      for (const pair of grey.slice(0, 20)) {
+        const roles = await this.db
+          .select({
+            id: companionAgents.id,
+            name: companionAgents.name,
+            role: companionAgents.role,
+          })
+          .from(companionAgents)
+          .where(
+            and(
+              eq(companionAgents.profileId, profileId),
+              or(eq(companionAgents.id, pair.a), eq(companionAgents.id, pair.b)),
+            ),
+          );
+        const ra = roles.find((r) => r.id === pair.a);
+        const rb = roles.find((r) => r.id === pair.b);
+        if (!ra || !rb) continue;
+        try {
+          const { object } = await this.copilote.generateStructured(profileId, {
+            schema: z.object({ redundant: z.boolean() }),
+            schemaName: 'DedupArbitration',
+            system: `Tu décides si DEUX spécialistes font DOUBLON, c'est-à-dire couvrent les mêmes tâches et sont fusionnables sans perte. Réponds redundant=true UNIQUEMENT s'ils sont vraiment redondants (pas juste dans le même domaine).`,
+            prompt: `A : ${ra.name} — ${ra.role || ''}\nB : ${rb.name} — ${rb.role || ''}\n\nCes deux abeilles font-elles doublon ?`,
+            temperature: 0,
+          });
+          if (object.redundant) semEdges.push(pair);
+        } catch {
+          /* IA indispo → on ne fusionne pas (prudence) */
+        }
       }
-      if (comp.length > 1) clusters.push(comp);
-    }
 
-    for (const comp of clusters) {
-      const stats = await this.db.select({ id: companionAgents.id, name: companionAgents.name, useCount: companionAgents.useCount, qualityEma: companionAgents.qualityEma, createdAt: companionAgents.createdAt })
-        .from(companionAgents).where(and(eq(companionAgents.profileId, profileId), or(...comp.map((id) => eq(companionAgents.id, id)))));
-      if (stats.length < 2) continue;
-      const survivor = stats.slice().sort((x, y) => this.survivorScore(y) - this.survivorScore(x))[0]!;
-      for (const other of stats) {
-        if (other.id === survivor.id) continue;
-        const ok = await this.mergeAgents(profileId, survivor.id, other.id, 'maintenance:dedup');
-        if (ok) merged.push({ survivor: survivor.name, absorbed: other.name });
+      // Composantes connexes (lexicales ∪ sémantiques) → clusters de doublons.
+      const adj = new Map<string, Set<string>>();
+      const nodes = new Set<string>();
+      for (const e of [...edges, ...semEdges]) {
+        nodes.add(e.a);
+        nodes.add(e.b);
+        (adj.get(e.a) ?? adj.set(e.a, new Set()).get(e.a)!).add(e.b);
+        (adj.get(e.b) ?? adj.set(e.b, new Set()).get(e.b)!).add(e.a);
       }
-    }
+      const clusters: string[][] = [];
+      const seen = new Set<string>();
+      for (const n of nodes) {
+        if (seen.has(n)) continue;
+        const stack = [n];
+        const comp: string[] = [];
+        while (stack.length) {
+          const x = stack.pop()!;
+          if (seen.has(x)) continue;
+          seen.add(x);
+          comp.push(x);
+          for (const y of adj.get(x) ?? []) if (!seen.has(y)) stack.push(y);
+        }
+        if (comp.length > 1) clusters.push(comp);
+      }
+
+      for (const comp of clusters) {
+        const stats = await this.db
+          .select({
+            id: companionAgents.id,
+            name: companionAgents.name,
+            useCount: companionAgents.useCount,
+            qualityEma: companionAgents.qualityEma,
+            createdAt: companionAgents.createdAt,
+          })
+          .from(companionAgents)
+          .where(
+            and(
+              eq(companionAgents.profileId, profileId),
+              or(...comp.map((id) => eq(companionAgents.id, id))),
+            ),
+          );
+        if (stats.length < 2) continue;
+        const survivor = stats
+          .slice()
+          .sort((x, y) => this.survivorScore(y) - this.survivorScore(x))[0]!;
+        for (const other of stats) {
+          if (other.id === survivor.id) continue;
+          const ok = await this.mergeAgents(profileId, survivor.id, other.id, 'maintenance:dedup');
+          if (ok) merged.push({ survivor: survivor.name, absorbed: other.name });
+        }
+      }
     } // fin if (doMerge)
 
     // 2) PRUNE : retire (soft) les abeilles obsolètes (période de grâce 7 j) ou de faible qualité prouvée.
@@ -1440,12 +2185,26 @@ export class CompanionService {
     `)) as unknown as { id: string; name: string }[];
     const retired: string[] = [];
     for (const s of stale) {
-      await this.db.update(companionAgents).set({ status: 'retired', updatedAt: new Date() }).where(eq(companionAgents.id, s.id));
+      await this.db
+        .update(companionAgents)
+        .set({ status: 'retired', updatedAt: new Date() })
+        .where(eq(companionAgents.id, s.id));
       retired.push(s.name);
     }
 
-    const scannedRow = (await this.db.select({ n: count() }).from(companionAgents)
-      .where(and(eq(companionAgents.profileId, profileId), eq(companionAgents.mode, 'agent'), eq(companionAgents.status, 'active'), ne(companionAgents.space, 'home'))))[0];
+    const scannedRow = (
+      await this.db
+        .select({ n: count() })
+        .from(companionAgents)
+        .where(
+          and(
+            eq(companionAgents.profileId, profileId),
+            eq(companionAgents.mode, 'agent'),
+            eq(companionAgents.status, 'active'),
+            ne(companionAgents.space, 'home'),
+          ),
+        )
+    )[0];
     return { scanned: scannedRow?.n ?? 0, merged, retired, embedded };
   }
 
@@ -1456,27 +2215,41 @@ export class CompanionService {
   /** S'assure que le compagnon RELAIS existe (un seul par profil). Renvoie son id. */
   private async ensureRelayAgent(profileId: string): Promise<string> {
     const existing = (
-      await this.db.select({ id: companionAgents.id }).from(companionAgents)
+      await this.db
+        .select({ id: companionAgents.id })
+        .from(companionAgents)
         .where(and(eq(companionAgents.profileId, profileId), eq(companionAgents.mode, 'relay')))
     )[0];
     if (existing) return existing.id;
     // Anti-race (index unique partiel mode='relay', migration 0067) : le perdant du conflit re-lit.
     const row = (
-      await this.db.insert(companionAgents).values({
-        profileId,
-        name: 'Claude Code',
-        skinUrl: null,
-        size: 96,
-        personality: { relay: true, emoji: '🤖', description: 'Relais de ton Claude Code / Codex (MCP).', tone: 'concis', lastInboxAt: 0 },
-        role: 'Relais dev',
-        space: 'home',
-        isPrimary: false,
-        mode: 'relay',
-      }).onConflictDoNothing().returning()
+      await this.db
+        .insert(companionAgents)
+        .values({
+          profileId,
+          name: 'Claude Code',
+          skinUrl: null,
+          size: 96,
+          personality: {
+            relay: true,
+            emoji: '🤖',
+            description: 'Relais de ton Claude Code / Codex (MCP).',
+            tone: 'concis',
+            lastInboxAt: 0,
+          },
+          role: 'Relais dev',
+          space: 'home',
+          isPrimary: false,
+          mode: 'relay',
+        })
+        .onConflictDoNothing()
+        .returning()
     )[0];
     if (row) return row.id;
     const again = (
-      await this.db.select({ id: companionAgents.id }).from(companionAgents)
+      await this.db
+        .select({ id: companionAgents.id })
+        .from(companionAgents)
         .where(and(eq(companionAgents.profileId, profileId), eq(companionAgents.mode, 'relay')))
     )[0];
     if (!again) throw new BadRequestException('Création du relais impossible.');
@@ -1489,7 +2262,9 @@ export class CompanionService {
     await this.ensureRelayAgent(profileId);
     const token = 'dwz_' + randomBytes(32).toString('hex');
     const tokenHash = createHash('sha256').update(token).digest('hex');
-    await this.db.insert(companionRelayTokens).values({ profileId, tokenHash, label: (label || 'Claude Code').slice(0, 60) });
+    await this.db
+      .insert(companionRelayTokens)
+      .values({ profileId, tokenHash, label: (label || 'Claude Code').slice(0, 60) });
     return { token, name: 'Claude Code' };
   }
 
@@ -1499,36 +2274,59 @@ export class CompanionService {
     if (t.length < 8) return null;
     const tokenHash = createHash('sha256').update(t).digest('hex');
     const row = (
-      await this.db.select({ id: companionRelayTokens.id, profileId: companionRelayTokens.profileId })
-        .from(companionRelayTokens).where(eq(companionRelayTokens.tokenHash, tokenHash))
+      await this.db
+        .select({ id: companionRelayTokens.id, profileId: companionRelayTokens.profileId })
+        .from(companionRelayTokens)
+        .where(eq(companionRelayTokens.tokenHash, tokenHash))
     )[0];
     if (!row) return null;
-    await this.db.update(companionRelayTokens).set({ lastUsedAt: new Date() }).where(eq(companionRelayTokens.id, row.id));
+    await this.db
+      .update(companionRelayTokens)
+      .set({ lastUsedAt: new Date() })
+      .where(eq(companionRelayTokens.id, row.id));
     return row.profileId;
   }
 
   /** Claude Code → Dowze : pousse un message (avancement / notif) dans le fil du relais (visible au téléphone). */
   async relayPush(profileId: string, text: string): Promise<{ ok: true }> {
     const agentId = await this.ensureRelayAgent(profileId);
-    await this.db.insert(companionMessages).values({ profileId, agentId, sender: 'agent', text: (text || '').slice(0, 4000) || '…' });
+    await this.db
+      .insert(companionMessages)
+      .values({ profileId, agentId, sender: 'agent', text: (text || '').slice(0, 4000) || '…' });
     return { ok: true };
   }
 
   /** Dowze → Claude Code : récupère les instructions en attente (messages de l'utilisateur non encore lus). */
   async relayPull(profileId: string): Promise<string[]> {
     const agentId = await this.ensureRelayAgent(profileId);
-    const agent = (await this.db.select({ personality: companionAgents.personality }).from(companionAgents).where(eq(companionAgents.id, agentId)))[0];
+    const agent = (
+      await this.db
+        .select({ personality: companionAgents.personality })
+        .from(companionAgents)
+        .where(eq(companionAgents.id, agentId))
+    )[0];
     const persona = (agent?.personality as { lastInboxAt?: number } | null) ?? {};
     const since = new Date(typeof persona.lastInboxAt === 'number' ? persona.lastInboxAt : 0);
-    const rows = await this.db.select({ text: companionMessages.text, createdAt: companionMessages.createdAt })
+    const rows = await this.db
+      .select({ text: companionMessages.text, createdAt: companionMessages.createdAt })
       .from(companionMessages)
-      .where(and(eq(companionMessages.agentId, agentId), eq(companionMessages.sender, 'me'), gt(companionMessages.createdAt, since)))
-      .orderBy(asc(companionMessages.createdAt)).limit(50);
+      .where(
+        and(
+          eq(companionMessages.agentId, agentId),
+          eq(companionMessages.sender, 'me'),
+          gt(companionMessages.createdAt, since),
+        ),
+      )
+      .orderBy(asc(companionMessages.createdAt))
+      .limit(50);
     if (rows.length > 0) {
       // +1 ms : la colonne timestamptz a une précision microseconde alors que Date.getTime() tronque à la ms —
       // sans ce +1, la dernière ligne re-matcherait `gt(created_at, since)` au prochain appel.
       const last = rows[rows.length - 1]!.createdAt.getTime() + 1;
-      await this.db.update(companionAgents).set({ personality: { ...persona, lastInboxAt: last } }).where(eq(companionAgents.id, agentId));
+      await this.db
+        .update(companionAgents)
+        .set({ personality: { ...persona, lastInboxAt: last } })
+        .where(eq(companionAgents.id, agentId));
     }
     return rows.map((r) => r.text);
   }
@@ -1537,7 +2335,9 @@ export class CompanionService {
   async relaySay(authId: string, text: string): Promise<{ ok: true }> {
     const profileId = await this.profileIdForAuth(authId);
     const agentId = await this.ensureRelayAgent(profileId);
-    await this.db.insert(companionMessages).values({ profileId, agentId, sender: 'me', text: (text || '').slice(0, 1000) });
+    await this.db
+      .insert(companionMessages)
+      .values({ profileId, agentId, sender: 'me', text: (text || '').slice(0, 1000) });
     return { ok: true };
   }
 
@@ -1553,38 +2353,65 @@ export class CompanionService {
     // Le Pont IA est une ABEILLE d'OPEN-SPACE (pas un leader de la Maison) : sa place est dans l'ÉCOLE
     // (l'open-space de service Académie), aux côtés des profs. Repli sur un open-space « Cours & École » si
     // l'école n'est pas encore provisionnée — mais JAMAIS la Maison ('home').
-    const ecole = (await this.db.select({ id: companionSpaces.id }).from(companionSpaces)
-      .where(and(eq(companionSpaces.profileId, profileId), eq(companionSpaces.ownerKind, 'service'))).limit(1))[0];
+    const ecole = (
+      await this.db
+        .select({ id: companionSpaces.id })
+        .from(companionSpaces)
+        .where(
+          and(eq(companionSpaces.profileId, profileId), eq(companionSpaces.ownerKind, 'service')),
+        )
+        .limit(1)
+    )[0];
     const spaceId = ecole?.id ?? (await this.ensureSpaceByName(profileId, 'Cours & École'));
 
-    const existing = (await this.db.select({ id: companionAgents.id, space: companionAgents.space }).from(companionAgents)
-      .where(and(eq(companionAgents.profileId, profileId), eq(companionAgents.mode, 'bridge'))))[0];
+    const existing = (
+      await this.db
+        .select({ id: companionAgents.id, space: companionAgents.space })
+        .from(companionAgents)
+        .where(and(eq(companionAgents.profileId, profileId), eq(companionAgents.mode, 'bridge')))
+    )[0];
     if (existing) {
       // Migration : un ancien Pont IA rangé dans la Maison est déplacé dans l'open-space École.
       if (existing.space !== spaceId) {
         const room = await this.pickRoomFor(profileId, spaceId);
-        await this.db.update(companionAgents).set({ space: spaceId, room, updatedAt: new Date() })
+        await this.db
+          .update(companionAgents)
+          .set({ space: spaceId, room, updatedAt: new Date() })
           .where(eq(companionAgents.id, existing.id));
       }
       return existing.id;
     }
     const room = await this.pickRoomFor(profileId, spaceId);
     // Anti-race (index unique partiel mode='bridge', migration 0067) : le perdant du conflit re-lit.
-    const row = (await this.db.insert(companionAgents).values({
-      profileId,
-      name: 'Pont IA',
-      skinUrl: '/pets/bolt.webp',
-      size: 96,
-      personality: { bridge: true, description: 'Pont vers ton ChatGPT / Claude : capte et mémorise tes cours.', tone: 'concis' },
-      role: 'Pont ChatGPT/Claude',
-      space: spaceId,
-      room,
-      isPrimary: false,
-      mode: 'bridge',
-    }).onConflictDoNothing().returning())[0];
+    const row = (
+      await this.db
+        .insert(companionAgents)
+        .values({
+          profileId,
+          name: 'Pont IA',
+          skinUrl: '/pets/bolt.webp',
+          size: 96,
+          personality: {
+            bridge: true,
+            description: 'Pont vers ton ChatGPT / Claude : capte et mémorise tes cours.',
+            tone: 'concis',
+          },
+          role: 'Pont ChatGPT/Claude',
+          space: spaceId,
+          room,
+          isPrimary: false,
+          mode: 'bridge',
+        })
+        .onConflictDoNothing()
+        .returning()
+    )[0];
     if (row) return row.id;
-    const again = (await this.db.select({ id: companionAgents.id }).from(companionAgents)
-      .where(and(eq(companionAgents.profileId, profileId), eq(companionAgents.mode, 'bridge'))))[0];
+    const again = (
+      await this.db
+        .select({ id: companionAgents.id })
+        .from(companionAgents)
+        .where(and(eq(companionAgents.profileId, profileId), eq(companionAgents.mode, 'bridge')))
+    )[0];
     if (!again) throw new BadRequestException('Création du pont impossible.');
     return again.id;
   }
@@ -1594,7 +2421,18 @@ export class CompanionService {
    * synthèse compacte (enlève l'inutile : ce qui a été vu/compris, ce qui a bloqué, où on s'est arrêté), et la
    * stocke en mémoire RAG (embeddée, interrogeable par les abeilles). Renvoie la synthèse.
    */
-  async ingestAiConversation(authId: string, source: string, text: string): Promise<{ id: string; titre: string; synthese: string; ouOnEnEst: string; prochaine: string; progressed: { skill: { id: string; title: string }; pMastery: number; resultat: string } | null }> {
+  async ingestAiConversation(
+    authId: string,
+    source: string,
+    text: string,
+  ): Promise<{
+    id: string;
+    titre: string;
+    synthese: string;
+    ouOnEnEst: string;
+    prochaine: string;
+    progressed: { skill: { id: string; title: string }; pMastery: number; resultat: string } | null;
+  }> {
     const profileId = await this.profileIdForAuth(authId);
     const raw = (text || '').trim();
     if (raw.length < 20) throw new BadRequestException('Conversation trop courte.');
@@ -1606,26 +2444,43 @@ export class CompanionService {
     // travaille bien CETTE compétence, et à faire progresser la maîtrise (BKT) le cas échéant.
     // ⚠️ Sur le PROFIL ÉLÈVE (learner_rank), pas le profil compagnon — sinon mauvais parcours (audit 08-2026).
     const studentId = await this.studentProfileIdForAuth(authId);
-    const course = await this.copilote.compose(studentId).catch(() => ({ skill: null as { id: string; slug: string; title: string } | null }));
+    const course = await this.copilote
+      .compose(studentId)
+      .catch(() => ({ skill: null as { id: string; slug: string; title: string } | null }));
     const skill = course.skill;
 
     // Longues conversations : plutôt que de tronquer (on perdrait la FIN = où on en est), on condense
     // début + fin (le milieu compte le moins pour reprendre le fil).
-    const condensed = raw.length <= 14000
-      ? raw
-      : `${raw.slice(0, 4000)}\n\n[…partie centrale de la conversation omise…]\n\n${raw.slice(-9500)}`;
+    const condensed =
+      raw.length <= 14000
+        ? raw
+        : `${raw.slice(0, 4000)}\n\n[…partie centrale de la conversation omise…]\n\n${raw.slice(-9500)}`;
 
     // Le Mémorialiste : LLM structuré qui NETTOIE et RÉSUME (réutilise la plomberie generateStructured).
     const { object: mem } = await this.copilote.generateStructured(profileId, {
       schema: z.object({
         titre: z.string().describe('Titre court de la session (≤ 8 mots).'),
-        synthese: z.string().describe('Synthèse compacte et utile de ce qui a été fait/appris (3 à 6 phrases), SANS le superflu (politesses, digressions, redites).'),
+        synthese: z
+          .string()
+          .describe(
+            'Synthèse compacte et utile de ce qui a été fait/appris (3 à 6 phrases), SANS le superflu (politesses, digressions, redites).',
+          ),
         vu: z.array(z.string()).describe('Points/notions réellement vus ou travaillés.'),
         bloque: z.array(z.string()).describe('Points de blocage, erreurs, incompréhensions.'),
         ouOnEnEst: z.string().describe('Où l’élève s’est arrêté précisément.'),
         prochaine: z.string().describe('La prochaine étape logique.'),
-        competenceTravaillee: z.boolean().describe(skill ? `Vrai UNIQUEMENT si la conversation a réellement fait travailler la compétence « ${skill.title} » (pas juste l'évoquer).` : 'Toujours faux (aucune compétence de cours prescrite).'),
-        resultat: z.enum(['maitrise', 'progres', 'bloque']).describe('Résultat sur cette compétence : maitrise (démontrée), progres (avance mais pas acquis), bloque (bloqué/erreurs).'),
+        competenceTravaillee: z
+          .boolean()
+          .describe(
+            skill
+              ? `Vrai UNIQUEMENT si la conversation a réellement fait travailler la compétence « ${skill.title} » (pas juste l'évoquer).`
+              : 'Toujours faux (aucune compétence de cours prescrite).',
+          ),
+        resultat: z
+          .enum(['maitrise', 'progres', 'bloque'])
+          .describe(
+            'Résultat sur cette compétence : maitrise (démontrée), progres (avance mais pas acquis), bloque (bloqué/erreurs).',
+          ),
       }),
       schemaName: 'MemorialisteSynthese',
       system: `Tu es le « Mémorialiste » de l'élève : tu lis une conversation avec ${src} et tu en fais une MÉMOIRE propre et compacte pour Dowze. Enlève TOUT l'inutile (salutations, digressions, redites, méta). Garde ce qui sert à reprendre plus tard : ce qui a été vu/compris, ce qui a bloqué, où on s'est arrêté, la suite. Évalue HONNÊTEMENT la maîtrise : ne mets « maitrise » que si l'élève a vraiment démontré comprendre. Français, factuel, dense.`,
@@ -1640,23 +2495,47 @@ export class CompanionService {
       mem.bloque?.length ? `Bloqué : ${mem.bloque.join(' ; ')}` : '',
       `Où on en est : ${mem.ouOnEnEst}`,
       `Prochaine étape : ${mem.prochaine}`,
-    ].filter(Boolean).join('\n').slice(0, 8000);
+    ]
+      .filter(Boolean)
+      .join('\n')
+      .slice(0, 8000);
 
-    const row = (await this.db.insert(companionSpaceKnowledge)
-      .values({ profileId, space: spaceId, title: titre, content })
-      .returning({ id: companionSpaceKnowledge.id }))[0]!;
+    const row = (
+      await this.db
+        .insert(companionSpaceKnowledge)
+        .values({ profileId, space: spaceId, title: titre, content })
+        .returning({ id: companionSpaceKnowledge.id })
+    )[0]!;
     // Embedding en tâche de fond → interrogeable par les abeilles (orgSearch).
-    void this.copilote.embed(profileId, [`${titre}. ${content}`.slice(0, 2000)]).then((v) => this.storeKnowledgeEmbedding(row.id, v?.[0])).catch(() => undefined);
+    void this.copilote
+      .embed(profileId, [`${titre}. ${content}`.slice(0, 2000)])
+      .then((v) => this.storeKnowledgeEmbedding(row.id, v?.[0]))
+      .catch(() => undefined);
 
     // Progression : si la conversation a VRAIMENT fait travailler la compétence de cours, Dowze RECALCULE la
     // maîtrise (BKT) + carnet + FSRS — discuter avec ChatGPT/Claude fait donc progresser le niveau dans Dowze.
-    let progressed: { skill: { id: string; title: string }; pMastery: number; resultat: string } | null = null;
+    let progressed: {
+      skill: { id: string; title: string };
+      pMastery: number;
+      resultat: string;
+    } | null = null;
     if (skill && mem.competenceTravaillee) {
       try {
         const note = `Session ${src} : ${mem.ouOnEnEst}`.slice(0, 500);
-        const { pMastery } = await this.copilote.applyProgress(studentId, skill.id, mem.resultat, note);
-        progressed = { skill: { id: skill.id, title: skill.title }, pMastery, resultat: mem.resultat };
-      } catch { /* la maîtrise n'a pas pu être mise à jour : la mémoire RAG reste, elle */ }
+        const { pMastery } = await this.copilote.applyProgress(
+          studentId,
+          skill.id,
+          mem.resultat,
+          note,
+        );
+        progressed = {
+          skill: { id: skill.id, title: skill.title },
+          pMastery,
+          resultat: mem.resultat,
+        };
+      } catch {
+        /* la maîtrise n'a pas pu être mise à jour : la mémoire RAG reste, elle */
+      }
     }
 
     // Trace dans le fil du compagnon-pont (visible au téléphone).
@@ -1664,50 +2543,110 @@ export class CompanionService {
     const trace = progressed
       ? `Session ${src} mémorisée : ${titre}. Maîtrise de « ${progressed.skill.title} » mise à jour (${Math.round(progressed.pMastery * 100)}%).`
       : `Session ${src} mémorisée : ${titre}.`;
-    await this.db.insert(companionMessages).values({ profileId, agentId: bridgeId, sender: 'agent', text: trace.slice(0, 4000) }).catch(() => undefined);
+    await this.db
+      .insert(companionMessages)
+      .values({ profileId, agentId: bridgeId, sender: 'agent', text: trace.slice(0, 4000) })
+      .catch(() => undefined);
 
-    return { id: row.id, titre, synthese: mem.synthese, ouOnEnEst: mem.ouOnEnEst, prochaine: mem.prochaine, progressed };
+    return {
+      id: row.id,
+      titre,
+      synthese: mem.synthese,
+      ouOnEnEst: mem.ouOnEnEst,
+      prochaine: mem.prochaine,
+      progressed,
+    };
   }
 
   /**
    * ③ RÉINJECTER : construit le prompt de contexte à coller AUTOMATIQUEMENT dans une nouvelle session
    * ChatGPT/Claude = contexte pédagogique (`compose`) + la dernière synthèse mémorisée (« où on en était »).
    */
-  async getBridgeContext(authId: string): Promise<{ prompt: string; skill: { id: string; slug: string; title: string } | null; hasMemory: boolean }> {
+  async getBridgeContext(authId: string): Promise<{
+    prompt: string;
+    skill: { id: string; slug: string; title: string } | null;
+    hasMemory: boolean;
+  }> {
     const profileId = await this.profileIdForAuth(authId);
     const spaceId = await this.ensureSpaceByName(profileId, CompanionService.BRIDGE_SPACE_NAME);
-    const last = (await this.db.select({ title: companionSpaceKnowledge.title, content: companionSpaceKnowledge.content })
-      .from(companionSpaceKnowledge)
-      .where(and(eq(companionSpaceKnowledge.profileId, profileId), eq(companionSpaceKnowledge.space, spaceId)))
-      .orderBy(desc(companionSpaceKnowledge.createdAt)).limit(1))[0];
+    const last = (
+      await this.db
+        .select({ title: companionSpaceKnowledge.title, content: companionSpaceKnowledge.content })
+        .from(companionSpaceKnowledge)
+        .where(
+          and(
+            eq(companionSpaceKnowledge.profileId, profileId),
+            eq(companionSpaceKnowledge.space, spaceId),
+          ),
+        )
+        .orderBy(desc(companionSpaceKnowledge.createdAt))
+        .limit(1)
+    )[0];
     // Le contexte de cours vient du PROFIL ÉLÈVE (learner_rank), pas du profil compagnon (audit 08-2026).
     const studentId = await this.studentProfileIdForAuth(authId);
-    const course = await this.copilote.compose(studentId).catch(() => ({ prompt: '', skill: null as { id: string; slug: string; title: string } | null }));
+    const course = await this.copilote.compose(studentId).catch(() => ({
+      prompt: '',
+      skill: null as { id: string; slug: string; title: string } | null,
+    }));
     const parts: string[] = [];
     if (course.prompt) parts.push(course.prompt);
-    if (last) parts.push(`--- OÙ ON EN ÉTAIT (mémoire Dowze de tes sessions précédentes) ---\n${last.content}`);
+    if (last)
+      parts.push(
+        `--- OÙ ON EN ÉTAIT (mémoire Dowze de tes sessions précédentes) ---\n${last.content}`,
+      );
     else parts.push('--- Première session : pas encore de mémoire. ---');
-    parts.push('Reprends à partir de ce contexte et aide l’élève à continuer son cours. Réponds directement, sans reformuler ce contexte.');
+    parts.push(
+      'Reprends à partir de ce contexte et aide l’élève à continuer son cours. Réponds directement, sans reformuler ce contexte.',
+    );
     return { prompt: parts.join('\n\n'), skill: course.skill, hasMemory: !!last };
   }
 
   /** État du pont : dernières synthèses mémorisées (pour l'UI). */
-  async bridgeState(authId: string): Promise<{ id: string; title: string; preview: string; at: number }[]> {
+  async bridgeState(
+    authId: string,
+  ): Promise<{ id: string; title: string; preview: string; at: number }[]> {
     const profileId = await this.profileIdForAuth(authId);
     const spaceId = await this.ensureSpaceByName(profileId, CompanionService.BRIDGE_SPACE_NAME);
-    const rows = await this.db.select({ id: companionSpaceKnowledge.id, title: companionSpaceKnowledge.title, content: companionSpaceKnowledge.content, createdAt: companionSpaceKnowledge.createdAt })
+    const rows = await this.db
+      .select({
+        id: companionSpaceKnowledge.id,
+        title: companionSpaceKnowledge.title,
+        content: companionSpaceKnowledge.content,
+        createdAt: companionSpaceKnowledge.createdAt,
+      })
       .from(companionSpaceKnowledge)
-      .where(and(eq(companionSpaceKnowledge.profileId, profileId), eq(companionSpaceKnowledge.space, spaceId)))
-      .orderBy(desc(companionSpaceKnowledge.createdAt)).limit(50);
-    return rows.map((r) => ({ id: r.id, title: r.title, preview: r.content.slice(0, 140), at: r.createdAt.getTime() }));
+      .where(
+        and(
+          eq(companionSpaceKnowledge.profileId, profileId),
+          eq(companionSpaceKnowledge.space, spaceId),
+        ),
+      )
+      .orderBy(desc(companionSpaceKnowledge.createdAt))
+      .limit(50);
+    return rows.map((r) => ({
+      id: r.id,
+      title: r.title,
+      preview: r.content.slice(0, 140),
+      at: r.createdAt.getTime(),
+    }));
   }
 
   // ---------- Espaces (open-spaces ; la Maison 'home' est implicite) ----------
 
-  async listSpaces(authId: string): Promise<{ id: string; name: string; type: string; mission: string | null }[]> {
+  async listSpaces(
+    authId: string,
+  ): Promise<{ id: string; name: string; type: string; mission: string | null }[]> {
     const profileId = await this.profileIdForAuth(authId);
-    return this.db.select({ id: companionSpaces.id, name: companionSpaces.name, type: companionSpaces.type, mission: companionSpaces.mission }).from(companionSpaces)
-      .where(eq(companionSpaces.profileId, profileId)).orderBy(asc(companionSpaces.createdAt));
+    return this.db
+      .select({
+        id: companionSpaces.id,
+        name: companionSpaces.name,
+        type: companionSpaces.type,
+        mission: companionSpaces.mission,
+      })
+      .from(companionSpaces)
+      .where(eq(companionSpaces.profileId, profileId))
+      .orderBy(asc(companionSpaces.createdAt));
   }
 
   /** Catalogue de templates d'organisation (pour le front : choix du type d'open-space). */
@@ -1726,34 +2665,56 @@ export class CompanionService {
     };
     const room = await this.pickRoomFor(profileId, space);
     const now = new Date();
-    const row = (await this.db.insert(companionAgents).values({
-      profileId,
-      name: preset.title.slice(0, 40),
-      skinUrl: `/pets/${preset.skinSlug}.webp`, // relatif → same-origin sur n'importe quel hôte
-      size: 96,
-      personality,
-      role: preset.title.slice(0, 60),
-      roleKey: preset.key,
-      space: space.slice(0, 60),
-      room,
-      isPrimary: false,
-      mode: 'agent',
-      createdAt: now,
-      updatedAt: now,
-    }).returning())[0];
+    const row = (
+      await this.db
+        .insert(companionAgents)
+        .values({
+          profileId,
+          name: preset.title.slice(0, 40),
+          skinUrl: `/pets/${preset.skinSlug}.webp`, // relatif → same-origin sur n'importe quel hôte
+          size: 96,
+          personality,
+          role: preset.title.slice(0, 60),
+          roleKey: preset.key,
+          space: space.slice(0, 60),
+          room,
+          isPrimary: false,
+          mode: 'agent',
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning()
+    )[0];
     // Embedding en tâche de fond (ne bloque pas la création de l'entreprise).
-    if (row) void this.embedAgent(profileId, row.id, row.name, row.role, preset.systemPromptSeed).catch(() => undefined);
+    if (row)
+      void this.embedAgent(profileId, row.id, row.name, row.role, preset.systemPromptSeed).catch(
+        () => undefined,
+      );
   }
 
   /** Crée un open-space = organisation (type + mission) et PEUPLE son effectif depuis le template. */
-  async createSpace(authId: string, name: string, opts?: { type?: string; template?: string; mission?: string }): Promise<{ id: string; name: string }> {
+  async createSpace(
+    authId: string,
+    name: string,
+    opts?: { type?: string; template?: string; mission?: string },
+  ): Promise<{ id: string; name: string }> {
     const profileId = await this.profileIdForAuth(authId);
     const tpl = templateByKey(opts?.template);
     const type = (opts?.type ?? tpl?.type ?? 'custom').slice(0, 20);
     const mission = (opts?.mission ?? tpl?.defaultMission ?? null)?.slice(0, 500) ?? null;
-    const row = (await this.db.insert(companionSpaces).values({
-      profileId, name: (name || 'Open space').slice(0, 40), type, template: opts?.template ?? null, mission, ownerKind: 'user',
-    }).returning({ id: companionSpaces.id, name: companionSpaces.name }))[0];
+    const row = (
+      await this.db
+        .insert(companionSpaces)
+        .values({
+          profileId,
+          name: (name || 'Open space').slice(0, 40),
+          type,
+          template: opts?.template ?? null,
+          mission,
+          ownerKind: 'user',
+        })
+        .returning({ id: companionSpaces.id, name: companionSpaces.name })
+    )[0];
     if (!row) throw new BadRequestException('Création impossible.');
     // Peuple l'effectif (un agent-employé par rôle du template).
     if (tpl && tpl.roles.length) {
@@ -1773,62 +2734,135 @@ export class CompanionService {
    * (ré-écrit les personas au bon niveau, ajoute les profs manquants, sans perdre les règles apprises).
    * Ne provisionne QUE les élèves de l'Académie (présence d'un `learner_rank`).
    */
-  async ensureServiceOrg(authId: string, service = 'academie'): Promise<{ id: string; name: string; type: string; mission: string | null } | null> {
+  async ensureServiceOrg(
+    authId: string,
+    service = 'academie',
+  ): Promise<{ id: string; name: string; type: string; mission: string | null } | null> {
     if (service !== 'academie') throw new BadRequestException('Service inconnu.');
     const profileId = await this.profileIdForAuth(authId);
     // Le rang de l'élève peut vivre sur un AUTRE profil du même compte (le compagnon est sur le 1er
     // profil, le parcours Académie parfois sur un autre) → on cherche le rang sur TOUT le compte.
-    const prof = (await this.db.select({ accountId: profiles.accountId }).from(profiles).where(eq(profiles.id, profileId)))[0];
+    const prof = (
+      await this.db
+        .select({ accountId: profiles.accountId })
+        .from(profiles)
+        .where(eq(profiles.id, profileId))
+    )[0];
     if (!prof) return null;
     // Le rang ET le parcours (mastery/spé) peuvent vivre sur un AUTRE profil du même compte → on identifie
     // le PROFIL ÉLÈVE (celui qui porte le learner_rank) pour lire ses vraies connaissances.
-    const rankRow = (await this.db.select({ rank: learnerRank.rank, studentId: learnerRank.profileId }).from(learnerRank)
-      .innerJoin(profiles, eq(profiles.id, learnerRank.profileId))
-      .where(eq(profiles.accountId, prof.accountId))
-      .orderBy(desc(learnerRank.rank)).limit(1))[0];
+    const rankRow = (
+      await this.db
+        .select({ rank: learnerRank.rank, studentId: learnerRank.profileId })
+        .from(learnerRank)
+        .innerJoin(profiles, eq(profiles.id, learnerRank.profileId))
+        .where(eq(profiles.accountId, prof.accountId))
+        .orderBy(desc(learnerRank.rank))
+        .limit(1)
+    )[0];
     // Pas de rang nulle part → pas encore élève de l'Académie → on ne provisionne pas.
     if (!rankRow) return null;
     const rank = rankRow.rank ?? 1;
     const rm = rankMeta(rank);
     const marker = 'service:academie';
     const name = `École Dowze — ${rm.name}`.slice(0, 40);
-    const mission = `École Dowze de l'élève, niveau ${rm.name} ${rm.eq}. Un directeur, un évaluateur, et un enseignant recruté pour CHAQUE matière que l'élève travaille (créés automatiquement selon ses besoins).`.slice(0, 500);
+    const mission =
+      `École Dowze de l'élève, niveau ${rm.name} ${rm.eq}. Un directeur, un évaluateur, et un enseignant recruté pour CHAQUE matière que l'élève travaille (créés automatiquement selon ses besoins).`.slice(
+        0,
+        500,
+      );
     // EFFECTIF DYNAMIQUE : administration fixe (Directeur + Évaluateur) + un prof PAR DISCIPLINE réellement
     // active (spécialisations + compétences en cours) → l'école recrute selon les besoins/connaissances/niveau.
     const disciplines = await this.activeDisciplinesForStudent(rankRow.studentId);
-    const staff: RolePreset[] = [...academieAdmin(rank), ...disciplines.map((d) => academieTeacher(d, rank))];
+    const staff: RolePreset[] = [
+      ...academieAdmin(rank),
+      ...disciplines.map((d) => academieTeacher(d, rank)),
+    ];
 
     // Création atomique (idempotente via l'index unique partiel owner_kind='service').
-    const created = (await this.db.insert(companionSpaces)
-      .values({ profileId, name, type: 'school', template: marker, mission, ownerKind: 'service' })
-      .onConflictDoNothing()
-      .returning({ id: companionSpaces.id, name: companionSpaces.name }))[0];
+    const created = (
+      await this.db
+        .insert(companionSpaces)
+        .values({
+          profileId,
+          name,
+          type: 'school',
+          template: marker,
+          mission,
+          ownerKind: 'service',
+        })
+        .onConflictDoNothing()
+        .returning({ id: companionSpaces.id, name: companionSpaces.name })
+    )[0];
     if (created) {
       for (const preset of staff) await this.seedRoleAgent(profileId, created.id, preset);
       return { id: created.id, name: created.name, type: 'school', mission };
     }
 
     // Existe déjà → re-calibrer au rang courant.
-    const existing = (await this.db.select({ id: companionSpaces.id, name: companionSpaces.name, mission: companionSpaces.mission }).from(companionSpaces)
-      .where(and(eq(companionSpaces.profileId, profileId), eq(companionSpaces.template, marker), eq(companionSpaces.ownerKind, 'service'))))[0];
+    const existing = (
+      await this.db
+        .select({
+          id: companionSpaces.id,
+          name: companionSpaces.name,
+          mission: companionSpaces.mission,
+        })
+        .from(companionSpaces)
+        .where(
+          and(
+            eq(companionSpaces.profileId, profileId),
+            eq(companionSpaces.template, marker),
+            eq(companionSpaces.ownerKind, 'service'),
+          ),
+        )
+    )[0];
     if (!existing) return null;
     if (existing.name !== name || existing.mission !== mission) {
-      await this.db.update(companionSpaces).set({ name, mission, type: 'school' }).where(eq(companionSpaces.id, existing.id));
+      await this.db
+        .update(companionSpaces)
+        .set({ name, mission, type: 'school' })
+        .where(eq(companionSpaces.id, existing.id));
     }
     // Agents en place (par roleKey) → ajoute les manquants, re-calibre les personas au bon niveau (garde les règles apprises).
-    const rows = await this.db.select({ id: companionAgents.id, roleKey: companionAgents.roleKey, name: companionAgents.name, personality: companionAgents.personality })
+    const rows = await this.db
+      .select({
+        id: companionAgents.id,
+        roleKey: companionAgents.roleKey,
+        name: companionAgents.name,
+        personality: companionAgents.personality,
+      })
       .from(companionAgents)
-      .where(and(eq(companionAgents.profileId, profileId), eq(companionAgents.space, existing.id), eq(companionAgents.status, 'active')));
+      .where(
+        and(
+          eq(companionAgents.profileId, profileId),
+          eq(companionAgents.space, existing.id),
+          eq(companionAgents.status, 'active'),
+        ),
+      );
     const byKey = new Map(rows.filter((r) => r.roleKey).map((r) => [r.roleKey as string, r]));
     for (const preset of staff) {
       const a = byKey.get(preset.key);
-      if (!a) { await this.seedRoleAgent(profileId, existing.id, preset); continue; }
+      if (!a) {
+        await this.seedRoleAgent(profileId, existing.id, preset);
+        continue;
+      }
       const prev = (a.personality ?? {}) as Record<string, unknown>;
       // Ne recalibre que si le RANG a changé (audit 08-2026) : comparer au prompt-seed écrasait le
       // ré-entraînement (`retrainAgent` modifie précisément `systemPrompt`) à chaque passage.
       if (prev.seedRank !== rank) {
-        await this.db.update(companionAgents)
-          .set({ name: preset.title.slice(0, 40), role: preset.title.slice(0, 60), personality: { ...prev, systemPrompt: preset.systemPromptSeed, description: preset.title, seedRank: rank }, updatedAt: new Date() })
+        await this.db
+          .update(companionAgents)
+          .set({
+            name: preset.title.slice(0, 40),
+            role: preset.title.slice(0, 60),
+            personality: {
+              ...prev,
+              systemPrompt: preset.systemPromptSeed,
+              description: preset.title,
+              seedRank: rank,
+            },
+            updatedAt: new Date(),
+          })
           .where(eq(companionAgents.id, a.id));
       }
     }
@@ -1843,15 +2877,31 @@ export class CompanionService {
   private async activeDisciplinesForStudent(studentProfileId: string): Promise<string[]> {
     const set = new Set<string>();
     // 1) Spécialisations choisies = direction/intérêt fort (signal explicite de besoin).
-    const specs = await this.db.select({ d: specializations.discipline }).from(specializations)
-      .where(and(eq(specializations.profileId, studentProfileId), eq(specializations.status, 'active')));
+    const specs = await this.db
+      .select({ d: specializations.discipline })
+      .from(specializations)
+      .where(
+        and(eq(specializations.profileId, studentProfileId), eq(specializations.status, 'active')),
+      );
     for (const s of specs) if (s.d) set.add(s.d);
     // 2) Disciplines des compétences EN COURS (récemment travaillées d'abord) = ce que l'élève apprend là.
-    const rows = await this.db.select({ slug: skills.slug }).from(masteryStates)
+    const rows = await this.db
+      .select({ slug: skills.slug })
+      .from(masteryStates)
       .innerJoin(skills, eq(skills.id, masteryStates.skillId))
-      .where(and(eq(masteryStates.profileId, studentProfileId), gt(masteryStates.pMastery, 0.15), lt(masteryStates.pMastery, 0.95)))
-      .orderBy(desc(masteryStates.lastUpdated)).limit(120);
-    for (const r of rows) { const d = disciplineOf(r.slug); if (d && d !== 'Fondations') set.add(d); }
+      .where(
+        and(
+          eq(masteryStates.profileId, studentProfileId),
+          gt(masteryStates.pMastery, 0.15),
+          lt(masteryStates.pMastery, 0.95),
+        ),
+      )
+      .orderBy(desc(masteryStates.lastUpdated))
+      .limit(120);
+    for (const r of rows) {
+      const d = disciplineOf(r.slug);
+      if (d && d !== 'Fondations') set.add(d);
+    }
     return [...set];
   }
 
@@ -1860,39 +2910,84 @@ export class CompanionService {
    * matières de l'école et on CRÉE le prof manquant pour chaque discipline concernée (avant que le
    * Directeur ne délègue). Complète le recrutement proactif basé sur l'état d'apprentissage.
    */
-  private async recruitTeachersForQuestion(profileId: string, spaceId: string, message: string): Promise<void> {
+  private async recruitTeachersForQuestion(
+    profileId: string,
+    spaceId: string,
+    message: string,
+  ): Promise<void> {
     // Rang de l'élève (compte-wide, comme l'auto-provision) pour calibrer le prof créé.
-    const prof = (await this.db.select({ accountId: profiles.accountId }).from(profiles).where(eq(profiles.id, profileId)))[0];
+    const prof = (
+      await this.db
+        .select({ accountId: profiles.accountId })
+        .from(profiles)
+        .where(eq(profiles.id, profileId))
+    )[0];
     if (!prof) return;
-    const rankRow = (await this.db.select({ rank: learnerRank.rank }).from(learnerRank)
-      .innerJoin(profiles, eq(profiles.id, learnerRank.profileId))
-      .where(eq(profiles.accountId, prof.accountId)).orderBy(desc(learnerRank.rank)).limit(1))[0];
+    const rankRow = (
+      await this.db
+        .select({ rank: learnerRank.rank })
+        .from(learnerRank)
+        .innerJoin(profiles, eq(profiles.id, learnerRank.profileId))
+        .where(eq(profiles.accountId, prof.accountId))
+        .orderBy(desc(learnerRank.rank))
+        .limit(1)
+    )[0];
     const rank = rankRow?.rank ?? 1;
     // Classe la question dans 0 à 2 disciplines PARMI les 11 (température 0 = déterministe).
     let disciplines: string[] = [];
     try {
       const { object } = await this.copilote.generateStructured(profileId, {
-        schema: z.object({ disciplines: z.array(z.string()).describe('0 à 2 matières concernées, choisies EXACTEMENT dans la liste. Vide si la question ne relève d’aucune matière scolaire.') }),
+        schema: z.object({
+          disciplines: z
+            .array(z.string())
+            .describe(
+              '0 à 2 matières concernées, choisies EXACTEMENT dans la liste. Vide si la question ne relève d’aucune matière scolaire.',
+            ),
+        }),
         schemaName: 'QuestionDisciplines',
         system: `Tu classes une question d'élève dans les matières de l'école. Matières possibles (choisis EXACTEMENT parmi elles, à l'identique) : ${DISCIPLINES.join(', ')}. Renvoie 0 à 2 matières réellement concernées.`,
         prompt: message.slice(0, 500),
         temperature: 0,
       });
-      disciplines = (object.disciplines || []).filter((d) => (DISCIPLINES as readonly string[]).includes(d)).slice(0, 2);
-    } catch { return; }
+      disciplines = (object.disciplines || [])
+        .filter((d) => (DISCIPLINES as readonly string[]).includes(d))
+        .slice(0, 2);
+    } catch {
+      return;
+    }
     if (!disciplines.length) return;
     // Profs déjà présents (par roleKey) → on ne crée que les manquants.
-    const present = new Set((await this.db.select({ roleKey: companionAgents.roleKey }).from(companionAgents)
-      .where(and(eq(companionAgents.profileId, profileId), eq(companionAgents.space, spaceId), eq(companionAgents.status, 'active'))))
-      .map((r) => r.roleKey).filter((k): k is string => !!k));
+    const present = new Set(
+      (
+        await this.db
+          .select({ roleKey: companionAgents.roleKey })
+          .from(companionAgents)
+          .where(
+            and(
+              eq(companionAgents.profileId, profileId),
+              eq(companionAgents.space, spaceId),
+              eq(companionAgents.status, 'active'),
+            ),
+          )
+      )
+        .map((r) => r.roleKey)
+        .filter((k): k is string => !!k),
+    );
     for (const d of disciplines) {
-      if (!present.has(teacherRoleKey(d))) await this.seedRoleAgent(profileId, spaceId, academieTeacher(d, rank));
+      if (!present.has(teacherRoleKey(d)))
+        await this.seedRoleAgent(profileId, spaceId, academieTeacher(d, rank));
     }
   }
 
-  async renameSpace(authId: string, id: string, name: string): Promise<{ id: string; name: string }> {
+  async renameSpace(
+    authId: string,
+    id: string,
+    name: string,
+  ): Promise<{ id: string; name: string }> {
     const profileId = await this.profileIdForAuth(authId);
-    const res = await this.db.update(companionSpaces).set({ name: name.slice(0, 40) })
+    const res = await this.db
+      .update(companionSpaces)
+      .set({ name: name.slice(0, 40) })
       .where(and(eq(companionSpaces.id, id), eq(companionSpaces.profileId, profileId)))
       .returning({ id: companionSpaces.id, name: companionSpaces.name });
     if (!res[0]) throw new NotFoundException('Espace introuvable.');
@@ -1902,12 +2997,28 @@ export class CompanionService {
   /** Supprime un espace ET les compagnons qui y vivent. Les orgs de SERVICE (école Académie) sont protégées. */
   async deleteSpace(authId: string, id: string): Promise<{ ok: true }> {
     const profileId = await this.profileIdForAuth(authId);
-    const sp = (await this.db.select({ ownerKind: companionSpaces.ownerKind }).from(companionSpaces)
-      .where(and(eq(companionSpaces.id, id), eq(companionSpaces.profileId, profileId))))[0];
-    if (sp?.ownerKind === 'service') throw new BadRequestException('Cet espace de service Dowze ne peut pas être supprimé.');
-    await this.db.delete(companionAgents).where(and(eq(companionAgents.profileId, profileId), eq(companionAgents.space, id)));
-    await this.db.delete(companionSpaceKnowledge).where(and(eq(companionSpaceKnowledge.profileId, profileId), eq(companionSpaceKnowledge.space, id)));
-    await this.db.delete(companionSpaces).where(and(eq(companionSpaces.id, id), eq(companionSpaces.profileId, profileId)));
+    const sp = (
+      await this.db
+        .select({ ownerKind: companionSpaces.ownerKind })
+        .from(companionSpaces)
+        .where(and(eq(companionSpaces.id, id), eq(companionSpaces.profileId, profileId)))
+    )[0];
+    if (sp?.ownerKind === 'service')
+      throw new BadRequestException('Cet espace de service Dowze ne peut pas être supprimé.');
+    await this.db
+      .delete(companionAgents)
+      .where(and(eq(companionAgents.profileId, profileId), eq(companionAgents.space, id)));
+    await this.db
+      .delete(companionSpaceKnowledge)
+      .where(
+        and(
+          eq(companionSpaceKnowledge.profileId, profileId),
+          eq(companionSpaceKnowledge.space, id),
+        ),
+      );
+    await this.db
+      .delete(companionSpaces)
+      .where(and(eq(companionSpaces.id, id), eq(companionSpaces.profileId, profileId)));
     return { ok: true };
   }
 
@@ -1916,39 +3027,82 @@ export class CompanionService {
   private async storeKnowledgeEmbedding(id: string, vec: number[] | undefined): Promise<void> {
     if (!Array.isArray(vec) || vec.length !== HIVE_EMBED_DIM) return;
     const lit = `[${vec.join(',')}]`;
-    await this.db.execute(sql`update companion_space_knowledge set embedding_vec = ${lit}::vector where id = ${id}`).catch(() => undefined);
+    await this.db
+      .execute(
+        sql`update companion_space_knowledge set embedding_vec = ${lit}::vector where id = ${id}`,
+      )
+      .catch(() => undefined);
   }
 
   /** Ajoute une connaissance (document/fait/règle) à la base d'un open-space = organisation. */
-  async addSpaceKnowledge(authId: string, spaceId: string, title: string, content: string): Promise<{ id: string; title: string }> {
+  async addSpaceKnowledge(
+    authId: string,
+    spaceId: string,
+    title: string,
+    content: string,
+  ): Promise<{ id: string; title: string }> {
     const profileId = await this.profileIdForAuth(authId);
-    const space = (await this.db.select({ id: companionSpaces.id }).from(companionSpaces)
-      .where(and(eq(companionSpaces.id, spaceId), eq(companionSpaces.profileId, profileId))))[0];
+    const space = (
+      await this.db
+        .select({ id: companionSpaces.id })
+        .from(companionSpaces)
+        .where(and(eq(companionSpaces.id, spaceId), eq(companionSpaces.profileId, profileId)))
+    )[0];
     if (!space) throw new NotFoundException('Espace introuvable.');
     const t = title.trim().slice(0, 160);
     const c = content.trim().slice(0, 8000);
     if (!c) throw new BadRequestException('Contenu vide.');
-    const row = (await this.db.insert(companionSpaceKnowledge)
-      .values({ profileId, space: spaceId, title: t || c.slice(0, 60), content: c })
-      .returning({ id: companionSpaceKnowledge.id, title: companionSpaceKnowledge.title }))[0]!;
+    const row = (
+      await this.db
+        .insert(companionSpaceKnowledge)
+        .values({ profileId, space: spaceId, title: t || c.slice(0, 60), content: c })
+        .returning({ id: companionSpaceKnowledge.id, title: companionSpaceKnowledge.title })
+    )[0]!;
     // Embedding en tâche de fond (ne bloque pas l'ajout).
-    void this.copilote.embed(profileId, [`${row.title}. ${c}`.slice(0, 2000)]).then((v) => this.storeKnowledgeEmbedding(row.id, v?.[0])).catch(() => undefined);
+    void this.copilote
+      .embed(profileId, [`${row.title}. ${c}`.slice(0, 2000)])
+      .then((v) => this.storeKnowledgeEmbedding(row.id, v?.[0]))
+      .catch(() => undefined);
     return row;
   }
 
   /** Liste les connaissances d'un open-space (aperçu du contenu). */
-  async listSpaceKnowledge(authId: string, spaceId: string): Promise<{ id: string; title: string; preview: string; at: number }[]> {
+  async listSpaceKnowledge(
+    authId: string,
+    spaceId: string,
+  ): Promise<{ id: string; title: string; preview: string; at: number }[]> {
     const profileId = await this.profileIdForAuth(authId);
-    const rows = await this.db.select({ id: companionSpaceKnowledge.id, title: companionSpaceKnowledge.title, content: companionSpaceKnowledge.content, createdAt: companionSpaceKnowledge.createdAt })
+    const rows = await this.db
+      .select({
+        id: companionSpaceKnowledge.id,
+        title: companionSpaceKnowledge.title,
+        content: companionSpaceKnowledge.content,
+        createdAt: companionSpaceKnowledge.createdAt,
+      })
       .from(companionSpaceKnowledge)
-      .where(and(eq(companionSpaceKnowledge.profileId, profileId), eq(companionSpaceKnowledge.space, spaceId)))
-      .orderBy(desc(companionSpaceKnowledge.createdAt)).limit(200);
-    return rows.map((r) => ({ id: r.id, title: r.title, preview: r.content.slice(0, 140), at: r.createdAt.getTime() }));
+      .where(
+        and(
+          eq(companionSpaceKnowledge.profileId, profileId),
+          eq(companionSpaceKnowledge.space, spaceId),
+        ),
+      )
+      .orderBy(desc(companionSpaceKnowledge.createdAt))
+      .limit(200);
+    return rows.map((r) => ({
+      id: r.id,
+      title: r.title,
+      preview: r.content.slice(0, 140),
+      at: r.createdAt.getTime(),
+    }));
   }
 
   async deleteSpaceKnowledge(authId: string, id: string): Promise<{ ok: true }> {
     const profileId = await this.profileIdForAuth(authId);
-    await this.db.delete(companionSpaceKnowledge).where(and(eq(companionSpaceKnowledge.id, id), eq(companionSpaceKnowledge.profileId, profileId)));
+    await this.db
+      .delete(companionSpaceKnowledge)
+      .where(
+        and(eq(companionSpaceKnowledge.id, id), eq(companionSpaceKnowledge.profileId, profileId)),
+      );
     return { ok: true };
   }
 
@@ -1956,26 +3110,57 @@ export class CompanionService {
    * Recherche RAG dans la base d'UN open-space (scopée → pas de contamination inter-projets).
    * SÉMANTIQUE d'abord (KNN pgvector) ; repli LEXICAL (ILIKE) si pas d'embeddings configurés.
    */
-  async searchSpaceKnowledge(profileId: string, space: string, query: string, k = 5): Promise<{ title: string; content: string }[]> {
+  async searchSpaceKnowledge(
+    profileId: string,
+    space: string,
+    query: string,
+    k = 5,
+  ): Promise<{ title: string; content: string }[]> {
     const q = (query || '').trim().slice(0, 300);
     if (!q) return [];
     const qv = (await this.copilote.embed(profileId, [q]).catch(() => null))?.[0];
     if (qv && qv.length === HIVE_EMBED_DIM) {
       const lit = `[${qv.join(',')}]`;
-      const rows = (await this.db.execute(sql`
+      const rows = (await this.db
+        .execute(
+          sql`
         select title, content from companion_space_knowledge
         where profile_id = ${profileId} and space = ${space} and embedding_vec is not null
         order by embedding_vec <=> ${lit}::vector limit ${k}
-      `).catch(() => null)) as unknown as { title: string; content: string }[] | null;
-      if (rows && rows.length) return rows.map((r) => ({ title: r.title, content: r.content.slice(0, 800) }));
+      `,
+        )
+        .catch(() => null)) as unknown as { title: string; content: string }[] | null;
+      if (rows && rows.length)
+        return rows.map((r) => ({ title: r.title, content: r.content.slice(0, 800) }));
     }
     // Repli lexical : mots-clés de la requête sur titre/contenu.
-    const words = [...new Set(q.toLowerCase().match(/[a-zàâäéèêëïîôöùûüç0-9]{4,}/g) ?? [])].slice(0, 6);
-    const conds = words.length ? words.flatMap((w) => [ilike(companionSpaceKnowledge.title, `%${w}%`), ilike(companionSpaceKnowledge.content, `%${w}%`)]) : [];
-    const rows2 = await this.db.select({ title: companionSpaceKnowledge.title, content: companionSpaceKnowledge.content })
+    const words = [...new Set(q.toLowerCase().match(/[a-zàâäéèêëïîôöùûüç0-9]{4,}/g) ?? [])].slice(
+      0,
+      6,
+    );
+    const conds = words.length
+      ? words.flatMap((w) => [
+          ilike(companionSpaceKnowledge.title, `%${w}%`),
+          ilike(companionSpaceKnowledge.content, `%${w}%`),
+        ])
+      : [];
+    const rows2 = await this.db
+      .select({ title: companionSpaceKnowledge.title, content: companionSpaceKnowledge.content })
       .from(companionSpaceKnowledge)
-      .where(conds.length ? and(eq(companionSpaceKnowledge.profileId, profileId), eq(companionSpaceKnowledge.space, space), or(...conds)) : and(eq(companionSpaceKnowledge.profileId, profileId), eq(companionSpaceKnowledge.space, space)))
-      .orderBy(desc(companionSpaceKnowledge.createdAt)).limit(k);
+      .where(
+        conds.length
+          ? and(
+              eq(companionSpaceKnowledge.profileId, profileId),
+              eq(companionSpaceKnowledge.space, space),
+              or(...conds),
+            )
+          : and(
+              eq(companionSpaceKnowledge.profileId, profileId),
+              eq(companionSpaceKnowledge.space, space),
+            ),
+      )
+      .orderBy(desc(companionSpaceKnowledge.createdAt))
+      .limit(k);
     return rows2.map((r) => ({ title: r.title, content: r.content.slice(0, 800) }));
   }
 }

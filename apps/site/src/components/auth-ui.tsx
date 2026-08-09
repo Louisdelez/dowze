@@ -3,10 +3,16 @@
 import type { ReactNode } from 'react';
 import { TopBar } from '@/components/topbar';
 
-export function Field({ label, hint, ...props }: { label: string; hint?: string } & React.InputHTMLAttributes<HTMLInputElement>) {
+export function Field({
+  label,
+  hint,
+  ...props
+}: { label: string; hint?: string } & React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <label className="block">
-      <span className="mb-1.5 block text-xs font-extrabold uppercase italic tracking-tight text-black">{label}</span>
+      <span className="mb-1.5 block text-xs font-extrabold uppercase italic tracking-tight text-black">
+        {label}
+      </span>
       <input
         {...props}
         className="w-full border-2 border-black bg-white px-3 py-2.5 text-sm font-semibold text-black outline-none transition placeholder:font-medium placeholder:text-black/30 focus:border-dowze-red"
@@ -30,7 +36,10 @@ export function AuthShell({ title, children }: { title: string; children: ReactN
   );
 }
 
-export function SubmitButton({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+export function SubmitButton({
+  children,
+  ...props
+}: React.ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
     <button
       {...props}

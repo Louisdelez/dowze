@@ -16,7 +16,10 @@ describe('correction d’exercices (tolérante)', () => {
   });
 
   it('corrige un cloze trou par trou', () => {
-    const g = gradeCloze(['le', 'chat'], [{ acceptedAnswers: ['le'] }, { acceptedAnswers: ['chien'] }]);
+    const g = gradeCloze(
+      ['le', 'chat'],
+      [{ acceptedAnswers: ['le'] }, { acceptedAnswers: ['chien'] }],
+    );
     expect(g.perGap).toEqual([true, false]);
     expect(g.correct).toBe(1);
     expect(g.total).toBe(2);

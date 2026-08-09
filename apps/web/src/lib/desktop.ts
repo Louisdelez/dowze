@@ -14,10 +14,7 @@ type TauriGlobal = {
   core?: { invoke?: <T>(cmd: string, args?: Record<string, unknown>) => Promise<T> };
   window?: { getCurrentWindow?: () => TauriWindow };
   event?: {
-    listen?: <T>(
-      event: string,
-      handler: (e: { payload: T }) => void,
-    ) => Promise<() => void>;
+    listen?: <T>(event: string, handler: (e: { payload: T }) => void) => Promise<() => void>;
   };
 };
 

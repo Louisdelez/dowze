@@ -30,12 +30,18 @@ export class AiModerationService {
    * règle-based. Un échec LLM retombe aussi sur les règles (jamais de trou de modération).
    */
   private async classify(text: string): Promise<ClassifyResult> {
-    const { MODERATION_PROVIDER: provider, MODERATION_MODEL: model, MODERATION_API_KEY: apiKey } = this.env;
+    const {
+      MODERATION_PROVIDER: provider,
+      MODERATION_MODEL: model,
+      MODERATION_API_KEY: apiKey,
+    } = this.env;
     if (provider && model && apiKey) {
       try {
         return await classifyWithLlm(text, { provider, model, apiKey });
       } catch (e) {
-        this.logger.warn(`LLM de modération indisponible, repli sur les règles: ${e instanceof Error ? e.message : e}`);
+        this.logger.warn(
+          `LLM de modération indisponible, repli sur les règles: ${e instanceof Error ? e.message : e}`,
+        );
       }
     }
     return classifyText(text);
@@ -75,9 +81,14 @@ export class AiModerationService {
       for (const p of parts) {
         const acc = await this.accountOf(p.profileId);
         if (!acc?.isMinor) continue;
-        const g = (await this.db.select().from(guardians).where(eq(guardians.minorAccountId, acc.id)))[0];
+        const g = (
+          await this.db.select().from(guardians).where(eq(guardians.minorAccountId, acc.id))
+        )[0];
         if (!g) continue;
-        const role = p.profileId === authorId ? "votre enfant a écrit" : `votre enfant a reçu (de ${authorName})`;
+        const role =
+          p.profileId === authorId
+            ? 'votre enfant a écrit'
+            : `votre enfant a reçu (de ${authorName})`;
         const reason = `Modération IA — ${r.category} : ${role} un message signalé. ${r.reason}`;
         await this.db.insert(parentalAlerts).values({
           minorAccountId: acc.id,

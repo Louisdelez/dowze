@@ -9,10 +9,19 @@ import { zipDirectoryStream } from '@/lib/zip';
 export const runtime = 'nodejs';
 
 const MIME: Record<string, string> = {
-  '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif',
-  '.webp': 'image/webp', '.svg': 'image/svg+xml', '.txt': 'text/plain; charset=utf-8',
-  '.md': 'text/markdown; charset=utf-8', '.json': 'application/json', '.pdf': 'application/pdf',
-  '.zip': 'application/zip', '.mp4': 'video/mp4', '.mp3': 'audio/mpeg',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+  '.svg': 'image/svg+xml',
+  '.txt': 'text/plain; charset=utf-8',
+  '.md': 'text/markdown; charset=utf-8',
+  '.json': 'application/json',
+  '.pdf': 'application/pdf',
+  '.zip': 'application/zip',
+  '.mp4': 'video/mp4',
+  '.mp3': 'audio/mpeg',
 };
 
 /** Sert le fichier/dossier référencé par un jeton de partage valide (public, sans session). Tout est STREAMÉ. */
@@ -20,7 +29,10 @@ export async function GET(_req: Request, ctx: { params: Promise<{ token: string 
   const { token } = await ctx.params;
   const payload = await verifyShare(token);
   if (!payload) {
-    return new NextResponse('Lien invalide ou expiré.', { status: 410, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+    return new NextResponse('Lien invalide ou expiré.', {
+      status: 410,
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+    });
   }
   try {
     const abs = resolveSafe(payload.u, payload.p);
@@ -41,7 +53,9 @@ export async function GET(_req: Request, ctx: { params: Promise<{ token: string 
     // Fichier → streamé aussi (pas de readFile en RAM).
     const name = path.basename(abs);
     const ext = path.extname(name).toLowerCase();
-    const webStream = Readable.toWeb(createReadStream(abs)) as unknown as ReadableStream<Uint8Array>;
+    const webStream = Readable.toWeb(
+      createReadStream(abs),
+    ) as unknown as ReadableStream<Uint8Array>;
     return new NextResponse(webStream, {
       headers: {
         'Content-Type': MIME[ext] || 'application/octet-stream',
@@ -51,6 +65,9 @@ export async function GET(_req: Request, ctx: { params: Promise<{ token: string 
       },
     });
   } catch {
-    return new NextResponse('Fichier introuvable.', { status: 404, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+    return new NextResponse('Fichier introuvable.', {
+      status: 404,
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+    });
   }
 }

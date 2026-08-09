@@ -55,7 +55,8 @@ const APPS: EcosystemApp[] = [
   {
     slug: 'alimentations',
     name: 'Alimentation',
-    description: 'Repas réguliers et meal-prep planifiés. Jamais de comptage, juste de la régularité.',
+    description:
+      'Repas réguliers et meal-prep planifiés. Jamais de comptage, juste de la régularité.',
     url: 'https://alimentations.dowze.ch',
     external: true,
     badge: 'bg-amber-500/10 text-amber-700',
@@ -78,7 +79,9 @@ export default function AppsPage() {
           const inner = (
             <>
               <div className="flex items-start gap-3">
-                <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${app.badge}`}>
+                <span
+                  className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${app.badge}`}
+                >
                   <app.Icon width={22} height={22} />
                 </span>
                 <div className="min-w-0">
@@ -116,8 +119,8 @@ export default function AppsPage() {
       </div>
 
       <p className="mt-8 text-xs text-muted-foreground">
-        Les apps satellites partagent ton compte Dowze — aucune reconnexion. Leurs séances s’inscrivent dans
-        ton planning, orchestrées avec ton étude.
+        Les apps satellites partagent ton compte Dowze — aucune reconnexion. Leurs séances
+        s’inscrivent dans ton planning, orchestrées avec ton étude.
       </p>
     </div>
   );

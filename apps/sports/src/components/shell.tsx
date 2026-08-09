@@ -8,7 +8,12 @@ const APPS: LauncherApp[] = [
   { slug: 'academie', name: 'Académie', url: 'https://academie.dowze.ch', color: 'blue' },
   { slug: 'fitness', name: 'Fitness', url: 'https://fitness.dowze.ch', color: 'emerald' },
   { slug: 'sports', name: 'Sports', url: 'https://sports.dowze.ch', color: 'sky', current: true },
-  { slug: 'alimentations', name: 'Alimentation', url: 'https://alimentations.dowze.ch', color: 'amber' },
+  {
+    slug: 'alimentations',
+    name: 'Alimentation',
+    url: 'https://alimentations.dowze.ch',
+    color: 'amber',
+  },
 ];
 
 export function Shell({ children }: { children: ReactNode }) {
@@ -21,7 +26,16 @@ export function Shell({ children }: { children: ReactNode }) {
           <a href="/" className="flex items-center gap-2 font-semibold text-foreground">
             <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent text-accent-foreground">
               {/* Lucide « trophy » */}
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
                 <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
                 <path d="M4 22h16" />
@@ -32,7 +46,9 @@ export function Shell({ children }: { children: ReactNode }) {
             </span>
             Dowze Sports
           </a>
-          {displayName && <div className="ml-auto text-sm text-muted-foreground">{displayName}</div>}
+          {displayName && (
+            <div className="ml-auto text-sm text-muted-foreground">{displayName}</div>
+          )}
         </div>
       </header>
       <main className="mx-auto max-w-3xl px-4 py-6">{children}</main>

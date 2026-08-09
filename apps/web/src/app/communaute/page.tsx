@@ -63,13 +63,19 @@ export default function MaClassePage() {
       <div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted-foreground">
         <div>
           Connecte-toi pour accéder à ta classe.{' '}
-          <Link href="/connexion" className="text-accent underline-offset-2 hover:underline">Se connecter</Link>
+          <Link href="/connexion" className="text-accent underline-offset-2 hover:underline">
+            Se connecter
+          </Link>
         </div>
       </div>
     );
   }
   if (loading) {
-    return <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Chargement…</div>;
+    return (
+      <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+        Chargement…
+      </div>
+    );
   }
 
   return (
@@ -112,7 +118,12 @@ export default function MaClassePage() {
             </button>
             <div className="min-h-0 flex-1">
               {active.channelId ? (
-                <Chat key={active.key} conversationId={active.channelId} titleOverride={active.title} botLang={active.botLang} />
+                <Chat
+                  key={active.key}
+                  conversationId={active.channelId}
+                  titleOverride={active.title}
+                  botLang={active.botLang}
+                />
               ) : (
                 <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
                   Ta classe se prépare…

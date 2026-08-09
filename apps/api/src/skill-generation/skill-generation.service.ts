@@ -113,7 +113,12 @@ export class SkillGenerationService {
     return {
       grew: true,
       added,
-      frontier: { id: frontier.id, slug: frontier.slug, title: frontier.title, depth: frontier.depth },
+      frontier: {
+        id: frontier.id,
+        slug: frontier.slug,
+        title: frontier.title,
+        depth: frontier.depth,
+      },
       skills: built.map((s) => ({ id: s.id, slug: s.slug, title: s.title, depth: s.depth })),
     };
   }
@@ -122,9 +127,10 @@ export class SkillGenerationService {
    * La prochaine compétence à travailler — et si l'élève a atteint le bord du graphe (aucune
    * frontière apprenable), on **fait pousser l'Atlas** puis on recalcule. Rend le parcours sans fin.
    */
-  async nextOrGrow(
-    profileId: string,
-  ): Promise<{ skill: { id: string; slug: string; title: string; depth: number } | null; grew: boolean }> {
+  async nextOrGrow(profileId: string): Promise<{
+    skill: { id: string; slug: string; title: string; depth: number } | null;
+    grew: boolean;
+  }> {
     let next = await this.progression.nextPrescribed(profileId);
     if (next) return { skill: next, grew: false };
 
@@ -170,7 +176,9 @@ export class SkillGenerationService {
     const drafts = await this.copilote.generateTowardGoal(
       profileId,
       clean,
-      anchorPool.slice(0, 8).map((a) => ({ title: a.title, description: a.description, depth: a.depth })),
+      anchorPool
+        .slice(0, 8)
+        .map((a) => ({ title: a.title, description: a.description, depth: a.depth })),
     );
     if (drafts.length === 0) return { grew: false, reason: 'nothing-generated', added: 0 };
 

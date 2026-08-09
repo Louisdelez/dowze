@@ -25,7 +25,16 @@ import { cn } from '@/lib/cn';
 import { IconSend, IconMessage, IconSettings } from '@/components/ui/icons';
 
 const AUTO_MS = 60 * 60 * 1000;
-const PALETTE = ['#2563eb', '#7c3aed', '#db2777', '#059669', '#d97706', '#0891b2', '#dc2626', '#4f46e5'];
+const PALETTE = [
+  '#2563eb',
+  '#7c3aed',
+  '#db2777',
+  '#059669',
+  '#d97706',
+  '#0891b2',
+  '#dc2626',
+  '#4f46e5',
+];
 
 function color(name: string): string {
   let h = 0;
@@ -42,7 +51,8 @@ function hhmm(iso: string | null): string {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 function myLang(): string {
-  if (typeof navigator !== 'undefined' && navigator.language) return navigator.language.split('-')[0] || 'fr';
+  if (typeof navigator !== 'undefined' && navigator.language)
+    return navigator.language.split('-')[0] || 'fr';
   return 'fr';
 }
 
@@ -274,7 +284,13 @@ export function Chat({
     <div className="flex h-full min-h-0 w-full flex-col">
       <header className="flex items-center gap-3 border-b border-border px-3 py-2.5">
         {showBack && (
-          <Link href="/messages" className="rounded-md p-1.5 hover:bg-muted md:hidden" aria-label="Retour">←</Link>
+          <Link
+            href="/messages"
+            className="rounded-md p-1.5 hover:bg-muted md:hidden"
+            aria-label="Retour"
+          >
+            ←
+          </Link>
         )}
         <Avatar name={title} size={36} />
         <div className="min-w-0 flex-1">
@@ -285,20 +301,37 @@ export function Chat({
         </div>
         <div className="relative">
           <button
-            onClick={(e) => { e.stopPropagation(); setSettingsOpen((o) => !o); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              setSettingsOpen((o) => !o);
+            }}
             aria-label="Paramètres"
-            className={cn('flex h-9 w-9 items-center justify-center rounded-full hover:bg-muted', autoUntil && 'text-red-600')}
+            className={cn(
+              'flex h-9 w-9 items-center justify-center rounded-full hover:bg-muted',
+              autoUntil && 'text-red-600',
+            )}
           >
             <IconSettings width={18} height={18} />
           </button>
           {settingsOpen && (
-            <div onClick={(e) => e.stopPropagation()} className="absolute right-0 top-full z-40 mt-1 w-56 overflow-hidden rounded-lg border border-border bg-background py-1 text-sm shadow-lg">
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="absolute right-0 top-full z-40 mt-1 w-56 overflow-hidden rounded-lg border border-border bg-background py-1 text-sm shadow-lg"
+            >
               <button
-                onClick={() => { setAutoUntil(autoUntil ? null : Date.now() + AUTO_MS); setSettingsOpen(false); }}
+                onClick={() => {
+                  setAutoUntil(autoUntil ? null : Date.now() + AUTO_MS);
+                  setSettingsOpen(false);
+                }}
                 className="flex w-full items-center justify-between px-3 py-2 text-left hover:bg-muted"
               >
                 <span>Traduire automatiquement</span>
-                <span className={cn('h-4 w-4 rounded-full border', autoUntil ? 'border-red-600 bg-red-600' : 'border-border')} />
+                <span
+                  className={cn(
+                    'h-4 w-4 rounded-full border',
+                    autoUntil ? 'border-red-600 bg-red-600' : 'border-border',
+                  )}
+                />
               </button>
             </div>
           )}
@@ -309,18 +342,24 @@ export function Chat({
       {autoUntil && (
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-red-700 bg-red-600 px-4 py-2 text-sm text-white">
           <span className="flex items-center gap-2 font-semibold">
-            <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-white" aria-hidden />
+            <span
+              className="inline-block h-2 w-2 animate-pulse rounded-full bg-white"
+              aria-hidden
+            />
             Traduction automatique — {mmss}
           </span>
           <span className="text-xs opacity-90">
-            {tokens} tokens · ≈ {costUsd.toFixed(4)} $ (estimation). Se désactive seule pour éviter des coûts non voulus.
+            {tokens} tokens · ≈ {costUsd.toFixed(4)} $ (estimation). Se désactive seule pour éviter
+            des coûts non voulus.
           </span>
         </div>
       )}
 
       <div className="min-h-0 flex-1 space-y-1 overflow-y-auto bg-muted/20 px-3 py-3">
         {conv && conv.messages.length === 0 && (
-          <p className="py-10 text-center text-sm text-muted-foreground">Aucun message — dis bonjour !</p>
+          <p className="py-10 text-center text-sm text-muted-foreground">
+            Aucun message — dis bonjour !
+          </p>
         )}
         {conv?.messages.map((m, i) => {
           const prev = conv.messages[i - 1];
@@ -337,18 +376,40 @@ export function Chat({
                   m.mine ? 'rounded-br-md bg-accent text-white' : 'rounded-bl-md bg-surface',
                 )}
               >
-                {showName && <p className="mb-0.5 text-xs font-semibold" style={{ color: color(m.senderName) }}>{m.senderName}</p>}
+                {showName && (
+                  <p
+                    className="mb-0.5 text-xs font-semibold"
+                    style={{ color: color(m.senderName) }}
+                  >
+                    {m.senderName}
+                  </p>
+                )}
                 {m.kind === 'subject_share' && m.meta?.subjectId ? (
-                  <Link href={`/validation/sujet/${String(m.meta.subjectId)}`} className="underline underline-offset-2">{m.body}</Link>
+                  <Link
+                    href={`/validation/sujet/${String(m.meta.subjectId)}`}
+                    className="underline underline-offset-2"
+                  >
+                    {m.body}
+                  </Link>
                 ) : (
                   <p className="whitespace-pre-wrap break-words">{m.body}</p>
                 )}
                 {translations[m.id] && (
-                  <div className={cn('mt-1 border-t pt-1', m.mine ? 'border-white/25' : 'border-border')}>
+                  <div
+                    className={cn(
+                      'mt-1 border-t pt-1',
+                      m.mine ? 'border-white/25' : 'border-border',
+                    )}
+                  >
                     <p className="whitespace-pre-wrap break-words">{translations[m.id]}</p>
                   </div>
                 )}
-                <p className={cn('mt-0.5 text-right text-[10px]', m.mine ? 'text-white/70' : 'text-muted-foreground')}>
+                <p
+                  className={cn(
+                    'mt-0.5 text-right text-[10px]',
+                    m.mine ? 'text-white/70' : 'text-muted-foreground',
+                  )}
+                >
                   {hhmm(m.createdAt)}
                   {m.held && m.mine ? ' · en attente' : ''}
                 </p>
@@ -359,7 +420,9 @@ export function Chat({
         <div ref={bottomRef} />
       </div>
 
-      {typingName && <p className="px-4 pb-1 text-xs italic text-muted-foreground">{typingName} écrit…</p>}
+      {typingName && (
+        <p className="px-4 pb-1 text-xs italic text-muted-foreground">{typingName} écrit…</p>
+      )}
 
       <div className="flex items-center gap-2 border-t border-border px-3 py-2.5">
         <input
@@ -401,16 +464,52 @@ export function Chat({
           onClick={(e) => e.stopPropagation()}
         >
           {menu.m.kind !== 'subject_share' && (
-            <MenuItem onClick={() => { void traduire(menu.m.id, menu.m.body); setMenu(null); }}>Traduire</MenuItem>
+            <MenuItem
+              onClick={() => {
+                void traduire(menu.m.id, menu.m.body);
+                setMenu(null);
+              }}
+            >
+              Traduire
+            </MenuItem>
           )}
           {!menu.m.mine && (
             <>
               {conv?.type !== 'direct' && (
-                <MenuItem onClick={() => { void actMessageIndividuel(menu.m.senderId); setMenu(null); }}>Message individuel</MenuItem>
+                <MenuItem
+                  onClick={() => {
+                    void actMessageIndividuel(menu.m.senderId);
+                    setMenu(null);
+                  }}
+                >
+                  Message individuel
+                </MenuItem>
               )}
-              <MenuItem onClick={() => { void actRetirer(menu.m.senderId, menu.m.senderName); setMenu(null); }}>Retirer l’ami</MenuItem>
-              <MenuItem onClick={() => { void actSignaler(menu.m.senderId); setMenu(null); }}>Signaler</MenuItem>
-              <MenuItem danger onClick={() => { void actBloquer(menu.m.senderId, menu.m.senderName); setMenu(null); }}>Bloquer</MenuItem>
+              <MenuItem
+                onClick={() => {
+                  void actRetirer(menu.m.senderId, menu.m.senderName);
+                  setMenu(null);
+                }}
+              >
+                Retirer l’ami
+              </MenuItem>
+              <MenuItem
+                onClick={() => {
+                  void actSignaler(menu.m.senderId);
+                  setMenu(null);
+                }}
+              >
+                Signaler
+              </MenuItem>
+              <MenuItem
+                danger
+                onClick={() => {
+                  void actBloquer(menu.m.senderId, menu.m.senderName);
+                  setMenu(null);
+                }}
+              >
+                Bloquer
+              </MenuItem>
             </>
           )}
         </div>
@@ -464,7 +563,9 @@ export function Messenger({ activeId }: { activeId: string | null }) {
       <div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted-foreground">
         <div>
           Connecte-toi pour accéder à tes messages.{' '}
-          <Link href="/connexion" className="text-accent underline-offset-2 hover:underline">Se connecter</Link>
+          <Link href="/connexion" className="text-accent underline-offset-2 hover:underline">
+            Se connecter
+          </Link>
         </div>
       </div>
     );
@@ -472,30 +573,51 @@ export function Messenger({ activeId }: { activeId: string | null }) {
 
   return (
     <div className="flex h-full min-h-0">
-      <aside className={cn('flex w-full min-h-0 flex-col border-r border-border bg-surface md:w-80 md:shrink-0', activeId ? 'hidden md:flex' : 'flex')}>
+      <aside
+        className={cn(
+          'flex w-full min-h-0 flex-col border-r border-border bg-surface md:w-80 md:shrink-0',
+          activeId ? 'hidden md:flex' : 'flex',
+        )}
+      >
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <h1 className="text-lg font-semibold">Messages</h1>
-          <Link href="/amis" className="text-xs text-accent underline-offset-2 hover:underline">Amis</Link>
+          <Link href="/amis" className="text-xs text-accent underline-offset-2 hover:underline">
+            Amis
+          </Link>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto">
           {inbox.length === 0 ? (
-            <p className="px-4 py-6 text-sm text-muted-foreground">Aucune conversation. Ajoute un ami pour discuter.</p>
+            <p className="px-4 py-6 text-sm text-muted-foreground">
+              Aucune conversation. Ajoute un ami pour discuter.
+            </p>
           ) : (
             inbox.map((c) => (
               <button
                 key={c.id}
                 onClick={() => router.push(`/messages/${c.id}`)}
-                className={cn('flex w-full items-center gap-3 px-3 py-3 text-left hover:bg-muted/60', c.id === activeId && 'bg-muted')}
+                className={cn(
+                  'flex w-full items-center gap-3 px-3 py-3 text-left hover:bg-muted/60',
+                  c.id === activeId && 'bg-muted',
+                )}
               >
                 <Avatar name={c.title} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline justify-between gap-2">
                     <span className="truncate font-medium">{c.title}</span>
-                    <span className="shrink-0 text-[11px] text-muted-foreground">{hhmm(c.lastMessageAt)}</span>
+                    <span className="shrink-0 text-[11px] text-muted-foreground">
+                      {hhmm(c.lastMessageAt)}
+                    </span>
                   </div>
-                  <p className="truncate text-sm text-muted-foreground">{c.lastBody ?? 'Nouvelle conversation'}</p>
+                  <p className="truncate text-sm text-muted-foreground">
+                    {c.lastBody ?? 'Nouvelle conversation'}
+                  </p>
                 </div>
-                {c.unread && <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-accent" aria-label="non lu" />}
+                {c.unread && (
+                  <span
+                    className="h-2.5 w-2.5 shrink-0 rounded-full bg-accent"
+                    aria-label="non lu"
+                  />
+                )}
               </button>
             ))
           )}
@@ -516,9 +638,21 @@ export function Messenger({ activeId }: { activeId: string | null }) {
   );
 }
 
-function MenuItem({ children, onClick, danger }: { children: React.ReactNode; onClick: () => void; danger?: boolean }) {
+function MenuItem({
+  children,
+  onClick,
+  danger,
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+  danger?: boolean;
+}) {
   return (
-    <button type="button" onClick={onClick} className={cn('block w-full px-3 py-2 text-left hover:bg-muted', danger && 'text-red-600')}>
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn('block w-full px-3 py-2 text-left hover:bg-muted', danger && 'text-red-600')}
+    >
       {children}
     </button>
   );

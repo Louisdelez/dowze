@@ -81,7 +81,10 @@ async function get<T>(path: string): Promise<T> {
 }
 
 async function del<T>(path: string): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, { method: 'DELETE', headers: { ...(await authHeaders()) } });
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: 'DELETE',
+    headers: { ...(await authHeaders()) },
+  });
   if (!res.ok) throw new Error(`API ${res.status} — ${await res.text()}`);
   return res.json() as Promise<T>;
 }
@@ -197,7 +200,12 @@ export function getPeerValidation(profileId: string): Promise<PeerValidationView
 }
 export function createValidationSubject(
   profileId: string,
-  input: { title: string; description: string; evidenceUrl: string | null; format: 'visio' | 'video' },
+  input: {
+    title: string;
+    description: string;
+    evidenceUrl: string | null;
+    format: 'visio' | 'video';
+  },
 ): Promise<PeerValidationView> {
   return post(`/validation/${profileId}/subject`, input);
 }
@@ -215,7 +223,10 @@ export function getCommunityValidation(
 ): Promise<ValidationSubject[]> {
   return get(`/validation/${profileId}/community?q=${encodeURIComponent(q)}&sort=${sort}`);
 }
-export function getValidationSubject(profileId: string, subjectId: string): Promise<ValidationSubject | null> {
+export function getValidationSubject(
+  profileId: string,
+  subjectId: string,
+): Promise<ValidationSubject | null> {
   return get(`/validation/${profileId}/subject/${subjectId}`);
 }
 // Note : aucune fonction pour « devenir prof/modo/staff ». Les rôles staff sont attribués
@@ -338,11 +349,17 @@ export function companionPetUrl(id: string, version: number): string {
 }
 /** Liste la bibliothèque de pets du compte (avec URL servie prête à l'emploi). */
 export async function listCompanionPets(): Promise<CompanionPetItem[]> {
-  const rows = await get<{ id: string; name: string; version: number; createdAt: string }[]>('/companion/pets');
+  const rows =
+    await get<{ id: string; name: string; version: number; createdAt: string }[]>(
+      '/companion/pets',
+    );
   return rows.map((r) => ({ ...r, url: companionPetUrl(r.id, r.version) }));
 }
 /** Renomme un pet de la bibliothèque. */
-export function renameCompanionPet(id: string, name: string): Promise<{ id: string; name: string }> {
+export function renameCompanionPet(
+  id: string,
+  name: string,
+): Promise<{ id: string; name: string }> {
   return patch2(`/companion/pet/${id}`, { name });
 }
 
@@ -466,18 +483,28 @@ export function getCompanionAgents(space = 'home'): Promise<CompanionAgent[]> {
 export function createCompanionAgent(input: CompanionAgentInput): Promise<CompanionAgent> {
   return post('/companion/agents', input);
 }
-export function updateCompanionAgent(id: string, patch: Partial<CompanionAgentInput>): Promise<CompanionAgent> {
+export function updateCompanionAgent(
+  id: string,
+  patch: Partial<CompanionAgentInput>,
+): Promise<CompanionAgent> {
   return patch2(`/companion/agents/${id}`, patch);
 }
 export function deleteCompanionAgent(id: string): Promise<{ ok: true }> {
   return del(`/companion/agents/${id}`);
 }
 /** Auto-builder IA : « décris ton compagnon en une phrase » → Dowze construit et crée l'agent. */
-export function buildCompanionAgent(description: string, skinUrl?: string | null, space?: string): Promise<CompanionAgent> {
+export function buildCompanionAgent(
+  description: string,
+  skinUrl?: string | null,
+  space?: string,
+): Promise<CompanionAgent> {
   return post('/companion/agents/build', { description, skinUrl, space });
 }
 /** Chat IA avec un compagnon-agent (réponse courte ; mémoire persistante + apprentissage côté serveur). */
-export function chatCompanionAgent(id: string, message: string): Promise<{ reply: string; learned?: string; toolsUsed?: string[] }> {
+export function chatCompanionAgent(
+  id: string,
+  message: string,
+): Promise<{ reply: string; learned?: string; toolsUsed?: string[] }> {
   return post(`/companion/agents/${id}/chat`, { message });
 }
 /** Historique de conversation persistant d'un compagnon-agent. */
@@ -485,7 +512,15 @@ export function getCompanionAgentMessages(id: string): Promise<CompanionMessage[
   return get(`/companion/agents/${id}/messages`);
 }
 /** Orchestration « ruche » : le compagnon principal délègue aux spécialistes et synthétise. */
-export function orchestrateCompanion(message: string, leaderId?: string): Promise<{ reply: string; delegates: { name: string; role: string | null; said: string }[]; created: string[]; toolsUsed?: string[] }> {
+export function orchestrateCompanion(
+  message: string,
+  leaderId?: string,
+): Promise<{
+  reply: string;
+  delegates: { name: string; role: string | null; said: string }[];
+  created: string[];
+  toolsUsed?: string[];
+}> {
   return post('/companion/orchestrate', leaderId ? { message, leaderId } : { message });
 }
 
@@ -500,7 +535,10 @@ export interface HiveMaintainReport {
 export function maintainHive(): Promise<HiveMaintainReport> {
   return post('/companion/hive/maintain', {});
 }
-export function mergeCompanionAgents(survivorId: string, absorbedId: string): Promise<{ ok: boolean }> {
+export function mergeCompanionAgents(
+  survivorId: string,
+  absorbedId: string,
+): Promise<{ ok: boolean }> {
   return post('/companion/hive/merge', { survivorId, absorbedId });
 }
 export function retrainCompanionAgent(id: string): Promise<CompanionAgent> {
@@ -531,7 +569,7 @@ export function relaySayCompanion(text: string): Promise<{ ok: true }> {
 export interface CompanionSpace {
   id: string;
   name: string;
-  type?: string;      // company | saas | school | custom
+  type?: string; // company | saas | school | custom
   mission?: string | null;
 }
 export interface OrgTemplate {
@@ -547,7 +585,10 @@ export function getCompanionSpaces(): Promise<CompanionSpace[]> {
 export function getOrgTemplates(): Promise<OrgTemplate[]> {
   return get('/companion/spaces/templates');
 }
-export function createCompanionSpace(name: string, opts?: { type?: string; template?: string; mission?: string }): Promise<CompanionSpace> {
+export function createCompanionSpace(
+  name: string,
+  opts?: { type?: string; template?: string; mission?: string },
+): Promise<CompanionSpace> {
   return post('/companion/spaces', { name, ...(opts ?? {}) });
 }
 // Auto-provisionne l'org de service (Académie → école calibrée sur le rang de l'élève). Idempotent ; null si pas encore élève.
@@ -570,11 +611,20 @@ export function orchestrateSpace(spaceId: string, message: string): Promise<Spac
   return post(`/companion/spaces/${spaceId}/orchestrate`, { message });
 }
 // P3 — base de connaissances propre à un open-space (organisation) : les agents la consultent (RAG scopé).
-export interface SpaceKnowledge { id: string; title: string; preview: string; at: number }
+export interface SpaceKnowledge {
+  id: string;
+  title: string;
+  preview: string;
+  at: number;
+}
 export function getSpaceKnowledge(spaceId: string): Promise<SpaceKnowledge[]> {
   return get(`/companion/spaces/${spaceId}/knowledge`);
 }
-export function addSpaceKnowledge(spaceId: string, title: string, content: string): Promise<{ id: string; title: string }> {
+export function addSpaceKnowledge(
+  spaceId: string,
+  title: string,
+  content: string,
+): Promise<{ id: string; title: string }> {
   return post(`/companion/spaces/${spaceId}/knowledge`, { title, content });
 }
 export function deleteSpaceKnowledge(id: string): Promise<{ ok: true }> {
@@ -592,15 +642,31 @@ export function runSpaceProject(spaceId: string, goal: string): Promise<ProjectR
   return post(`/companion/spaces/${spaceId}/project`, { goal });
 }
 // Pont IA (ChatGPT/Claude) : capter → synthétiser (Mémorialiste) → réinjecter. Zéro copier-coller.
-export interface BridgeSynthese { id: string; titre: string; synthese: string; ouOnEnEst: string; prochaine: string; progressed: { skill: { id: string; title: string }; pMastery: number; resultat: string } | null }
-export interface BridgeContext { prompt: string; skill: { id: string; slug: string; title: string } | null; hasMemory: boolean }
-export function bridgeIngest(source: 'chatgpt' | 'claude' | 'ia', text: string): Promise<BridgeSynthese> {
+export interface BridgeSynthese {
+  id: string;
+  titre: string;
+  synthese: string;
+  ouOnEnEst: string;
+  prochaine: string;
+  progressed: { skill: { id: string; title: string }; pMastery: number; resultat: string } | null;
+}
+export interface BridgeContext {
+  prompt: string;
+  skill: { id: string; slug: string; title: string } | null;
+  hasMemory: boolean;
+}
+export function bridgeIngest(
+  source: 'chatgpt' | 'claude' | 'ia',
+  text: string,
+): Promise<BridgeSynthese> {
   return post('/companion/bridge/ingest', { source, text });
 }
 export function getBridgeContext(): Promise<BridgeContext> {
   return get('/companion/bridge/context');
 }
-export function getBridgeState(): Promise<{ id: string; title: string; preview: string; at: number }[]> {
+export function getBridgeState(): Promise<
+  { id: string; title: string; preview: string; at: number }[]
+> {
   return get('/companion/bridge/state');
 }
 export function deleteCompanionSpace(id: string): Promise<{ ok: true }> {
@@ -693,10 +759,16 @@ export function getMyResults(profileId: string): Promise<ResultsView> {
 export function getChildResults(accountId: string): Promise<ResultsView> {
   return get(`/results/child/${accountId}`);
 }
-export function voteRank(profileId: string, choice: 'accept' | 'consolidate'): Promise<ResultsView> {
+export function voteRank(
+  profileId: string,
+  choice: 'accept' | 'consolidate',
+): Promise<ResultsView> {
   return post(`/results/rank/vote/${profileId}`, { choice });
 }
-export function parentVoteRank(accountId: string, choice: 'accept' | 'consolidate'): Promise<ResultsView> {
+export function parentVoteRank(
+  accountId: string,
+  choice: 'accept' | 'consolidate',
+): Promise<ResultsView> {
   return post(`/results/rank/child/${accountId}/vote`, { choice });
 }
 
@@ -736,16 +808,28 @@ export function moodCheckin(profileId: string, mood: number): Promise<RankJumpVi
 export function getSpecialization(profileId: string): Promise<SpecializationView> {
   return get(`/specialization/${profileId}`);
 }
-export function chooseSpecialization(profileId: string, discipline: string): Promise<SpecializationView> {
+export function chooseSpecialization(
+  profileId: string,
+  discipline: string,
+): Promise<SpecializationView> {
   return post(`/specialization/${profileId}/choose`, { discipline });
 }
-export function dropSpecialization(profileId: string, discipline: string): Promise<SpecializationView> {
+export function dropSpecialization(
+  profileId: string,
+  discipline: string,
+): Promise<SpecializationView> {
   return post(`/specialization/${profileId}/drop`, { discipline });
 }
-export function getSpecPlan(profileId: string, discipline: string): Promise<SpecializationPlan | null> {
+export function getSpecPlan(
+  profileId: string,
+  discipline: string,
+): Promise<SpecializationPlan | null> {
   return get(`/specialization/${profileId}/plan/${encodeURIComponent(discipline)}`);
 }
-export function generateSpecPlan(profileId: string, discipline: string): Promise<SpecializationPlan> {
+export function generateSpecPlan(
+  profileId: string,
+  discipline: string,
+): Promise<SpecializationPlan> {
   return post(`/specialization/${profileId}/plan/${encodeURIComponent(discipline)}/generate`, {});
 }
 export function completeMilestone(
@@ -891,7 +975,10 @@ export function removeFriend(profileId: string, targetProfileId: string): Promis
 export function getInbox(profileId: string): Promise<ConversationSummary[]> {
   return get(`/social/${profileId}/inbox`);
 }
-export function getConversation(profileId: string, conversationId: string): Promise<ConversationView> {
+export function getConversation(
+  profileId: string,
+  conversationId: string,
+): Promise<ConversationView> {
   return get(`/social/${profileId}/conversation/${conversationId}`);
 }
 export function sendMessage(
@@ -899,9 +986,16 @@ export function sendMessage(
   conversationId: string,
   body: string,
 ): Promise<ChatMessage> {
-  return post(`/social/${profileId}/conversation/${conversationId}/send`, { body, kind: 'text', meta: null });
+  return post(`/social/${profileId}/conversation/${conversationId}/send`, {
+    body,
+    kind: 'text',
+    meta: null,
+  });
 }
-export function startDirect(profileId: string, friendProfileId: string): Promise<{ conversationId: string }> {
+export function startDirect(
+  profileId: string,
+  friendProfileId: string,
+): Promise<{ conversationId: string }> {
   return post(`/social/${profileId}/direct`, { friendProfileId });
 }
 export function createGroup(
@@ -935,7 +1029,10 @@ export function reportUser(
   return post(`/social/${profileId}/report`, { reportedProfileId, reason, conversationId });
 }
 // Élève : remise à 0 (messages + amis)
-export function requestReset(profileId: string, scope: 'messages' | 'account' = 'messages'): Promise<ResetRequest> {
+export function requestReset(
+  profileId: string,
+  scope: 'messages' | 'account' = 'messages',
+): Promise<ResetRequest> {
   return post(`/protections/reset/${profileId}/request`, { scope });
 }
 // Modérateur
@@ -945,7 +1042,11 @@ export function getModeratorQueue(profileId: string): Promise<ModeratorQueue> {
 export function resolveReport(profileId: string, reportId: string): Promise<{ ok: true }> {
   return post(`/protections/moderator/${profileId}/report/${reportId}/resolve`, {});
 }
-export function decideReset(profileId: string, resetId: string, approve: boolean): Promise<{ ok: true }> {
+export function decideReset(
+  profileId: string,
+  resetId: string,
+  approve: boolean,
+): Promise<{ ok: true }> {
   return post(`/protections/moderator/${profileId}/reset/${resetId}/decide`, { approve });
 }
 export function resolveAiFlag(profileId: string, flagId: string): Promise<{ ok: true }> {
@@ -955,16 +1056,31 @@ export function resolveAiFlag(profileId: string, flagId: string): Promise<{ ok: 
 export function getGuardianControls(childAccountId: string): Promise<GuardianControls> {
   return get(`/protections/parent/${childAccountId}/controls`);
 }
-export function setSupervised(childAccountId: string, on: boolean, guardianEmail = ''): Promise<{ supervised: boolean }> {
+export function setSupervised(
+  childAccountId: string,
+  on: boolean,
+  guardianEmail = '',
+): Promise<{ supervised: boolean }> {
   return post(`/protections/parent/${childAccountId}/supervised`, { on, guardianEmail });
 }
-export function decideSupervision(childAccountId: string, itemId: string, approve: boolean): Promise<{ ok: true }> {
+export function decideSupervision(
+  childAccountId: string,
+  itemId: string,
+  approve: boolean,
+): Promise<{ ok: true }> {
   return post(`/protections/parent/${childAccountId}/supervision/${itemId}/decide`, { approve });
 }
-export function decideChildReset(childAccountId: string, resetId: string, approve: boolean): Promise<{ ok: true }> {
+export function decideChildReset(
+  childAccountId: string,
+  resetId: string,
+  approve: boolean,
+): Promise<{ ok: true }> {
   return post(`/protections/parent/${childAccountId}/child-reset/${resetId}/decide`, { approve });
 }
-export function parentReset(childAccountId: string, scope: 'messages' | 'account' = 'messages'): Promise<ResetRequest> {
+export function parentReset(
+  childAccountId: string,
+  scope: 'messages' | 'account' = 'messages',
+): Promise<ResetRequest> {
   return post(`/protections/parent/${childAccountId}/reset`, { scope });
 }
 
@@ -987,7 +1103,9 @@ export function translateMessage(
 
 // ---------------- Système ÉCHANGER — Temps réel (SSE + présence) ----------------
 export async function getAccessToken(): Promise<string> {
-  const { data: { session } } = await getSupabase().auth.getSession();
+  const {
+    data: { session },
+  } = await getSupabase().auth.getSession();
   return session?.access_token ?? '';
 }
 export function realtimeStreamUrl(profileId: string, token: string): string {
@@ -1046,7 +1164,10 @@ export interface LanguageCourseResult {
   creditsSpent: number;
 }
 /** Cours de langue NATIF (AUTO) : l'IA de Dowze génère la feuille A4 (rendue en app). */
-export function generateLanguageCourse(profileId: string, lang: string): Promise<LanguageCourseResult> {
+export function generateLanguageCourse(
+  profileId: string,
+  lang: string,
+): Promise<LanguageCourseResult> {
   return aiTask({ state: 'preparing', message: 'Je prépare ton cours…' }, () =>
     post(`/languages/${profileId}/course`, { lang }),
   );
@@ -1118,7 +1239,10 @@ export function exitElective(profileId: string): Promise<ElectiveView> {
 export function generateElectivePlan(profileId: string): Promise<ElectivePlan> {
   return post(`/electives/${profileId}/plan/generate`, {});
 }
-export function completeElectiveMilestone(profileId: string, milestoneId: string): Promise<ElectivePlan> {
+export function completeElectiveMilestone(
+  profileId: string,
+  milestoneId: string,
+): Promise<ElectivePlan> {
   return post(`/electives/${profileId}/milestone/done`, { milestoneId });
 }
 

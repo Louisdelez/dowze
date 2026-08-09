@@ -24,7 +24,10 @@ export function tierFromBirthDate(birthDate: string | null | undefined, nowIso: 
 }
 
 /** L'email d'un parent/responsable est-il OBLIGATOIRE ? (tout mineur < 18 ans). */
-export function guardianEmailRequired(birthDate: string | null | undefined, nowIso: string): boolean {
+export function guardianEmailRequired(
+  birthDate: string | null | undefined,
+  nowIso: string,
+): boolean {
   const age = ageInYears(birthDate, nowIso);
   return age !== null && age < MINOR_AGE;
 }
@@ -48,7 +51,10 @@ export function ageInYears(birthDate: string | null | undefined, nowIso: string)
 }
 
 /** Mineur au sens du droit commun (< 18 ans). */
-export function isMinorFromBirthDate(birthDate: string | null | undefined, nowIso: string): boolean {
+export function isMinorFromBirthDate(
+  birthDate: string | null | undefined,
+  nowIso: string,
+): boolean {
   const age = ageInYears(birthDate, nowIso);
   return age !== null && age < MINOR_AGE;
 }

@@ -82,7 +82,11 @@ function dominantLang(members: Candidate[]): string {
   for (const m of members) counts.set(m.lang, (counts.get(m.lang) ?? 0) + 1);
   let best = members[0]?.lang ?? 'fr';
   let bestN = 0;
-  for (const [lang, n] of counts) if (n > bestN) { best = lang; bestN = n; }
+  for (const [lang, n] of counts)
+    if (n > bestN) {
+      best = lang;
+      bestN = n;
+    }
   return best;
 }
 
@@ -133,7 +137,9 @@ export function assignClasses(candidates: readonly Candidate[]): AssignedClass[]
   const byLevel = groupBy(restLangInsufficient, (c) => String(c.level));
   for (const [, group] of byLevel) {
     if (group.length >= MIN_SIZE) {
-      const sorted = group.sort((a, b) => (a.lang < b.lang ? -1 : a.lang > b.lang ? 1 : (a.age ?? 0) - (b.age ?? 0)));
+      const sorted = group.sort((a, b) =>
+        a.lang < b.lang ? -1 : a.lang > b.lang ? 1 : (a.age ?? 0) - (b.age ?? 0),
+      );
       classes.push(...splitInto(sorted, 'multilingual', true));
     } else {
       stillUnplaced.push(...group);

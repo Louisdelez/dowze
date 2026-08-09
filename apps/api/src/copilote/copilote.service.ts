@@ -82,11 +82,11 @@ const GRAPH_GROW_SYSTEM = [
   'plus avancée, dans la même discipline. Règles strictes :',
   '- slug : kebab-case, court, parlant, spécifique (pas de doublon avec la frontière) ;',
   '- title : concis (≤ 8 mots) ;',
-  "- description : 2-4 phrases, précise, qui SITUE le niveau (licence / master / doctorat / recherche…)",
+  '- description : 2-4 phrases, précise, qui SITUE le niveau (licence / master / doctorat / recherche…)',
   "  et énonce ce que l'élève sait faire ;",
-  "- kind : la nature (savoir, savoir-faire, savoir-être, capacite-corporelle, civique, esthetique) ;",
+  '- kind : la nature (savoir, savoir-faire, savoir-être, capacite-corporelle, civique, esthetique) ;',
   '- masteryThreshold : entre 0.85 et 0.98 selon la criticité ;',
-  '- sources : 1-3 références réelles et vérifiables (ouvrage, article, standard) quand c\'est pertinent.',
+  "- sources : 1-3 références réelles et vérifiables (ouvrage, article, standard) quand c'est pertinent.",
   "Reste rigoureux et fondé sur le consensus scientifique. N'invente jamais de source. Progression réaliste :",
   'une seule étape en avant, jamais un saut de plusieurs niveaux.',
 ].join('\n');
@@ -207,10 +207,7 @@ export class CopiloteService {
   }
 
   private async requireEmbeddingModel(id: string): Promise<AiEmbeddingModel> {
-    const rows = await this.db
-      .select()
-      .from(aiEmbeddingModel)
-      .where(eq(aiEmbeddingModel.id, id));
+    const rows = await this.db.select().from(aiEmbeddingModel).where(eq(aiEmbeddingModel.id, id));
     if (!rows[0] || !rows[0].active) {
       throw new BadRequestException(`Modèle d'embedding inconnu ou inactif : ${id}`);
     }
@@ -339,7 +336,9 @@ export class CopiloteService {
     const billing = settings?.billing ?? 'credits';
 
     // Modèle : LowCost si défini, sinon l'IA principale.
-    let model = await this.requireModel(settings?.lowcostModelId ?? settings?.modelId ?? DEFAULT_MODEL_ID);
+    let model = await this.requireModel(
+      settings?.lowcostModelId ?? settings?.modelId ?? DEFAULT_MODEL_ID,
+    );
     // En BYOK, la clé est liée à un fournisseur : si le LowCost ne correspond pas, on réutilise l'IA principale.
     if (billing === 'byok' && settings?.byokProvider && model.provider !== settings.byokProvider) {
       model = await this.requireModel(settings.modelId);
@@ -351,17 +350,25 @@ export class CopiloteService {
     let held = 0;
     if (billing === 'byok') {
       if (!settings?.byokKeyEnc || !this.env.COPILOTE_SECRET_KEY) {
-        throw new BadRequestException('Configure ta clé dans « Mon Copilote » pour activer la traduction.');
+        throw new BadRequestException(
+          'Configure ta clé dans « Mon Copilote » pour activer la traduction.',
+        );
       }
       apiKey = decryptSecret(settings.byokKeyEnc, this.env.COPILOTE_SECRET_KEY);
     } else {
       const key = platformKeyFor(model.provider, this.env);
-      if (!key) throw new ServiceUnavailableException('Traduction indisponible : aucune clé configurée pour ce modèle.');
+      if (!key)
+        throw new ServiceUnavailableException(
+          'Traduction indisponible : aucune clé configurée pour ce modèle.',
+        );
       apiKey = key;
       held = estimateCredits(model);
       const ok = await this.credits.tryDebit(profileId, held, 'hold', 'translate');
       if (!ok) {
-        throw new HttpException('Crédits insuffisants. Recharge ton solde ou passe en BYOK.', HttpStatus.PAYMENT_REQUIRED);
+        throw new HttpException(
+          'Crédits insuffisants. Recharge ton solde ou passe en BYOK.',
+          HttpStatus.PAYMENT_REQUIRED,
+        );
       }
     }
 
@@ -377,7 +384,8 @@ export class CopiloteService {
       });
     } catch (e) {
       // Échec LLM : rembourse le pré-débit.
-      if (billing === 'credits' && held > 0) await this.credits.grant(profileId, held, 'refund', 'translate');
+      if (billing === 'credits' && held > 0)
+        await this.credits.grant(profileId, held, 'refund', 'translate');
       throw e;
     }
     const promptTokens = res.usage?.promptTokens ?? 0;
@@ -386,7 +394,8 @@ export class CopiloteService {
       const spent = creditsForUsage(model, promptTokens, completionTokens);
       await this.credits.reconcile(profileId, held, spent, 'translate');
     }
-    const costUsd = (promptTokens / 1e6) * model.priceIn + (completionTokens / 1e6) * model.priceOut;
+    const costUsd =
+      (promptTokens / 1e6) * model.priceIn + (completionTokens / 1e6) * model.priceOut;
     return { text: res.text.trim(), promptTokens, completionTokens, costUsd };
   }
 
@@ -401,7 +410,15 @@ export class CopiloteService {
    */
   async generateNextSkills(
     profileId: string,
-    frontier: { slug: string; title: string; description: string; depth: number; kind: string; discipline: string; rank?: number | null },
+    frontier: {
+      slug: string;
+      title: string;
+      description: string;
+      depth: number;
+      kind: string;
+      discipline: string;
+      rank?: number | null;
+    },
     count = 2,
     passes = 1,
   ): Promise<GeneratedSkillDraft[]> {
@@ -413,12 +430,13 @@ export class CopiloteService {
     if (billing === 'credits') {
       held = estimateCredits(model) * (P + 1); // P générations + vérification
       const ok = await this.credits.tryDebit(profileId, held, 'hold', ref);
-      if (!ok) throw new BadRequestException('Crédits insuffisants pour étendre l\'Atlas.');
+      if (!ok) throw new BadRequestException("Crédits insuffisants pour étendre l'Atlas.");
     }
 
     try {
       const lm = resolveModel(model.provider, model.modelId, apiKey);
-      const rankHint = typeof frontier.rank === 'number' ? ` (rang actuel ${frontier.rank}/10)` : '';
+      const rankHint =
+        typeof frontier.rank === 'number' ? ` (rang actuel ${frontier.rank}/10)` : '';
       const prompt =
         `Discipline : ${frontier.discipline}.\n` +
         `Compétence-frontière déjà maîtrisée (profondeur ${frontier.depth})${rankHint} :\n` +
@@ -448,7 +466,8 @@ export class CopiloteService {
         genPromptTok += gen.usage?.promptTokens ?? 0;
         genCompTok += gen.usage?.completionTokens ?? 0;
       }
-      const consensus = P > 1 ? this.consensusDrafts(passesDrafts, Math.ceil(P / 2)) : passesDrafts[0]!;
+      const consensus =
+        P > 1 ? this.consensusDrafts(passesDrafts, Math.ceil(P / 2)) : passesDrafts[0]!;
       // Repli gracieux : si aucune convergence, on retombe sur la 1re passe (mieux vaut avancer que bloquer).
       const pooled = consensus.length > 0 ? consensus : passesDrafts[0]!;
 
@@ -463,7 +482,8 @@ export class CopiloteService {
       }
       return verified.kept.slice(0, n);
     } catch (err) {
-      if (billing === 'credits' && held > 0) await this.credits.grant(profileId, held, 'refund', ref);
+      if (billing === 'credits' && held > 0)
+        await this.credits.grant(profileId, held, 'refund', ref);
       throw err;
     }
   }
@@ -564,7 +584,8 @@ export class CopiloteService {
       }
       return verified.kept;
     } catch (err) {
-      if (billing === 'credits' && held > 0) await this.credits.grant(profileId, held, 'refund', ref);
+      if (billing === 'credits' && held > 0)
+        await this.credits.grant(profileId, held, 'refund', ref);
       throw err;
     }
   }
@@ -578,12 +599,21 @@ export class CopiloteService {
     const model = await this.requireModel(settings?.modelId ?? DEFAULT_MODEL_ID);
     if (billing === 'byok') {
       if (!settings?.byokKeyEnc || !this.env.COPILOTE_SECRET_KEY) {
-        throw new BadRequestException('Configure ta clé dans « Mon Copilote » pour étendre l\'Atlas.');
+        throw new BadRequestException(
+          "Configure ta clé dans « Mon Copilote » pour étendre l'Atlas.",
+        );
       }
-      return { model, apiKey: decryptSecret(settings.byokKeyEnc, this.env.COPILOTE_SECRET_KEY), billing };
+      return {
+        model,
+        apiKey: decryptSecret(settings.byokKeyEnc, this.env.COPILOTE_SECRET_KEY),
+        billing,
+      };
     }
     const key = platformKeyFor(model.provider, this.env);
-    if (!key) throw new ServiceUnavailableException('Extension de l\'Atlas indisponible : aucune clé configurée.');
+    if (!key)
+      throw new ServiceUnavailableException(
+        "Extension de l'Atlas indisponible : aucune clé configurée.",
+      );
     return { model, apiKey: key, billing };
   }
 
@@ -592,19 +622,33 @@ export class CopiloteService {
    * encore de vecteur, par lots, et stocke sur `skills.embedding`. Utilise la config d'embedding du
    * profil (BYOK). Idempotent, reprend là où il s'est arrêté. À déclencher hors ligne / admin.
    */
-  async embedGraphNodes(profileId: string, limit = 1000): Promise<{ embedded: number; remaining: number }> {
+  async embedGraphNodes(
+    profileId: string,
+    limit = 1000,
+  ): Promise<{ embedded: number; remaining: number }> {
     const settings = await this.settingsRow(profileId);
     const cfg = await this.resolveEmbeddingConfig(settings);
-    if (!cfg) throw new BadRequestException('Configure un modèle + une clé d\'embedding dans « Mon Copilote ».');
+    if (!cfg)
+      throw new BadRequestException(
+        "Configure un modèle + une clé d'embedding dans « Mon Copilote ».",
+      );
     const rows = await this.db
-      .select({ id: skills.id, title: skills.title, description: skills.description, embedding: skills.embedding })
+      .select({
+        id: skills.id,
+        title: skills.title,
+        description: skills.description,
+        embedding: skills.embedding,
+      })
       .from(skills);
     const todo = rows.filter((r) => !r.embedding || r.embedding.length === 0).slice(0, limit);
     if (todo.length === 0) return { embedded: 0, remaining: 0 };
     let embedded = 0;
     for (let i = 0; i < todo.length; i += 64) {
       const batch = todo.slice(i, i + 64);
-      const vecs = await embedTexts(cfg, batch.map((r) => `${r.title}. ${r.description}`.slice(0, 1000)));
+      const vecs = await embedTexts(
+        cfg,
+        batch.map((r) => `${r.title}. ${r.description}`.slice(0, 1000)),
+      );
       await Promise.all(
         batch.map((r, k) => {
           const v = vecs[k];
@@ -614,7 +658,8 @@ export class CopiloteService {
         }),
       );
     }
-    const remaining = rows.filter((r) => !r.embedding || r.embedding.length === 0).length - embedded;
+    const remaining =
+      rows.filter((r) => !r.embedding || r.embedding.length === 0).length - embedded;
     return { embedded, remaining: Math.max(0, remaining) };
   }
 
@@ -658,10 +703,16 @@ export class CopiloteService {
     lm: ReturnType<typeof resolveModel>,
     context: { title: string; description: string; discipline?: string },
     drafts: z.infer<typeof nextSkillsSchema>['skills'],
-  ): Promise<{ kept: GeneratedSkillDraft[]; usage: { promptTokens: number; completionTokens: number } }> {
+  ): Promise<{
+    kept: GeneratedSkillDraft[];
+    usage: { promptTokens: number; completionTokens: number };
+  }> {
     if (drafts.length === 0) return { kept: [], usage: { promptTokens: 0, completionTokens: 0 } };
     const listing = drafts
-      .map((s, i) => `${i + 1}. [${s.slug}] ${s.title} — ${s.description}\n   sources: ${s.sources.join(' | ')}`)
+      .map(
+        (s, i) =>
+          `${i + 1}. [${s.slug}] ${s.title} — ${s.description}\n   sources: ${s.sources.join(' | ')}`,
+      )
       .join('\n');
     let verdicts: z.infer<typeof verifySkillsSchema>['verdicts'] = [];
     let usage = { promptTokens: 0, completionTokens: 0 };
@@ -678,13 +729,19 @@ export class CopiloteService {
         temperature: 0,
       });
       verdicts = res.object.verdicts;
-      usage = { promptTokens: res.usage?.promptTokens ?? 0, completionTokens: res.usage?.completionTokens ?? 0 };
+      usage = {
+        promptTokens: res.usage?.promptTokens ?? 0,
+        completionTokens: res.usage?.completionTokens ?? 0,
+      };
     } catch (err) {
       // Vérificateur indisponible : PAS de fail-open silencieux (audit 08-2026). On garde les ébauches
       // mais en QUARANTAINE : statut `emergent` + sources retirées (affirmations non vérifiées), et on
       // journalise pour que l'indisponibilité soit visible.
       verifierDown = true;
-      console.warn('[copilote] vérification adversariale indisponible — ébauches mises en quarantaine :', err instanceof Error ? err.message : err);
+      console.warn(
+        '[copilote] vérification adversariale indisponible — ébauches mises en quarantaine :',
+        err instanceof Error ? err.message : err,
+      );
     }
     const bySlug = new Map(verdicts.map((v) => [v.slug, v]));
     const kept: GeneratedSkillDraft[] = [];
@@ -722,7 +779,10 @@ export class CopiloteService {
     const d = row.structured as Dossier;
     const parts: string[] = [];
     if (d.objectifPrincipal?.valeur) parts.push(`objectif de fond : ${d.objectifPrincipal.valeur}`);
-    const interets = (d.interets ?? []).map((i) => i.theme).filter(Boolean).slice(0, 5);
+    const interets = (d.interets ?? [])
+      .map((i) => i.theme)
+      .filter(Boolean)
+      .slice(0, 5);
     if (interets.length > 0) parts.push(`centres d'intérêt : ${interets.join(', ')}`);
     if (d.resumePedagogique) parts.push(d.resumePedagogique.trim());
     const line = parts.join('. ').trim();
@@ -750,12 +810,18 @@ export class CopiloteService {
         .orderBy(desc(carnetEntries.createdAt))
         .limit(20);
       if (missing.length > 0) {
-        const vecs = await embedTexts(cfg, missing.map((r) => r.note.slice(0, 512)));
+        const vecs = await embedTexts(
+          cfg,
+          missing.map((r) => r.note.slice(0, 512)),
+        );
         await Promise.all(
           missing.map((r, i) => {
             const v = vecs[i];
             if (!v) return Promise.resolve();
-            return this.db.update(carnetEntries).set({ embedding: v }).where(eq(carnetEntries.id, r.id));
+            return this.db
+              .update(carnetEntries)
+              .set({ embedding: v })
+              .where(eq(carnetEntries.id, r.id));
           }),
         );
       }
@@ -793,29 +859,30 @@ export class CopiloteService {
 
     // Chemin le plus chaud de l'API : les blocs indépendants partent EN PARALLÈLE (audit perf 08-2026 —
     // avant : ~10 aller-retours DB en série, dont TOUT le carnet chargé pour trouver une note).
-    const [mastery, skillRows, lastNote, activeMisc, dueAll, learnerProfile, settingsForEmb] = await Promise.all([
-      this.progression.getMastery(profileId),
-      this.db.select().from(skills).where(eq(skills.id, next.id)),
-      // Reprise SCOPÉE : la dernière note du carnet POUR CETTE compétence (requête LIMIT 1).
-      this.carnet.lastNoteFor(profileId, next.id),
-      // Mémoire : erreurs/confusions récurrentes actives sur cette compétence (les plus fréquentes).
-      this.db
-        .select()
-        .from(learnerMisconceptions)
-        .where(
-          and(
-            eq(learnerMisconceptions.profileId, profileId),
-            eq(learnerMisconceptions.skillId, next.id),
-            eq(learnerMisconceptions.status, 'active'),
-          ),
-        )
-        .orderBy(desc(learnerMisconceptions.occurrences)),
-      // Mémoire : compétences déjà vues et dues à réviser aujourd'hui (FSRS), à intercaler.
-      this.fsrs.due(profileId, new Date().toISOString()),
-      // Dossier de l'élève : objectif de fond + centres d'intérêt → le tuteur ancre ses exemples.
-      this.learnerProfileLine(profileId),
-      this.settingsRow(profileId),
-    ]);
+    const [mastery, skillRows, lastNote, activeMisc, dueAll, learnerProfile, settingsForEmb] =
+      await Promise.all([
+        this.progression.getMastery(profileId),
+        this.db.select().from(skills).where(eq(skills.id, next.id)),
+        // Reprise SCOPÉE : la dernière note du carnet POUR CETTE compétence (requête LIMIT 1).
+        this.carnet.lastNoteFor(profileId, next.id),
+        // Mémoire : erreurs/confusions récurrentes actives sur cette compétence (les plus fréquentes).
+        this.db
+          .select()
+          .from(learnerMisconceptions)
+          .where(
+            and(
+              eq(learnerMisconceptions.profileId, profileId),
+              eq(learnerMisconceptions.skillId, next.id),
+              eq(learnerMisconceptions.status, 'active'),
+            ),
+          )
+          .orderBy(desc(learnerMisconceptions.occurrences)),
+        // Mémoire : compétences déjà vues et dues à réviser aujourd'hui (FSRS), à intercaler.
+        this.fsrs.due(profileId, new Date().toISOString()),
+        // Dossier de l'élève : objectif de fond + centres d'intérêt → le tuteur ancre ses exemples.
+        this.learnerProfileLine(profileId),
+        this.settingsRow(profileId),
+      ]);
 
     const m = mastery.find((x) => x.skillId === next.id);
     const pct = Math.round((m?.pMastery ?? 0) * 100);
@@ -824,7 +891,7 @@ export class CopiloteService {
     // Contexte précis de la compétence (description + domaine) → l'IA enseigne le bon sujet.
     const skillRow = skillRows[0];
     const description = skillRow?.description ?? '';
-    const domain = DOMAIN_LABELS[skillRow?.kind ?? ''] ?? (skillRow?.kind ?? '');
+    const domain = DOMAIN_LABELS[skillRow?.kind ?? ''] ?? skillRow?.kind ?? '';
 
     const misconceptions = activeMisc.slice(0, 4).map((x) => x.label);
 
@@ -844,7 +911,11 @@ export class CopiloteService {
     const [relatedNotes, relatedSkills] = embConfig
       ? await Promise.all([
           this.semanticRelatedNotes(profileId, `${next.title}. ${description}`, next.id, embConfig),
-          this.semanticRelatedSkills(`${next.title}. ${description}`, new Set([next.id]), embConfig),
+          this.semanticRelatedSkills(
+            `${next.title}. ${description}`,
+            new Set([next.id]),
+            embConfig,
+          ),
         ])
       : [[], []];
 
@@ -955,7 +1026,12 @@ export class CopiloteService {
       const correct = snapshot.outcome !== 'bloque';
       mastery = await this.progression.observe(input.profileId, input.skillId, correct, nowIso);
       await this.carnet.addEntry(input.profileId, snapshot.carnetNote, input.skillId);
-      await this.fsrs.rate(input.profileId, input.skillId, outcomeToRating(snapshot.outcome), nowIso);
+      await this.fsrs.rate(
+        input.profileId,
+        input.skillId,
+        outcomeToRating(snapshot.outcome),
+        nowIso,
+      );
       const embConfig = await this.resolveEmbeddingConfig(settings);
       await this.reconcileMisconceptions(
         input.profileId,
@@ -968,7 +1044,9 @@ export class CopiloteService {
     } catch (applyErr) {
       // L'application pédagogique a échoué : on rembourse le pré-débit (la plateforme assume le coût LLM).
       if (billing === 'credits' && held > 0) {
-        await this.credits.grant(input.profileId, held, 'refund', input.skillId).catch(() => undefined);
+        await this.credits
+          .grant(input.profileId, held, 'refund', input.skillId)
+          .catch(() => undefined);
       }
       throw applyErr;
     }
@@ -998,7 +1076,12 @@ export class CopiloteService {
   ): Promise<{ pMastery: number }> {
     const nowIso = new Date().toISOString();
     // Dowze RECALCULE la maîtrise (BKT) — jamais un score fourni par un LLM.
-    const mastery = await this.progression.observe(profileId, skillId, outcome !== 'bloque', nowIso);
+    const mastery = await this.progression.observe(
+      profileId,
+      skillId,
+      outcome !== 'bloque',
+      nowIso,
+    );
     const note = (carnetNote || '').trim();
     if (note) await this.carnet.addEntry(profileId, note, skillId);
     await this.fsrs.rate(profileId, skillId, outcomeToRating(outcome), nowIso);
@@ -1068,9 +1151,11 @@ export class CopiloteService {
    * dossier, GraphRAG) + `generateStructured` (LLM→objet Zod validé, crédits/BYOK, filet jsonrepair).
    * MVP mono-passe ; la variante orchestrée par l'École (runProject) viendra ensuite. `null` si tout maîtrisé.
    */
-  async runCourse(
-    profileId: string,
-  ): Promise<{ sheet: CourseSheet; skill: { id: string; slug: string; title: string }; creditsSpent: number } | null> {
+  async runCourse(profileId: string): Promise<{
+    sheet: CourseSheet;
+    skill: { id: string; slug: string; title: string };
+    creditsSpent: number;
+  } | null> {
     const ctx = await this.compose(profileId);
     if (!ctx.skill) return null; // rien de prescrit (tout maîtrisé) → pas de cours
     const title = ctx.skill.title;
@@ -1107,9 +1192,14 @@ export class CopiloteService {
     } catch {
       /* sans Redis, pas de cache ni de QA différée : comportement dégradé acceptable */
     }
-    void this.qaCourseInBackground(profileId, cacheKey, ctx.skill.id, title, ctx.prompt, gen.object).catch(
-      () => undefined,
-    );
+    void this.qaCourseInBackground(
+      profileId,
+      cacheKey,
+      ctx.skill.id,
+      title,
+      ctx.prompt,
+      gen.object,
+    ).catch(() => undefined);
 
     return { sheet, skill: ctx.skill, creditsSpent: gen.creditsSpent };
   }
@@ -1337,10 +1427,13 @@ export class CopiloteService {
         creditsSpent = creditsForUsage(model, inTok, outTok);
         await this.credits.reconcile(profileId, held, creditsSpent, ref);
       }
-      const toolsUsed = [...new Set(result.steps.flatMap((s) => s.toolCalls.map((tc) => tc.toolName)))];
+      const toolsUsed = [
+        ...new Set(result.steps.flatMap((s) => s.toolCalls.map((tc) => tc.toolName))),
+      ];
       return { text: (result.text || '').trim(), toolsUsed, creditsSpent };
     } catch (err) {
-      if (billing === 'credits' && held > 0) await this.credits.grant(profileId, held, 'refund', ref);
+      if (billing === 'credits' && held > 0)
+        await this.credits.grant(profileId, held, 'refund', ref);
       throw err;
     }
   }
@@ -1351,21 +1444,34 @@ export class CopiloteService {
    * `skills.embedding` et la config d'embedding du profil. `[]` si aucun embedding configuré / indexé
    * (dégradation gracieuse). Sert l'outil `chercher_connaissances` des abeilles-agents.
    */
-  async searchKnowledge(profileId: string, query: string, k = 5): Promise<{ title: string; description: string }[]> {
+  async searchKnowledge(
+    profileId: string,
+    query: string,
+    k = 5,
+  ): Promise<{ title: string; description: string }[]> {
     const cfg = await this.resolveEmbeddingConfig(await this.settingsRow(profileId));
     if (!cfg) return [];
     try {
       const rows = await this.db
-        .select({ title: skills.title, description: skills.description, embedding: skills.embedding })
+        .select({
+          title: skills.title,
+          description: skills.description,
+          embedding: skills.embedding,
+        })
         .from(skills);
       const withEmb = rows.filter(
-        (r): r is typeof r & { embedding: number[] } => Array.isArray(r.embedding) && r.embedding.length > 0,
+        (r): r is typeof r & { embedding: number[] } =>
+          Array.isArray(r.embedding) && r.embedding.length > 0,
       );
       if (withEmb.length === 0) return [];
       const qv = (await embedTexts(cfg, [query.slice(0, 512)]))[0];
       if (!qv) return [];
       return withEmb
-        .map((r) => ({ title: r.title, description: r.description, score: cosine(qv, r.embedding) }))
+        .map((r) => ({
+          title: r.title,
+          description: r.description,
+          score: cosine(qv, r.embedding),
+        }))
         .filter((x) => x.score >= 0.3)
         .sort((a, b) => b.score - a.score)
         .slice(0, Math.max(1, Math.min(k, 8)))
@@ -1392,7 +1498,8 @@ export class CopiloteService {
   }
 
   private async resolveEmbeddingConfig(row: SettingsRow | null): Promise<EmbeddingConfig | null> {
-    if (!row?.embeddingModelId || !row.embeddingKeyEnc || !this.env.COPILOTE_SECRET_KEY) return null;
+    if (!row?.embeddingModelId || !row.embeddingKeyEnc || !this.env.COPILOTE_SECRET_KEY)
+      return null;
     const model = await this.db
       .select()
       .from(aiEmbeddingModel)

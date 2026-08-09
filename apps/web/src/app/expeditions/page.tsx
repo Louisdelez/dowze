@@ -131,7 +131,11 @@ export default function ExpeditionsPage() {
       <EmptyState
         title="Connecte-toi"
         description="Les expéditions sont personnelles."
-        action={<Link href="/connexion" className="text-accent underline-offset-2 hover:underline">Se connecter</Link>}
+        action={
+          <Link href="/connexion" className="text-accent underline-offset-2 hover:underline">
+            Se connecter
+          </Link>
+        }
       />
     );
   }
@@ -158,7 +162,9 @@ export default function ExpeditionsPage() {
                 key={p.key}
                 className={cn(
                   'rounded-full px-2 py-0.5 text-xs',
-                  p.key === active.phase ? 'bg-accent text-accent-foreground' : 'bg-muted text-muted-foreground',
+                  p.key === active.phase
+                    ? 'bg-accent text-accent-foreground'
+                    : 'bg-muted text-muted-foreground',
                 )}
               >
                 {p.label}
@@ -209,13 +215,19 @@ export default function ExpeditionsPage() {
       {/* Propositions (3 au choix). */}
       {!active && proposals && (
         <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">Choisis l'expédition qui t'attire le plus :</p>
+          <p className="text-sm text-muted-foreground">
+            Choisis l'expédition qui t'attire le plus :
+          </p>
           {proposals.map((p, i) => (
             <Card key={i} className="space-y-2">
               <CardTitle>{p.titre}</CardTitle>
               <CardDescription>{p.grandeQuestion}</CardDescription>
-              <p className="text-sm"><strong>Tu produiras :</strong> {p.produit}</p>
-              <p className="text-sm text-muted-foreground"><strong>Tu apprendras :</strong> {p.apprentissage}</p>
+              <p className="text-sm">
+                <strong>Tu produiras :</strong> {p.produit}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                <strong>Tu apprendras :</strong> {p.apprentissage}
+              </p>
               <Button onClick={() => choisir(p)} disabled={enCours}>
                 Choisir celle-ci
               </Button>
@@ -232,8 +244,8 @@ export default function ExpeditionsPage() {
             <Card className="space-y-3">
               <CardTitle>Prêt·e pour une nouvelle expédition ?</CardTitle>
               <CardDescription>
-                Dowze te propose 3 expéditions taillées pour toi. Tu en choisis une, puis on avance ensemble,
-                phase par phase.
+                Dowze te propose 3 expéditions taillées pour toi. Tu en choisis une, puis on avance
+                ensemble, phase par phase.
               </CardDescription>
               <Button onClick={proposer} disabled={enCours}>
                 {enCours ? 'Dowze réfléchit…' : 'Proposer 3 expéditions'}
@@ -261,7 +273,9 @@ export default function ExpeditionsPage() {
 
 function lisible(e: unknown): string {
   const msg = String(e instanceof Error ? e.message : e);
-  if (msg.includes('402')) return 'Il faut des crédits (ou ta propre clé) pour que Dowze propose des expéditions. Va dans « Mon Copilote ».';
-  if (msg.includes('503')) return "Le modèle n'a pas répondu. Réessaie, ou choisis un autre modèle dans « Mon Copilote ».";
+  if (msg.includes('402'))
+    return 'Il faut des crédits (ou ta propre clé) pour que Dowze propose des expéditions. Va dans « Mon Copilote ».';
+  if (msg.includes('503'))
+    return "Le modèle n'a pas répondu. Réessaie, ou choisis un autre modèle dans « Mon Copilote ».";
   return msg;
 }

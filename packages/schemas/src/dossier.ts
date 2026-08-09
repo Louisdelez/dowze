@@ -42,7 +42,9 @@ export const dossierSchema = z
     objectifPrincipal: champTraceSchema.describe("L'objectif principal en une phrase."),
     interets: z
       .array(themeSourceSchema)
-      .describe('Passions, hobbies, centres d’intérêt (funds of knowledge). Tableau vide si aucun.'),
+      .describe(
+        'Passions, hobbies, centres d’intérêt (funds of knowledge). Tableau vide si aucun.',
+      ),
     objectifs: z
       .array(themeSourceSchema)
       .describe('Objectifs / rêves / ce que l’élève veut apprendre. Tableau vide si aucun.'),

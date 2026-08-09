@@ -147,7 +147,13 @@ export class PlacementService {
       askedCount: 1,
       recent: [theta],
       responseRatios: [],
-      current: { skillId: skill.id, aboveLevel, question: q.question, attendu: q.attendu, timeLimitSec },
+      current: {
+        skillId: skill.id,
+        aboveLevel,
+        question: q.question,
+        attendu: q.attendu,
+        timeLimitSec,
+      },
     };
 
     const row = (
@@ -220,7 +226,8 @@ export class PlacementService {
     if (typeof responseTimeMs === 'number' && responseTimeMs >= 0) {
       state.responseRatios.push(Math.min(3, responseTimeMs / Math.max(1, limitMs)));
       // « rapide ET juste » (mais pas un clic éclair) → petit coup de pouce pour trouver le plafond.
-      if (score === 1 && responseTimeMs > 4000 && responseTimeMs < 0.4 * limitMs) fastCorrect = true;
+      if (score === 1 && responseTimeMs > 4000 && responseTimeMs < 0.4 * limitMs)
+        fastCorrect = true;
     }
 
     // 3) Mise à jour du niveau : staircase à pas décroissant (Robbins-Monro / Elo).
@@ -244,7 +251,8 @@ export class PlacementService {
     // 5) Question suivante à la difficulté ré-estimée.
     const skills = this.sortSkills(await this.graph.loadGraph());
     const age = this.ageOf(
-      (await this.db.select().from(profiles).where(eq(profiles.id, profileId)))[0]?.birthDate ?? null,
+      (await this.db.select().from(profiles).where(eq(profiles.id, profileId)))[0]?.birthDate ??
+        null,
     );
     const timeLimitSec = this.timeLimitSec(age);
     const next = await this.genQuestion(profileId, skills, state.theta);
@@ -257,7 +265,10 @@ export class PlacementService {
       timeLimitSec,
     };
 
-    await this.db.update(placementSessions).set({ state }).where(eq(placementSessions.id, sessionId));
+    await this.db
+      .update(placementSessions)
+      .set({ state })
+      .where(eq(placementSessions.id, sessionId));
 
     return {
       sessionId,

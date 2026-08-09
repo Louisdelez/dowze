@@ -62,7 +62,9 @@ export type CursusPhase = z.infer<typeof cursusPhaseSchema>;
 export const expeditionProposalSchema = z
   .object({
     titre: z.string().describe('Un titre accrocheur, court.'),
-    grandeQuestion: z.string().describe('Une grande question OUVERTE, non googlable, faisable, éthique.'),
+    grandeQuestion: z
+      .string()
+      .describe('Une grande question OUVERTE, non googlable, faisable, éthique.'),
     produit: z.string().describe('Ce que l’élève PRODUIRA (audience réelle) — l’Acte.'),
     apprentissage: z.string().describe('Ce que l’élève apprendra en la menant.'),
   })
@@ -78,7 +80,9 @@ export type ExpeditionProposals = z.infer<typeof expeditionProposalsSchema>;
 /** Guidage d'une phase : explication + prompt à coller + pistes de départ. */
 export const phaseGuidanceSchema = z
   .object({
-    explication: z.string().describe('Ce qu’est cette phase et comment l’aborder, en langage simple.'),
+    explication: z
+      .string()
+      .describe('Ce qu’est cette phase et comment l’aborder, en langage simple.'),
     prompt: z.string().describe('Le prompt à coller dans l’IA-prof de l’élève pour cette phase.'),
     pistes: z
       .array(z.string())

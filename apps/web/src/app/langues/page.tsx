@@ -2,7 +2,12 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import type { CourseSheet, LanguageCompose, LanguageIngestResult, LanguagesView } from '@dowze/schemas';
+import type {
+  CourseSheet,
+  LanguageCompose,
+  LanguageIngestResult,
+  LanguagesView,
+} from '@dowze/schemas';
 import { useProfile } from '@/lib/use-profile';
 import {
   chooseLanguage,
@@ -239,8 +244,8 @@ export default function LanguesPage() {
         <Card className="space-y-3">
           <CardTitle>1 · Copie ce prompt dans ton IA</CardTitle>
           <CardDescription>
-            Colle-le dans ChatGPT, Claude… (active le mode vocal si tu peux) et parle avec ton prof en{' '}
-            {composed.name}.
+            Colle-le dans ChatGPT, Claude… (active le mode vocal si tu peux) et parle avec ton prof
+            en {composed.name}.
           </CardDescription>
           <div className="flex justify-end">
             <Button variant="utility" onClick={() => void copier(composed.prompt, 'prompt')}>
@@ -255,13 +260,16 @@ export default function LanguesPage() {
         <Card className="space-y-3">
           <CardTitle>2 · Recolle ton résumé de séance</CardTitle>
           <CardDescription>
-            En fin de séance, demande le bilan à ton IA avec le prompt ci-dessous, puis colle sa réponse
-            ici. Dowze la lit et met à jour ton niveau.
+            En fin de séance, demande le bilan à ton IA avec le prompt ci-dessous, puis colle sa
+            réponse ici. Dowze la lit et met à jour ton niveau.
           </CardDescription>
           <div className="space-y-2 rounded-md border border-border bg-muted/40 p-3">
             <div className="flex items-center justify-between gap-2">
               <p className="text-sm font-medium">a) Demande le bilan à ton IA :</p>
-              <Button variant="utility" onClick={() => void copier(composed.closingPrompt, 'closing')}>
+              <Button
+                variant="utility"
+                onClick={() => void copier(composed.closingPrompt, 'closing')}
+              >
                 {copied === 'closing' ? 'Copié !' : 'Copier le prompt de bilan'}
               </Button>
             </div>
@@ -339,9 +347,14 @@ export default function LanguesPage() {
                   <IconZap /> {view.active.streak} j
                 </span>
               </div>
-              {view.projection && <p className="mt-3 text-sm text-muted-foreground">{view.projection}</p>}
+              {view.projection && (
+                <p className="mt-3 text-sm text-muted-foreground">{view.projection}</p>
+              )}
               <div className="mt-4">
-                <Button onClick={() => void demarrer(view.active!.lang)} disabled={busy === view.active.lang}>
+                <Button
+                  onClick={() => void demarrer(view.active!.lang)}
+                  disabled={busy === view.active.lang}
+                >
                   <IconSparkles className="mr-1" /> Séance du jour (~{view.dailyMinutes} min)
                 </Button>
               </div>
@@ -371,7 +384,11 @@ export default function LanguesPage() {
                         </span>
                       )}
                     </div>
-                    <Button variant="secondary" onClick={() => void demarrer(m.lang)} disabled={busy === m.lang}>
+                    <Button
+                      variant="secondary"
+                      onClick={() => void demarrer(m.lang)}
+                      disabled={busy === m.lang}
+                    >
                       Réactiver
                     </Button>
                   </Card>
@@ -387,8 +404,8 @@ export default function LanguesPage() {
               </h2>
               {view.active && !view.canChooseNew && (
                 <Note>
-                  Consolide d'abord ta langue en cours (vise {view.unlockCefr}) avant d'en commencer une
-                  nouvelle — une langue à la fois.
+                  Consolide d'abord ta langue en cours (vise {view.unlockCefr}) avant d'en commencer
+                  une nouvelle — une langue à la fois.
                 </Note>
               )}
               <div className="grid gap-2">
@@ -398,7 +415,11 @@ export default function LanguesPage() {
                       <CardTitle className="text-base">{p.name}</CardTitle>
                       <CardDescription>{p.pitch}</CardDescription>
                     </div>
-                    <Button variant="secondary" onClick={() => void choisir(p.lang)} disabled={busy === p.lang}>
+                    <Button
+                      variant="secondary"
+                      onClick={() => void choisir(p.lang)}
+                      disabled={busy === p.lang}
+                    >
                       Choisir
                     </Button>
                   </Card>
@@ -425,7 +446,6 @@ export default function LanguesPage() {
               )}
             </section>
           )}
-
         </>
       )}
     </div>

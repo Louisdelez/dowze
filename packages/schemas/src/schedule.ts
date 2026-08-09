@@ -5,7 +5,14 @@ import { z } from 'zod';
  * déterministe de Dowze, affiché dans un calendrier (année/mois/semaine/jour). Cf. recherche 2026.
  */
 
-export const blockTypeSchema = z.enum(['langue', 'revision', 'cours', 'expedition', 'passion', 'plugin']);
+export const blockTypeSchema = z.enum([
+  'langue',
+  'revision',
+  'cours',
+  'expedition',
+  'passion',
+  'plugin',
+]);
 export type BlockType = z.infer<typeof blockTypeSchema>;
 
 /** Un bloc de l'emploi du temps hebdomadaire (récurrent). */

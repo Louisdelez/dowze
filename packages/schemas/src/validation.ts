@@ -98,7 +98,9 @@ export const peerValidationViewSchema = z.object({
   /** Combien il me faut de niveau / jours (message d'éligibilité). */
   reviewGateMessage: z.string().nullable(),
   /** Badges obtenus (sujets validés). */
-  badges: z.array(z.object({ id: z.string(), name: z.string(), criteria: z.string(), dateIso: z.string() })),
+  badges: z.array(
+    z.object({ id: z.string(), name: z.string(), criteria: z.string(), dateIso: z.string() }),
+  ),
   /** Seuil de validation (nb d'évaluateurs, moyenne d'étoiles). */
   requiredReviews: z.number().int(),
   requiredAvgStars: z.number(),

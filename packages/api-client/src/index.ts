@@ -107,10 +107,16 @@ export class CompanionApi {
 
   /** Compagnons d'un espace (défaut : la Maison). Sème le principal au besoin. */
   listAgents(space = 'home'): Promise<CompanionAgent[]> {
-    return this.client.request<CompanionAgent[]>(`/companion/agents?space=${encodeURIComponent(space)}`);
+    return this.client.request<CompanionAgent[]>(
+      `/companion/agents?space=${encodeURIComponent(space)}`,
+    );
   }
   /** Auto-builder IA : « décris ton compagnon en une phrase » → Dowze le construit. Tout domaine. */
-  buildAgent(description: string, skinUrl?: string | null, space?: string): Promise<CompanionAgent> {
+  buildAgent(
+    description: string,
+    skinUrl?: string | null,
+    space?: string,
+  ): Promise<CompanionAgent> {
     return this.client.request<CompanionAgent>('/companion/agents/build', {
       method: 'POST',
       body: JSON.stringify({ description, skinUrl, space }),
@@ -120,8 +126,14 @@ export class CompanionApi {
     return this.client.request<{ ok: true }>(`/companion/agents/${id}`, { method: 'DELETE' });
   }
   /** Chat IA avec un compagnon-agent (mémoire + apprentissage côté serveur). */
-  chat(id: string, message: string): Promise<{ reply: string; learned?: string; toolsUsed?: string[] }> {
-    return this.client.request(`/companion/agents/${id}/chat`, { method: 'POST', body: JSON.stringify({ message }) });
+  chat(
+    id: string,
+    message: string,
+  ): Promise<{ reply: string; learned?: string; toolsUsed?: string[] }> {
+    return this.client.request(`/companion/agents/${id}/chat`, {
+      method: 'POST',
+      body: JSON.stringify({ message }),
+    });
   }
   messages(id: string): Promise<CompanionMessage[]> {
     return this.client.request<CompanionMessage[]>(`/companion/agents/${id}/messages`);
@@ -131,17 +143,26 @@ export class CompanionApi {
    * abeilles des open-spaces et synthétise dans sa voix.
    */
   orchestrate(message: string, leaderId?: string): Promise<OrchestrateResult> {
-    return this.client.request<OrchestrateResult>('/companion/orchestrate', { method: 'POST', body: JSON.stringify(leaderId ? { message, leaderId } : { message }) });
+    return this.client.request<OrchestrateResult>('/companion/orchestrate', {
+      method: 'POST',
+      body: JSON.stringify(leaderId ? { message, leaderId } : { message }),
+    });
   }
   spaces(): Promise<CompanionSpace[]> {
     return this.client.request<CompanionSpace[]>('/companion/spaces');
   }
   /** Relais Claude Code / Codex : génère un jeton MCP (montré une seule fois). */
   createRelayToken(label?: string): Promise<{ token: string; name: string }> {
-    return this.client.request('/companion/relay/token', { method: 'POST', body: JSON.stringify(label ? { label } : {}) });
+    return this.client.request('/companion/relay/token', {
+      method: 'POST',
+      body: JSON.stringify(label ? { label } : {}),
+    });
   }
   /** Téléphone → Claude Code : met une instruction en file d'attente. */
   relaySay(text: string): Promise<{ ok: true }> {
-    return this.client.request('/companion/relay/say', { method: 'POST', body: JSON.stringify({ text }) });
+    return this.client.request('/companion/relay/say', {
+      method: 'POST',
+      body: JSON.stringify({ text }),
+    });
   }
 }

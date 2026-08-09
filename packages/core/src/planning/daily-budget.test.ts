@@ -21,7 +21,9 @@ describe('dailyBudget', () => {
 
   it('le cœur académique (cours + expéditions) reste ≈ 60-70 %', () => {
     const b = dailyBudget(14);
-    const core = b.blocks.filter((x) => x.key === 'courses' || x.key === 'expeditions').reduce((s, x) => s + x.pct, 0);
+    const core = b.blocks
+      .filter((x) => x.key === 'courses' || x.key === 'expeditions')
+      .reduce((s, x) => s + x.pct, 0);
     expect(core).toBeGreaterThanOrEqual(58);
     expect(core).toBeLessThanOrEqual(72);
   });

@@ -3,7 +3,15 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { cookies } from 'next/headers';
 import { SESSION_COOKIE, verifySession } from '@/lib/session';
-import { MAX_DRAW_BYTES, drawPath, ensureDir, listDrawings, projectPath, safeName, userDrawDir } from '@/lib/draw';
+import {
+  MAX_DRAW_BYTES,
+  drawPath,
+  ensureDir,
+  listDrawings,
+  projectPath,
+  safeName,
+  userDrawDir,
+} from '@/lib/draw';
 
 export const runtime = 'nodejs';
 
@@ -31,8 +39,10 @@ export async function POST(req: Request) {
   }
   const name = safeName((form.get('name') as string) || '');
   const file = form.get('file');
-  if (!(file instanceof File)) return NextResponse.json({ error: 'image manquante' }, { status: 400 });
-  if (file.size > MAX_DRAW_BYTES) return NextResponse.json({ error: 'Dessin trop lourd.' }, { status: 413 });
+  if (!(file instanceof File))
+    return NextResponse.json({ error: 'image manquante' }, { status: 400 });
+  if (file.size > MAX_DRAW_BYTES)
+    return NextResponse.json({ error: 'Dessin trop lourd.' }, { status: 413 });
   try {
     await ensureDir(u);
     const buf = Buffer.from(await file.arrayBuffer());
@@ -63,7 +73,8 @@ export async function PATCH(req: Request) {
   const u = await user();
   if (!u) return NextResponse.json({ error: 'non authentifié' }, { status: 401 });
   const body = await req.json().catch(() => ({}));
-  if (!body.name || !body.newName) return NextResponse.json({ error: 'paramètres' }, { status: 400 });
+  if (!body.name || !body.newName)
+    return NextResponse.json({ error: 'paramètres' }, { status: 400 });
   try {
     await fs.rename(drawPath(u, body.name), drawPath(u, body.newName));
     await fs.rename(projectPath(u, body.name), projectPath(u, body.newName)).catch(() => {});

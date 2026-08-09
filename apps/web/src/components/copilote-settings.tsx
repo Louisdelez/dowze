@@ -2,7 +2,13 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { getModels, getEmbeddingModels, getCopiloteSettings, updateCopiloteSettings, getCredits } from '@/lib/api';
+import {
+  getModels,
+  getEmbeddingModels,
+  getCopiloteSettings,
+  updateCopiloteSettings,
+  getCredits,
+} from '@/lib/api';
 import type { AiEmbeddingModel, AiModel, CopiloteSettingsView } from '@dowze/schemas';
 import { useProfile } from '@/lib/use-profile';
 import { Button } from '@/components/ui/button';
@@ -148,11 +154,14 @@ export function CopiloteSettings() {
               <div>
                 <CardTitle>Le modèle du Copilote</CardTitle>
                 <CardDescription>
-                  Une petite IA guidée par Dowze. Elle n’enseigne pas — c’est ton IA (ChatGPT, Claude…) qui enseigne.
+                  Une petite IA guidée par Dowze. Elle n’enseigne pas — c’est ton IA (ChatGPT,
+                  Claude…) qui enseigne.
                 </CardDescription>
               </div>
               {billing === 'credits' && balance !== null && (
-                <Badge tone={balance > 0 ? 'accent' : 'neutral'}>{Math.round(balance)} crédits</Badge>
+                <Badge tone={balance > 0 ? 'accent' : 'neutral'}>
+                  {Math.round(balance)} crédits
+                </Badge>
               )}
             </div>
 
@@ -160,7 +169,11 @@ export function CopiloteSettings() {
               label="Modèle"
               value={modelId}
               onChange={(e) => setModelId(e.target.value)}
-              hint={selected ? `${selected.note}${selected.euHosted ? ' · hébergement UE (RGPD)' : ''}` : undefined}
+              hint={
+                selected
+                  ? `${selected.note}${selected.euHosted ? ' · hébergement UE (RGPD)' : ''}`
+                  : undefined
+              }
             >
               {models.map((m) => (
                 <option key={m.id} value={m.id}>
@@ -195,7 +208,12 @@ export function CopiloteSettings() {
                   hint="Chiffrée au repos, jamais réaffichée. Elle ne sert qu’à tes propres séances."
                 />
                 {selected?.billingUrl && (
-                  <a href={selected.billingUrl} target="_blank" rel="noopener noreferrer" className="inline-flex w-fit items-center gap-1 text-xs font-medium text-accent underline">
+                  <a
+                    href={selected.billingUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex w-fit items-center gap-1 text-xs font-medium text-accent underline"
+                  >
                     Acheter des crédits API {selected.label} ↗
                   </a>
                 )}
@@ -219,8 +237,9 @@ export function CopiloteSettings() {
             <div>
               <CardTitle>Mémoire sémantique (embeddings)</CardTitle>
               <CardDescription>
-                Optionnel. Donne à Dowze une mémoire « par le sens » : regrouper des confusions formulées différemment et
-                retrouver un épisode passé similaire. Sans embeddings, la mémoire fonctionne déjà (par mots-clés).
+                Optionnel. Donne à Dowze une mémoire « par le sens » : regrouper des confusions
+                formulées différemment et retrouver un épisode passé similaire. Sans embeddings, la
+                mémoire fonctionne déjà (par mots-clés).
               </CardDescription>
             </div>
 
@@ -254,7 +273,12 @@ export function CopiloteSettings() {
                   hint="Chiffrée au repos. Peut être différente de la clé du Copilote."
                 />
                 {embSelected?.billingUrl && (
-                  <a href={embSelected.billingUrl} target="_blank" rel="noopener noreferrer" className="inline-flex w-fit items-center gap-1 text-xs font-medium text-accent underline">
+                  <a
+                    href={embSelected.billingUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex w-fit items-center gap-1 text-xs font-medium text-accent underline"
+                  >
                     Acheter des crédits API {embSelected.label} ↗
                   </a>
                 )}
@@ -277,8 +301,9 @@ export function CopiloteSettings() {
             <div>
               <CardTitle>Traduction (modèle LowCost)</CardTitle>
               <CardDescription>
-                La traduction en temps réel des messages utilise une IA <strong>LowCost</strong>, moins chère. Choisis un
-                modèle dédié, ou réutilise ton IA principale (déconseillé : plus cher).
+                La traduction en temps réel des messages utilise une IA <strong>LowCost</strong>,
+                moins chère. Choisis un modèle dédié, ou réutilise ton IA principale (déconseillé :
+                plus cher).
               </CardDescription>
             </div>
 
@@ -298,8 +323,9 @@ export function CopiloteSettings() {
 
             {lowcostModelId === '' && (
               <Note tone="info">
-                Attention : tu réutilises ton IA principale pour la traduction. Ça marche, mais chaque message traduit coûte
-                plus cher. Choisis un modèle LowCost pour réduire fortement le coût.
+                Attention : tu réutilises ton IA principale pour la traduction. Ça marche, mais
+                chaque message traduit coûte plus cher. Choisis un modèle LowCost pour réduire
+                fortement le coût.
               </Note>
             )}
 
@@ -314,8 +340,9 @@ export function CopiloteSettings() {
             <Card className="space-y-2">
               <CardTitle>Recharger mes crédits</CardTitle>
               <CardDescription>
-                Le paiement par carte (Stripe) arrive bientôt. En attendant, tes crédits peuvent être ajoutés par l’équipe
-                Dowze. 1 crédit ≈ 0,1 centime ; une séance coûte ~2 crédits.
+                Le paiement par carte (Stripe) arrive bientôt. En attendant, tes crédits peuvent
+                être ajoutés par l’équipe Dowze. 1 crédit ≈ 0,1 centime ; une séance coûte ~2
+                crédits.
               </CardDescription>
             </Card>
           )}

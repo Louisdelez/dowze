@@ -33,12 +33,23 @@ export async function myPlugins(profileId: string): Promise<CataloguePlugin[]> {
   return core.request<CataloguePlugin[]>(`/v1/plugins/mine/${profileId}`);
 }
 
-export async function activateAlim(pluginId: string, profileId: string, grantedScopes: string[], config: AlimConfig): Promise<unknown> {
-  return core.request(`/v1/plugins/${pluginId}/activate`, { method: 'POST', body: JSON.stringify({ profileId, grantedScopes, config }) });
+export async function activateAlim(
+  pluginId: string,
+  profileId: string,
+  grantedScopes: string[],
+  config: AlimConfig,
+): Promise<unknown> {
+  return core.request(`/v1/plugins/${pluginId}/activate`, {
+    method: 'POST',
+    body: JSON.stringify({ profileId, grantedScopes, config }),
+  });
 }
 
 export async function deactivateAlim(pluginId: string, profileId: string): Promise<unknown> {
-  return core.request(`/v1/plugins/${pluginId}/deactivate`, { method: 'POST', body: JSON.stringify({ profileId }) });
+  return core.request(`/v1/plugins/${pluginId}/deactivate`, {
+    method: 'POST',
+    body: JSON.stringify({ profileId }),
+  });
 }
 
 /** Session meal-prep hebdo → planning (P2). C'est le bloc concret et actionnable. */
@@ -62,14 +73,18 @@ export async function declareMealPrep(profileId: string, prepPerWeek: number): P
 }
 
 export async function removeMealPrep(profileId: string): Promise<unknown> {
-  return core.request(`/v1/calendar/recurring/${profileId}/${ALIM_SLUG}/${PREP_REF}`, { method: 'DELETE' });
+  return core.request(`/v1/calendar/recurring/${profileId}/${ALIM_SLUG}/${PREP_REF}`, {
+    method: 'DELETE',
+  });
 }
 
 /**
  * compose : idées de menus/repas réguliers (P3). GARDE-FOU : jamais de calories ni de conseil médical —
  * on ne demande que régularité, variété et planification.
  */
-export async function composeMenu(profileId: string): Promise<{ prompt: string; closingPrompt: string }> {
+export async function composeMenu(
+  profileId: string,
+): Promise<{ prompt: string; closingPrompt: string }> {
   return core.request('/v1/ai/compose', {
     method: 'POST',
     headers: pluginHeader,
@@ -80,13 +95,16 @@ export async function composeMenu(profileId: string): Promise<{ prompt: string; 
       goal: 'manger régulièrement, varié et planifié',
       instructions:
         'Propose des idées de repas simples et un plan de meal-prep pour la semaine. ' +
-        "IMPORTANT : ne donne AUCUN comptage de calories, AUCUN objectif chiffré, AUCUN conseil médical " +
+        'IMPORTANT : ne donne AUCUN comptage de calories, AUCUN objectif chiffré, AUCUN conseil médical ' +
         'ou nutritionnel individualisé. Reste sur la régularité, la variété et la planification.',
     }),
   });
 }
 
-export async function ingestMeal(profileId: string, summary: string): Promise<{ snapshot: Record<string, unknown>; creditsSpent: number }> {
+export async function ingestMeal(
+  profileId: string,
+  summary: string,
+): Promise<{ snapshot: Record<string, unknown>; creditsSpent: number }> {
   return core.request('/v1/ai/ingest', {
     method: 'POST',
     headers: pluginHeader,
@@ -96,7 +114,11 @@ export async function ingestMeal(profileId: string, summary: string): Promise<{ 
       summary,
       fields: [
         { key: 'plats', type: 'stringArray', description: 'plats préparés ou repas pris' },
-        { key: 'preparationFaite', type: 'boolean', description: 'a-t-il fait du meal-prep / cuisiné à l’avance ?' },
+        {
+          key: 'preparationFaite',
+          type: 'boolean',
+          description: 'a-t-il fait du meal-prep / cuisiné à l’avance ?',
+        },
         { key: 'ressenti', type: 'string', description: 'ressenti général (sans jugement)' },
       ],
     }),
@@ -122,7 +144,10 @@ export async function listEntries(profileId: string): Promise<AlimEntryRow[]> {
   return (data ?? []) as AlimEntryRow[];
 }
 
-export async function saveEntry(profileId: string, row: { kind: string; title: string; summary: string; snapshot: Record<string, unknown> }): Promise<void> {
+export async function saveEntry(
+  profileId: string,
+  row: { kind: string; title: string; summary: string; snapshot: Record<string, unknown> },
+): Promise<void> {
   await getSupabase().from('alimentation_entries').insert({
     profile_id: profileId,
     kind: row.kind,

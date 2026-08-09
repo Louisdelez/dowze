@@ -21,7 +21,9 @@ export function expeditionProposePrompt(ctx: {
     ctx.interets.length > 0 ? `Ses intérêts : ${ctx.interets.join(', ')}.` : null,
   ].filter(Boolean);
   return (
-    (lignes.length > 0 ? lignes.join('\n') : "On sait peu de choses sur l'élève ; propose large et engageant.") +
+    (lignes.length > 0
+      ? lignes.join('\n')
+      : "On sait peu de choses sur l'élève ; propose large et engageant.") +
     '\n\nPropose 3 expéditions différenciées.'
   );
 }
@@ -31,10 +33,8 @@ const PHASE_INTENT: Record<ExpeditionPhase, string> = {
     "ÉTINCELLE (l'accroche) : rends la grande idée vivante (histoire, fait surprenant, tension réelle) pour faire SENTIR sa valeur, reliée à ce que l'élève aime.",
   question:
     "QUESTION : aide l'élève à s'approprier/reformuler la grande question et à lister ses sous-questions (ouverte, non googlable, faisable).",
-  defi:
-    "DÉFI : transforme la question en enquête concrète vers un produit ; apprends à CHERCHER et ÉVALUER les sources (méthode SIFT, lecture latérale), avec des pistes de départ.",
-  acte:
-    "ACTE : construis le produit authentique, avec un cycle critique & révision (un pair) avant la version publique. L'IA aide à structurer, ne rédige pas à la place.",
+  defi: 'DÉFI : transforme la question en enquête concrète vers un produit ; apprends à CHERCHER et ÉVALUER les sources (méthode SIFT, lecture latérale), avec des pistes de départ.',
+  acte: "ACTE : construis le produit authentique, avec un cycle critique & révision (un pair) avant la version publique. L'IA aide à structurer, ne rédige pas à la place.",
   trace:
     "TRACE : consigne la preuve et une méta-réflexion (cycle de Gibbs). C'est la pièce évaluée et la mémoire de l'app.",
 };

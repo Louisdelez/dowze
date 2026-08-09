@@ -204,9 +204,7 @@ function Cloze({
           Vérifier
         </Button>
       )}
-      {done && result && (
-        <Feedback text={item.feedback} correct={result.every(Boolean)} />
-      )}
+      {done && result && <Feedback text={item.feedback} correct={result.every(Boolean)} />}
     </div>
   );
 }
@@ -216,7 +214,9 @@ function Feedback({ text, correct }: { text: string; correct: boolean }) {
     <div
       className={cn(
         'rounded-md border p-3 text-sm',
-        correct ? 'border-green-200 bg-green-50 text-green-800' : 'border-amber-200 bg-amber-50 text-amber-800',
+        correct
+          ? 'border-green-200 bg-green-50 text-green-800'
+          : 'border-amber-200 bg-amber-50 text-amber-800',
       )}
     >
       <p className="mb-1 font-medium">{correct ? 'Bien joué !' : 'Pas tout à fait.'}</p>

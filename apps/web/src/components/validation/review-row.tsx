@@ -44,9 +44,18 @@ export function ReviewRow({
           <p className="font-medium">{s.title}</p>
           {s.description ? <p className="text-xs text-muted-foreground">{s.description}</p> : null}
           <p className="text-xs text-muted-foreground">
-            {showAuthor ? <>Par {s.authorName} · niveau {s.authorLevel} · </> : null}
+            {showAuthor ? (
+              <>
+                Par {s.authorName} · niveau {s.authorLevel} ·{' '}
+              </>
+            ) : null}
             {s.evidenceUrl ? (
-              <a href={s.evidenceUrl} target="_blank" rel="noreferrer" className="text-accent underline-offset-2 hover:underline">
+              <a
+                href={s.evidenceUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="text-accent underline-offset-2 hover:underline"
+              >
                 voir la vidéo
               </a>
             ) : (
@@ -55,9 +64,16 @@ export function ReviewRow({
           </p>
         </div>
         {!open ? (
-          <Button variant="secondary" onClick={() => setOpen(true)}>Évaluer</Button>
+          <Button variant="secondary" onClick={() => setOpen(true)}>
+            Évaluer
+          </Button>
         ) : (
-          <button type="button" onClick={() => setOpen(false)} aria-label="Passer (ne pas évaluer)" className="rounded-md p-1 text-muted-foreground hover:bg-muted">
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            aria-label="Passer (ne pas évaluer)"
+            className="rounded-md p-1 text-muted-foreground hover:bg-muted"
+          >
             <IconX width={16} height={16} />
           </button>
         )}
@@ -66,14 +82,28 @@ export function ReviewRow({
       {open && (
         <div className="mt-3 space-y-3 border-t border-border/50 pt-3">
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={validated} onChange={(e) => setValidated(e.target.checked)} />
+            <input
+              type="checkbox"
+              checked={validated}
+              onChange={(e) => setValidated(e.target.checked)}
+            />
             <span>Je valide : la personne a bien expliqué et je l'ai comprise.</span>
           </label>
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">Note :</span>
             {[1, 2, 3, 4, 5].map((n) => (
-              <button key={n} type="button" onClick={() => setStars(n)} aria-label={`${n} étoiles`} className="p-0.5">
-                <IconStar width={22} height={22} className={n <= stars ? 'text-amber-500' : 'text-muted-foreground/40'} />
+              <button
+                key={n}
+                type="button"
+                onClick={() => setStars(n)}
+                aria-label={`${n} étoiles`}
+                className="p-0.5"
+              >
+                <IconStar
+                  width={22}
+                  height={22}
+                  className={n <= stars ? 'text-amber-500' : 'text-muted-foreground/40'}
+                />
               </button>
             ))}
           </div>
@@ -87,7 +117,9 @@ export function ReviewRow({
             <Button onClick={envoyer} disabled={busy || stars < 1 || !comment.trim()}>
               {busy ? 'Envoi…' : 'Envoyer mon évaluation'}
             </Button>
-            <Button variant="secondary" onClick={() => setOpen(false)}>Passer</Button>
+            <Button variant="secondary" onClick={() => setOpen(false)}>
+              Passer
+            </Button>
           </div>
         </div>
       )}

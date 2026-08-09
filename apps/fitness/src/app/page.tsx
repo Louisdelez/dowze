@@ -25,7 +25,9 @@ const SCOPE_LABELS: Record<string, string> = {
 };
 
 function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return <div className={`rounded-xl border border-border bg-surface p-5 ${className}`}>{children}</div>;
+  return (
+    <div className={`rounded-xl border border-border bg-surface p-5 ${className}`}>{children}</div>
+  );
 }
 
 function Btn({
@@ -84,8 +86,8 @@ export default function FitnessHome() {
       <Card>
         <h1 className="text-lg font-semibold">Connecte-toi sur Dowze</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Dowze Fitness fait partie de ton compte Dowze. Connecte-toi une fois sur l’académie — tu seras
-          connecté ici automatiquement.
+          Dowze Fitness fait partie de ton compte Dowze. Connecte-toi une fois sur l’académie — tu
+          seras connecté ici automatiquement.
         </p>
         <a
           href={`${ACADEMIE_URL}/connexion`}
@@ -149,8 +151,8 @@ function ActivationGate({
       <div>
         <h1 className="text-xl font-semibold">Bienvenue sur Dowze Fitness</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Des séances régulières, inscrites dans ton planning et orchestrées avec ton étude. La régularité
-          d’abord — jamais la performance à tout prix.
+          Des séances régulières, inscrites dans ton planning et orchestrées avec ton étude. La
+          régularité d’abord — jamais la performance à tout prix.
         </p>
       </div>
 
@@ -162,7 +164,9 @@ function ActivationGate({
               key={n}
               onClick={() => setGoal(n)}
               className={`h-11 w-11 rounded-lg border text-sm font-medium transition ${
-                goal === n ? 'border-accent bg-accent text-accent-foreground' : 'border-border hover:bg-muted'
+                goal === n
+                  ? 'border-accent bg-accent text-accent-foreground'
+                  : 'border-border hover:bg-muted'
               }`}
             >
               {n}×
@@ -193,9 +197,10 @@ function ActivationGate({
             className="mt-0.5 h-4 w-4 accent-emerald-600"
           />
           <span className="text-muted-foreground">
-            <span className="font-medium text-foreground">Données de forme (facultatif).</span> J’autorise
-            Dowze Fitness à enregistrer mes séances (exercices, ressenti). Consentement explicite, révocable à
-            tout moment dans les réglages. Sans ça, Fitness fonctionne quand même.
+            <span className="font-medium text-foreground">Données de forme (facultatif).</span>{' '}
+            J’autorise Dowze Fitness à enregistrer mes séances (exercices, ressenti). Consentement
+            explicite, révocable à tout moment dans les réglages. Sans ça, Fitness fonctionne quand
+            même.
           </span>
         </label>
       </Card>
@@ -249,7 +254,8 @@ function Dashboard({
           <div>
             <div className="text-sm text-muted-foreground">Cette semaine</div>
             <div className="mt-0.5 text-2xl font-semibold tabular-nums">
-              {thisWeek} <span className="text-base font-normal text-muted-foreground">/ {goal} séances</span>
+              {thisWeek}{' '}
+              <span className="text-base font-normal text-muted-foreground">/ {goal} séances</span>
             </div>
           </div>
           <div className="flex gap-1">
@@ -271,8 +277,8 @@ function Dashboard({
       <Card>
         <h2 className="text-sm font-semibold">Tes séances dans le planning</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          {goal}×/semaine, placées par l’IA de Dowze autour de ton étude (avant un bloc d’étude quand
-          c’est un bon réveil pour le cerveau).
+          {goal}×/semaine, placées par l’IA de Dowze autour de ton étude (avant un bloc d’étude
+          quand c’est un bon réveil pour le cerveau).
         </p>
         <a
           href={`${ACADEMIE_URL}/planning`}
@@ -283,7 +289,9 @@ function Dashboard({
       </Card>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <Btn onClick={() => setPanel(panel === 'compose' ? 'none' : 'compose')}>Composer ma séance</Btn>
+        <Btn onClick={() => setPanel(panel === 'compose' ? 'none' : 'compose')}>
+          Composer ma séance
+        </Btn>
         <Btn variant="ghost" onClick={() => setPanel(panel === 'ingest' ? 'none' : 'ingest')}>
           J’ai fait ma séance
         </Btn>
@@ -308,7 +316,10 @@ function Dashboard({
               <li key={s.id} className="flex items-center justify-between py-2 text-sm">
                 <span className="truncate">{s.title}</span>
                 <span className="shrink-0 text-muted-foreground">
-                  {new Date(s.done_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                  {new Date(s.done_at).toLocaleDateString('fr-FR', {
+                    day: 'numeric',
+                    month: 'short',
+                  })}
                 </span>
               </li>
             ))}
@@ -316,7 +327,10 @@ function Dashboard({
         </Card>
       )}
 
-      <a href="/reglages" className="inline-flex text-sm text-muted-foreground hover:text-foreground">
+      <a
+        href="/reglages"
+        className="inline-flex text-sm text-muted-foreground hover:text-foreground"
+      >
         Réglages & consentement →
       </a>
     </div>
@@ -337,7 +351,13 @@ function ComposePanel({ profileId }: { profileId: string }) {
     setBusy(true);
     setErr(null);
     try {
-      setResult(await composeSession(profileId, { title, goal: goal || undefined, level: level || undefined }));
+      setResult(
+        await composeSession(profileId, {
+          title,
+          goal: goal || undefined,
+          level: level || undefined,
+        }),
+      );
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Échec.');
     } finally {
@@ -349,12 +369,28 @@ function ComposePanel({ profileId }: { profileId: string }) {
     <Card>
       <h2 className="text-sm font-semibold">Composer ma séance</h2>
       <p className="mt-1 text-sm text-muted-foreground">
-        Dowze prépare un prompt clair. Copie-le dans <b>ton</b> IA (ChatGPT, Claude…) — c’est elle ton coach.
+        Dowze prépare un prompt clair. Copie-le dans <b>ton</b> IA (ChatGPT, Claude…) — c’est elle
+        ton coach.
       </p>
       <div className="mt-3 grid gap-2">
-        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Titre (ex. Haut du corps)" className="rounded-lg border border-border px-3 py-2 text-sm" />
-        <input value={goal} onChange={(e) => setGoal(e.target.value)} placeholder="Objectif (ex. gagner en force)" className="rounded-lg border border-border px-3 py-2 text-sm" />
-        <input value={level} onChange={(e) => setLevel(e.target.value)} placeholder="Niveau (ex. débutant)" className="rounded-lg border border-border px-3 py-2 text-sm" />
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Titre (ex. Haut du corps)"
+          className="rounded-lg border border-border px-3 py-2 text-sm"
+        />
+        <input
+          value={goal}
+          onChange={(e) => setGoal(e.target.value)}
+          placeholder="Objectif (ex. gagner en force)"
+          className="rounded-lg border border-border px-3 py-2 text-sm"
+        />
+        <input
+          value={level}
+          onChange={(e) => setLevel(e.target.value)}
+          placeholder="Niveau (ex. débutant)"
+          className="rounded-lg border border-border px-3 py-2 text-sm"
+        />
       </div>
       {err && <p className="mt-2 text-sm text-red-600">{err}</p>}
       <div className="mt-3">
@@ -377,7 +413,9 @@ function PromptBlock({ label, text }: { label: string; text: string }) {
   return (
     <div className="rounded-lg border border-border bg-muted/40 p-3">
       <div className="mb-1 flex items-center justify-between">
-        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</span>
+        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          {label}
+        </span>
         <button
           onClick={() => {
             void navigator.clipboard.writeText(text);
@@ -408,9 +446,10 @@ function IngestPanel({ profileId, onSaved }: { profileId: string; onSaved: () =>
     try {
       const { snapshot: snap } = await ingestSession(profileId, summary);
       setSnapshot(snap);
-      const title = Array.isArray(snap.exercices) && snap.exercices.length > 0
-        ? (snap.exercices as string[]).slice(0, 2).join(', ')
-        : 'Séance';
+      const title =
+        Array.isArray(snap.exercices) && snap.exercices.length > 0
+          ? (snap.exercices as string[]).slice(0, 2).join(', ')
+          : 'Séance';
       await saveSession(profileId, { title, summary, snapshot: snap });
       await onSaved();
     } catch (e) {
@@ -424,7 +463,8 @@ function IngestPanel({ profileId, onSaved }: { profileId: string; onSaved: () =>
     <Card>
       <h2 className="text-sm font-semibold">J’ai fait ma séance</h2>
       <p className="mt-1 text-sm text-muted-foreground">
-        Écris librement ce que tu as fait. L’IA de Dowze en tire un résumé structuré — sans te juger.
+        Écris librement ce que tu as fait. L’IA de Dowze en tire un résumé structuré — sans te
+        juger.
       </p>
       <textarea
         value={summary}
@@ -441,8 +481,12 @@ function IngestPanel({ profileId, onSaved }: { profileId: string; onSaved: () =>
       </div>
       {snapshot && (
         <div className="mt-3 rounded-lg border border-border bg-muted/40 p-3 text-sm">
-          <div className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Résumé</div>
-          <pre className="whitespace-pre-wrap text-foreground">{JSON.stringify(snapshot, null, 2)}</pre>
+          <div className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Résumé
+          </div>
+          <pre className="whitespace-pre-wrap text-foreground">
+            {JSON.stringify(snapshot, null, 2)}
+          </pre>
         </div>
       )}
     </Card>
