@@ -20,7 +20,7 @@ RUN npx turbo run build --filter=@dowze/sports
 # ── Runtime ───────────────────────────────────────────────────────
 FROM node:24-alpine AS runtime
 WORKDIR /repo
-ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 HOSTNAME=0.0.0.0 PORT=3000
 RUN apk add --no-cache libc6-compat
 
 COPY --from=build --chown=node:node /repo/apps/sports/.next/standalone ./
