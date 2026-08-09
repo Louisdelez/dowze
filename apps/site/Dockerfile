@@ -20,12 +20,9 @@ FROM node:24-alpine AS runtime
 WORKDIR /repo
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1
 RUN apk add --no-cache libc6-compat
-COPY --from=build /repo/node_modules ./node_modules
-COPY --from=build /repo/packages ./packages
-COPY --from=build /repo/apps/site/.next ./apps/site/.next
+COPY --from=build --chown=node:node /repo/apps/site/.next/standalone ./
+COPY --from=build --chown=node:node /repo/apps/site/.next/static ./apps/site/.next/static
 COPY --from=build /repo/apps/site/public ./apps/site/public
-COPY --from=build /repo/apps/site/package.json ./apps/site/package.json
-COPY --from=build /repo/apps/site/next.config.mjs ./apps/site/next.config.mjs
-WORKDIR /repo/apps/site
+USER node
 EXPOSE 3000
-CMD ["/repo/node_modules/.bin/next", "start", "-p", "3000"]
+CMD ["node", "apps/site/server.js"]

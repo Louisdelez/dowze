@@ -23,13 +23,10 @@ WORKDIR /repo
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1
 RUN apk add --no-cache libc6-compat
 
-COPY --from=build /repo/node_modules ./node_modules
-COPY --from=build /repo/packages ./packages
-COPY --from=build /repo/apps/alimentations/.next ./apps/alimentations/.next
+COPY --from=build --chown=node:node /repo/apps/alimentations/.next/standalone ./
+COPY --from=build --chown=node:node /repo/apps/alimentations/.next/static ./apps/alimentations/.next/static
 COPY --from=build /repo/apps/alimentations/public ./apps/alimentations/public
-COPY --from=build /repo/apps/alimentations/package.json ./apps/alimentations/package.json
-COPY --from=build /repo/apps/alimentations/next.config.mjs ./apps/alimentations/next.config.mjs
 
-WORKDIR /repo/apps/alimentations
+USER node
 EXPOSE 3000
-CMD ["/repo/node_modules/.bin/next", "start", "-p", "3000"]
+CMD ["node", "apps/alimentations/server.js"]

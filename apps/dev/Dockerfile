@@ -15,16 +15,14 @@ WORKDIR /repo
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1
 RUN apk add --no-cache libc6-compat
 
-COPY --from=build /repo/node_modules ./node_modules
-COPY --from=build /repo/apps/dev/.next ./apps/dev/.next
+COPY --from=build --chown=node:node /repo/apps/dev/.next/standalone ./
+COPY --from=build --chown=node:node /repo/apps/dev/.next/static ./apps/dev/.next/static
 COPY --from=build /repo/apps/dev/public ./apps/dev/public
-COPY --from=build /repo/apps/dev/package.json ./apps/dev/package.json
-COPY --from=build /repo/apps/dev/next.config.mjs ./apps/dev/next.config.mjs
 
 # Volume pour l'état « fait/à faire » (todo.json).
 RUN mkdir -p /data
 VOLUME ["/data"]
 
-WORKDIR /repo/apps/dev
+USER node
 EXPOSE 3000
-CMD ["/repo/node_modules/.bin/next", "start", "-p", "3000"]
+CMD ["node", "apps/dev/server.js"]

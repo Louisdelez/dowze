@@ -24,13 +24,10 @@ WORKDIR /repo
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1
 RUN apk add --no-cache libc6-compat
 
-COPY --from=build /repo/node_modules ./node_modules
-COPY --from=build /repo/packages ./packages
-COPY --from=build /repo/apps/fitness/.next ./apps/fitness/.next
+COPY --from=build --chown=node:node /repo/apps/fitness/.next/standalone ./
+COPY --from=build --chown=node:node /repo/apps/fitness/.next/static ./apps/fitness/.next/static
 COPY --from=build /repo/apps/fitness/public ./apps/fitness/public
-COPY --from=build /repo/apps/fitness/package.json ./apps/fitness/package.json
-COPY --from=build /repo/apps/fitness/next.config.mjs ./apps/fitness/next.config.mjs
 
-WORKDIR /repo/apps/fitness
+USER node
 EXPOSE 3000
-CMD ["/repo/node_modules/.bin/next", "start", "-p", "3000"]
+CMD ["node", "apps/fitness/server.js"]

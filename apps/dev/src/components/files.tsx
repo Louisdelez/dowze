@@ -222,12 +222,12 @@ async function walkEntry(
 async function collectDrop(dt: DataTransfer): Promise<DropItem[]> {
   const out: DropItem[] = [];
   const items = dt.items ? [...dt.items] : [];
-  const getEntry = (it: DataTransferItem) =>
-    (
-      it as DataTransferItem & {
-        webkitGetAsEntry?: () => LegacyFileSystemEntry | null;
-      }
-    ).webkitGetAsEntry?.();
+  const getEntry = (it: DataTransferItem) => {
+    const legacyItem = it as unknown as {
+      webkitGetAsEntry?: () => LegacyFileSystemEntry | null;
+    };
+    return legacyItem.webkitGetAsEntry?.();
+  };
   if (items.length && getEntry(items[0]!)) {
     for (const it of items) {
       const en = getEntry(it);

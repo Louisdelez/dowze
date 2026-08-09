@@ -21,7 +21,8 @@ const nextConfig = {
         // Repli SPA : toute route non pré-générée (ex. /messages/<id>) sert quand même une page.
         trailingSlash: true,
       }
-    : {}),
+    : { output: 'standalone' }),
+  outputFileTracingRoot: repoRoot,
   // Les paquets internes sont transpilés par Next à partir de leur SOURCE TS.
   transpilePackages: ['@dowze/schemas', '@dowze/core', '@dowze/auth', '@dowze/ui'],
   eslint: { ignoreDuringBuilds: true },
