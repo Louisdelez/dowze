@@ -796,28 +796,34 @@ function weatherSky(cat: WeatherCategory, isDay: boolean): string {
   return `linear-gradient(165deg, ${top} 0%, #131c30 78%, #0b1220 120%)`;
 }
 
+/** Pseudo-aléatoire stable : le décor SSR et le premier rendu navigateur doivent être identiques. */
+function stableUnit(seed: number): number {
+  const value = Math.sin(seed * 12.9898 + 78.233) * 43758.5453;
+  return value - Math.floor(value);
+}
+
 /** Particules météo au-dessus de la map (pluie / neige / brouillard / orage). */
 function WeatherFx({ category }: { category: WeatherCategory }) {
   const drops = useMemo(
     () =>
-      Array.from({ length: 70 }, () => ({
-        left: Math.random() * 100,
-        delay: Math.random() * 1.2,
-        dur: 0.5 + Math.random() * 0.45,
-        len: 10 + Math.random() * 14,
-        op: 0.2 + Math.random() * 0.35,
+      Array.from({ length: 70 }, (_, i) => ({
+        left: stableUnit(i * 5 + 1) * 100,
+        delay: stableUnit(i * 5 + 2) * 1.2,
+        dur: 0.5 + stableUnit(i * 5 + 3) * 0.45,
+        len: 10 + stableUnit(i * 5 + 4) * 14,
+        op: 0.2 + stableUnit(i * 5 + 5) * 0.35,
       })),
     [],
   );
   const flakes = useMemo(
     () =>
-      Array.from({ length: 55 }, () => ({
-        left: Math.random() * 100,
-        delay: Math.random() * 6,
-        dur: 5 + Math.random() * 5,
-        size: 3 + Math.random() * 4,
-        drift: (Math.random() * 2 - 1) * 34,
-        op: 0.4 + Math.random() * 0.5,
+      Array.from({ length: 55 }, (_, i) => ({
+        left: stableUnit(500 + i * 6 + 1) * 100,
+        delay: stableUnit(500 + i * 6 + 2) * 6,
+        dur: 5 + stableUnit(500 + i * 6 + 3) * 5,
+        size: 3 + stableUnit(500 + i * 6 + 4) * 4,
+        drift: (stableUnit(500 + i * 6 + 5) * 2 - 1) * 34,
+        op: 0.4 + stableUnit(500 + i * 6 + 6) * 0.5,
       })),
     [],
   );
@@ -1125,46 +1131,46 @@ function RoomBackground({
   const day = nf < 0.5;
   const stars = useMemo(
     () =>
-      Array.from({ length: 40 }, () => ({
-        x: Math.random() * 100,
-        y: Math.random() * 62,
-        s: 1 + Math.random() * 1.8,
-        o: 0.4 + Math.random() * 0.6,
-        d: Math.random() * 3,
+      Array.from({ length: 40 }, (_, i) => ({
+        x: stableUnit(1000 + i * 5 + 1) * 100,
+        y: stableUnit(1000 + i * 5 + 2) * 62,
+        s: 1 + stableUnit(1000 + i * 5 + 3) * 1.8,
+        o: 0.4 + stableUnit(1000 + i * 5 + 4) * 0.6,
+        d: stableUnit(1000 + i * 5 + 5) * 3,
       })),
     [],
   );
   const clouds = useMemo(
     () =>
-      Array.from({ length: 5 }, () => ({
-        top: 8 + Math.random() * 42,
-        scale: 0.7 + Math.random() * 0.9,
-        dur: 70 + Math.random() * 80,
-        delay: -Math.random() * 120,
-        op: 0.55 + Math.random() * 0.4,
+      Array.from({ length: 5 }, (_, i) => ({
+        top: 8 + stableUnit(2000 + i * 5 + 1) * 42,
+        scale: 0.7 + stableUnit(2000 + i * 5 + 2) * 0.9,
+        dur: 70 + stableUnit(2000 + i * 5 + 3) * 80,
+        delay: -stableUnit(2000 + i * 5 + 4) * 120,
+        op: 0.55 + stableUnit(2000 + i * 5 + 5) * 0.4,
       })),
     [],
   );
   const birds = useMemo(
     () =>
-      Array.from({ length: 5 }, () => ({
-        top: 12 + Math.random() * 32,
-        dur: 26 + Math.random() * 30,
-        delay: -Math.random() * 50,
-        scale: 0.7 + Math.random() * 0.7,
-        bob: 2 + Math.random() * 2,
+      Array.from({ length: 5 }, (_, i) => ({
+        top: 12 + stableUnit(3000 + i * 5 + 1) * 32,
+        dur: 26 + stableUnit(3000 + i * 5 + 2) * 30,
+        delay: -stableUnit(3000 + i * 5 + 3) * 50,
+        scale: 0.7 + stableUnit(3000 + i * 5 + 4) * 0.7,
+        bob: 2 + stableUnit(3000 + i * 5 + 5) * 2,
       })),
     [],
   );
   const flies = useMemo(
     () =>
-      Array.from({ length: 18 }, () => ({
-        x: Math.random() * 100,
-        y: 42 + Math.random() * 46,
-        dur: 6 + Math.random() * 8,
-        delay: -Math.random() * 10,
-        dx: (Math.random() * 2 - 1) * 46,
-        dy: (Math.random() * 2 - 1) * 34,
+      Array.from({ length: 18 }, (_, i) => ({
+        x: stableUnit(4000 + i * 6 + 1) * 100,
+        y: 42 + stableUnit(4000 + i * 6 + 2) * 46,
+        dur: 6 + stableUnit(4000 + i * 6 + 3) * 8,
+        delay: -stableUnit(4000 + i * 6 + 4) * 10,
+        dx: (stableUnit(4000 + i * 6 + 5) * 2 - 1) * 46,
+        dy: (stableUnit(4000 + i * 6 + 6) * 2 - 1) * 34,
       })),
     [],
   );
@@ -2762,7 +2768,7 @@ export function CompanionRoom() {
         hour={hourFrac}
         scene={room === 'plage' ? 'sea' : room === 'jardin' ? 'hills' : 'mountains'}
         pan={pan}
-        date={now ?? new Date()}
+        date={now ?? new Date(0)}
         lat={weather.lat ?? 46.8}
         lon={weather.lon ?? 8.2}
       />
