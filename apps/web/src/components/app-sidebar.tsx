@@ -61,7 +61,7 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
       <div className="flex-1 space-y-6 overflow-y-auto">
         {NAV_GROUPS.map((group) => (
           <div key={group.title}>
-            <p className="px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-ink-faint">
+            <p className="px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {group.title}
             </p>
             <div className="space-y-0.5">

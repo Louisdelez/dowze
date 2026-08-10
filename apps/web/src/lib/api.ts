@@ -447,6 +447,14 @@ export interface CompanionMessage {
   text: string;
   at: number;
 }
+export interface RoleContract {
+  responsibilities?: string[];
+  capabilities?: string[];
+  limitations?: string[];
+  delegatesTo?: string[];
+  escalationPath?: string[];
+  allowedTools?: string[];
+}
 export interface CompanionAgent {
   id: string;
   name: string;
@@ -454,6 +462,7 @@ export interface CompanionAgent {
   size: number;
   personality: AgentPersonality | null;
   role: string | null;
+  roleContract: RoleContract;
   space: string; // 'home' | id d'open-space
   room: string; // salle dans l'espace : Maison=chambre|salon|… ; open-space=travail:N|toilettes|cantine|repos|garage
   pos: { c: number; r: number } | null;
@@ -471,6 +480,7 @@ export interface CompanionAgentInput {
   size?: number;
   personality?: AgentPersonality | null;
   role?: string | null;
+  roleContract?: RoleContract;
   space?: string;
   room?: string;
   pos?: { c: number; r: number } | null;
@@ -552,6 +562,400 @@ export function retireCompanionAgent(id: string): Promise<{ ok: true }> {
 }
 export function protectCompanionAgent(id: string, isProtected: boolean): Promise<CompanionAgent> {
   return post(`/companion/agents/${id}/protect`, { protected: isProtected });
+}
+
+export type HiveChannel = 'direct' | 'messages' | 'email' | 'push' | 'voice' | 'system';
+export interface HiveEvent {
+  id: string;
+  kind: string;
+  content: string;
+  channel: HiveChannel;
+  actorAgentId: string | null;
+  subjectAgentId: string | null;
+  space: string | null;
+  importance: number;
+  metadata: Record<string, unknown>;
+  sourceEventIds: string[];
+  occurredAt: string;
+}
+export interface HiveHandoff {
+  id: string;
+  fromAgentId: string | null;
+  toAgentId: string | null;
+  targetSpace: string | null;
+  originalRequest: string;
+  summarizedContext: string;
+  urgency: 'low' | 'normal' | 'high' | 'critical';
+  status:
+    'pending' | 'accepted' | 'in_progress' | 'completed' | 'declined' | 'cancelled' | 'failed';
+  createdAt: string;
+  updatedAt: string;
+}
+export function getHiveEvents(
+  filters: { limit?: number; kind?: string; space?: string } = {},
+): Promise<HiveEvent[]> {
+  const query = new URLSearchParams();
+  if (filters.limit) query.set('limit', String(filters.limit));
+  if (filters.kind) query.set('kind', filters.kind);
+  if (filters.space) query.set('space', filters.space);
+  return get(`/companion/hive/events${query.size ? `?${query}` : ''}`);
+}
+export function recordHiveEvent(input: {
+  kind: string;
+  content: string;
+  channel?: HiveChannel;
+  actorAgentId?: string;
+  subjectAgentId?: string;
+  space?: string;
+  importance?: number;
+  metadata?: Record<string, unknown>;
+  sourceEventIds?: string[];
+}): Promise<HiveEvent> {
+  return post('/companion/hive/events', input);
+}
+export function searchHiveMemory(filters: {
+  q?: string;
+  from?: string;
+  to?: string;
+  actor?: string;
+  space?: string;
+  kind?: string;
+  limit?: number;
+}): Promise<HiveEvent[]> {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(filters)) {
+    if (value !== undefined && value !== '') query.set(key, String(value));
+  }
+  return get(`/companion/hive/memory/search?${query}`);
+}
+export interface HiveProvenanceGraph {
+  rootId: string;
+  nodes: (HiveEvent & { depth: number })[];
+  edges: { from: string; to: string }[];
+}
+export function getHiveEventProvenance(id: string): Promise<HiveProvenanceGraph> {
+  return get(`/companion/hive/events/${id}/provenance`);
+}
+export function embedHiveMemory(limit = 100): Promise<{ embedded: number }> {
+  return post('/companion/hive/memory/embed', { limit });
+}
+export function getHiveHandoffs(status?: HiveHandoff['status']): Promise<HiveHandoff[]> {
+  return get(`/companion/hive/handoffs${status ? `?status=${encodeURIComponent(status)}` : ''}`);
+}
+export function deliverHiveEvent(input: {
+  eventId: string;
+  companionId?: string;
+  channel: HiveChannel;
+}): Promise<{ id: string; status: string; renderedContent: string }> {
+  return post('/companion/hive/deliveries', input);
+}
+export function transitionHiveHandoff(
+  id: string,
+  status: HiveHandoff['status'],
+): Promise<HiveHandoff> {
+  return patch2(`/companion/hive/handoffs/${id}`, { status });
+}
+export interface HiveMemoryPolicy {
+  crossSpaceEnabled: boolean;
+  personalDataEnabled: boolean;
+  proactiveMemoryEnabled: boolean;
+  retentionDays: number | null;
+}
+export function getHiveMemoryPolicy(): Promise<HiveMemoryPolicy> {
+  return get('/companion/hive/memory/policy');
+}
+export interface HiveLibrary {
+  memories: {
+    id: string;
+    category: string;
+    content: string;
+    memoryKey: string | null;
+    confidence: number;
+    validFrom: string | null;
+    validTo: string | null;
+    supersedesId: string | null;
+    updatedAt: string;
+  }[];
+  memoryHistory: HiveLibrary['memories'];
+  episodes: {
+    id: string;
+    title: string;
+    summary: string;
+    sourceEventIds: string[];
+    startedAt: string;
+    endedAt: string;
+  }[];
+  relations: {
+    id: string;
+    subjectKind: string;
+    subjectId: string | null;
+    predicate: string;
+    objectKind: string;
+    objectId: string | null;
+    description: string;
+    occurredAt: string;
+  }[];
+}
+export function getHiveLibrary(): Promise<HiveLibrary> {
+  return get('/companion/hive/memory/library');
+}
+export function updateHiveMemoryPolicy(
+  patch: Partial<HiveMemoryPolicy>,
+): Promise<HiveMemoryPolicy> {
+  return patch2('/companion/hive/memory/policy', patch);
+}
+export function consolidateHiveMemory(): Promise<{ created: number; skipped: boolean }> {
+  return post('/companion/hive/memory/consolidate', {});
+}
+export function exportHiveMemory(): Promise<Record<string, unknown>> {
+  return get('/companion/hive/memory/export');
+}
+export function forgetHiveMemory(input: {
+  eventIds?: string[];
+  before?: string;
+}): Promise<{ forgotten: number }> {
+  return post('/companion/hive/memory/forget', input);
+}
+export interface HiveVaultItem {
+  id: string;
+  label: string;
+  kind: string;
+  space: string | null;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+}
+export interface HiveAccessRequest {
+  id: string;
+  vaultItemId: string;
+  requesterAgentId: string | null;
+  purpose: string;
+  requestedSeconds: number;
+  status: 'pending' | 'approved' | 'denied' | 'revoked' | 'expired' | 'consumed';
+  decisionReason: string | null;
+  expiresAt: string | null;
+  createdAt: string;
+}
+export function getHiveVaultItems(): Promise<HiveVaultItem[]> {
+  return get('/companion/hive/vault/items');
+}
+export function createHiveVaultItem(input: {
+  label: string;
+  secret: string;
+  kind?: string;
+  space?: string;
+}): Promise<HiveVaultItem> {
+  return post('/companion/hive/vault/items', input);
+}
+export function getHiveAccessRequests(
+  status?: HiveAccessRequest['status'],
+): Promise<HiveAccessRequest[]> {
+  return get(`/companion/hive/vault/access${status ? `?status=${status}` : ''}`);
+}
+export function decideHiveAccess(
+  id: string,
+  decision: 'approve' | 'deny' | 'revoke',
+  reason?: string,
+): Promise<HiveAccessRequest> {
+  return patch2(`/companion/hive/vault/access/${id}`, { decision, reason });
+}
+export interface HiveRuntimeView {
+  id: string;
+  name: string;
+  model: string;
+  harness: string;
+  adapter: 'copilote' | 'relay_mcp' | 'external';
+  modalities: string[];
+  capabilities: string[];
+  quality: number;
+  cost: number;
+  latency: number;
+  privacy: 'local' | 'private_cloud' | 'public_cloud';
+  entitlement: 'included' | 'subscription' | 'metered';
+  enabled: boolean;
+  available: boolean;
+}
+export function getHiveRuntimes(): Promise<HiveRuntimeView[]> {
+  return get('/companion/hive/runtimes');
+}
+export function setHiveRuntimeEnabled(id: string, enabled: boolean): Promise<HiveRuntimeView> {
+  return patch2(`/companion/hive/runtimes/${id}/enabled`, { enabled });
+}
+export function executeHiveRuntime(input: {
+  capability: string;
+  prompt: string;
+  modality?: string;
+  allowedPrivacy?: HiveRuntimeView['privacy'][];
+  availableEntitlements?: HiveRuntimeView['entitlement'][];
+  channel?: Exclude<HiveChannel, 'system'>;
+}): Promise<{
+  status: 'completed' | 'queued';
+  output: string;
+  runtime: HiveRuntimeView;
+  toolsUsed: string[];
+}> {
+  return post('/companion/hive/runtimes/execute', input);
+}
+export interface HiveAttentionItem {
+  id: string;
+  requesterAgentId: string | null;
+  kind: 'approval' | 'decision' | 'blocker' | 'warning' | 'information';
+  priority: 'low' | 'normal' | 'high' | 'critical';
+  title: string;
+  details: string;
+  options: { id: string; label: string }[];
+  status: 'open' | 'resolved' | 'dismissed' | 'expired';
+  dueAt: string | null;
+  createdAt: string;
+}
+export function getHiveAttention(
+  status: HiveAttentionItem['status'] | 'all' = 'open',
+): Promise<HiveAttentionItem[]> {
+  return get(`/companion/hive/attention?status=${status}`);
+}
+export function resolveHiveAttention(
+  id: string,
+  action: string,
+  note?: string,
+  dismiss = false,
+): Promise<HiveAttentionItem> {
+  return patch2(`/companion/hive/attention/${id}`, { action, note, dismiss });
+}
+export interface HiveAsset {
+  id: string;
+  space: string;
+  name: string;
+  assetType: 'server' | 'database' | 'firewall' | 'vps' | 'service' | 'device' | 'other';
+  visualKey: string;
+  endpoint: string | null;
+  purpose: string;
+  environment: 'development' | 'staging' | 'production' | 'personal';
+  status: 'healthy' | 'degraded' | 'offline' | 'unknown';
+  vaultItemId: string | null;
+  updatedAt: string;
+}
+export function getHiveAssets(space?: string): Promise<HiveAsset[]> {
+  return get(`/companion/hive/assets${space ? `?space=${encodeURIComponent(space)}` : ''}`);
+}
+export function createHiveAsset(input: {
+  space: string;
+  name: string;
+  assetType: HiveAsset['assetType'];
+  purpose?: string;
+  endpoint?: string;
+  environment?: HiveAsset['environment'];
+  vaultItemId?: string;
+}): Promise<HiveAsset> {
+  return post('/companion/hive/assets', input);
+}
+export function updateHiveAssetStatus(id: string, status: HiveAsset['status']): Promise<HiveAsset> {
+  return patch2(`/companion/hive/assets/${id}/status`, { status });
+}
+
+export interface HiveRun {
+  id: string;
+  objective: string;
+  status: 'planning' | 'running' | 'waiting_approval' | 'completed' | 'failed' | 'cancelled';
+  maxDepth: number;
+  maxFanout: number;
+  maxTasks: number;
+  maxRuntimeSeconds: number;
+  maxCredits: number;
+  usedCredits: number;
+  deadlineAt: string | null;
+  usedTasks: number;
+  metadata: Record<string, unknown>;
+  startedAt: string | null;
+  completedAt: string | null;
+  createdAt: string;
+}
+export interface HiveTask {
+  id: string;
+  runId: string;
+  parentTaskId: string | null;
+  assignedAgentId: string | null;
+  depth: number;
+  sequence: number;
+  objective: string;
+  status: string;
+  output: string | null;
+  error: string | null;
+}
+export function getHiveRuns(limit = 50): Promise<HiveRun[]> {
+  return get(`/companion/hive/runs?limit=${limit}`);
+}
+export function getHiveRun(id: string): Promise<HiveRun & { tasks: HiveTask[] }> {
+  return get(`/companion/hive/runs/${id}`);
+}
+export interface HiveSpacePackage {
+  id: string;
+  key: string;
+  name: string;
+  version: string;
+  description: string;
+  visibility: 'private' | 'shared' | 'official';
+  manifest: {
+    type?: string;
+    mission?: string;
+    building?: Record<string, unknown>;
+    roles?: string[];
+    capabilities?: string[];
+    workflows?: string[];
+    permissions?: Record<string, unknown>;
+  };
+}
+export function getHiveSpacePackages(): Promise<HiveSpacePackage[]> {
+  return get('/companion/spaces/packages');
+}
+export interface HiveCompanionState {
+  agentId: string;
+  availability: 'available' | 'busy' | 'away' | 'sleeping' | 'offline';
+  activity: string;
+  relationshipState: string;
+  currentTaskId: string | null;
+  urgency: 'low' | 'normal' | 'high' | 'critical';
+  visualMood: string;
+  location: string | null;
+  updatedAt: string;
+}
+export function getHiveCompanionStates(): Promise<HiveCompanionState[]> {
+  return get('/companion/hive/companion-states');
+}
+export interface HiveComputeResource {
+  id: string;
+  name: string;
+  kind: 'cpu' | 'gpu' | 'npu' | 'remote_api';
+  locality: 'local' | 'private_cloud' | 'public_cloud';
+  modalities: string[];
+  memoryMb: number;
+  acceleratorMemoryMb: number;
+  maxConcurrency: number;
+  activeAllocations: number;
+  costPerHour: number;
+  health: 'healthy' | 'degraded' | 'offline' | 'unknown';
+  enabled: boolean;
+}
+export function getHiveComputeResources(): Promise<HiveComputeResource[]> {
+  return get('/companion/hive/compute-resources');
+}
+export function createHiveComputeResource(input: {
+  name: string;
+  kind: HiveComputeResource['kind'];
+  locality: HiveComputeResource['locality'];
+  modalities: string[];
+  memoryMb?: number;
+  acceleratorMemoryMb?: number;
+  maxConcurrency?: number;
+  costPerHour?: number;
+  assetId?: string;
+}): Promise<HiveComputeResource> {
+  return post('/companion/hive/compute-resources', input);
+}
+export function installHiveSpacePackage(
+  id: string,
+  mode: 'join' | 'create',
+  name?: string,
+): Promise<{ space: { id: string; name: string } }> {
+  return post(`/companion/spaces/packages/${id}/install`, { mode, name });
 }
 
 // --- Relais Claude Code / Codex (serveur MCP) ---

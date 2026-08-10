@@ -112,6 +112,7 @@ export const companionAgents = pgTable('companion_agents', {
   personality: jsonb('personality'), // { tone, traits[], description, emoji? } — pilote les répliques PNJ
   role: text('role'), // libellé humain lisible (ex. « Directeur technique »)
   roleKey: text('role_key'), // clé du catalogue de rôles (ex. 'cto', 'dev-back', 'enseignant')
+  roleContract: jsonb('role_contract').notNull().default('{}'), // responsabilités, capacités, limites, délégation, escalade
   space: text('space').notNull().default('home'), // 'home' (Maison + Tamagotchi) | id d'open-space
   // Salle DANS l'espace. Maison : 'chambre' (chambre perso du compagnon) | 'salon' | 'cuisine' | 'bureau' | 'jardin' | 'plage'.
   // Open-space : 'travail:N' (workspace, capacité 100 → déborde en travail:1, 2…) | 'toilettes' | 'cantine' | 'repos' | 'garage'.
@@ -164,6 +165,375 @@ export const companionMessages = pgTable('companion_messages', {
   sender: text('sender').notNull(), // 'me' | 'agent'
   text: text('text').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Mémoire universelle : journal append-only des événements significatifs, indépendant des sessions IA.
+export const hiveEvents = pgTable('hive_events', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  profileId: uuid('profile_id').notNull(),
+  actorAgentId: uuid('actor_agent_id'),
+  subjectAgentId: uuid('subject_agent_id'),
+  space: text('space'),
+  kind: text('kind').notNull(),
+  channel: text('channel').notNull().default('system'),
+  visibility: text('visibility').notNull().default('private'),
+  importance: real('importance').notNull().default(0.5),
+  content: text('content').notNull(),
+  metadata: jsonb('metadata').notNull().default('{}'),
+  sourceEventIds: uuid('source_event_ids').array().notNull().default([]),
+  occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Passage de relais traçable entre compagnons/services.
+export const hiveHandoffs = pgTable('hive_handoffs', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  profileId: uuid('profile_id').notNull(),
+  fromAgentId: uuid('from_agent_id'),
+  toAgentId: uuid('to_agent_id'),
+  targetSpace: text('target_space'),
+  originalRequest: text('original_request').notNull(),
+  summarizedContext: text('summarized_context').notNull().default(''),
+  sourceEventIds: uuid('source_event_ids').array().notNull().default([]),
+  urgency: text('urgency').notNull().default('normal'),
+  permissions: jsonb('permissions').notNull().default('{}'),
+  expectedNextAction: text('expected_next_action'),
+  status: text('status').notNull().default('pending'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  acceptedAt: timestamp('accepted_at', { withTimezone: true }),
+  completedAt: timestamp('completed_at', { withTimezone: true }),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Représentation d'un événement dans un canal humain donné.
+export const hiveDeliveries = pgTable('hive_deliveries', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  profileId: uuid('profile_id').notNull(),
+  eventId: uuid('event_id').notNull(),
+  companionId: uuid('companion_id'),
+  channel: text('channel').notNull(),
+  renderedContent: text('rendered_content').notNull(),
+  status: text('status').notNull().default('queued'),
+  metadata: jsonb('metadata').notNull().default('{}'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  deliveredAt: timestamp('delivered_at', { withTimezone: true }),
+  readAt: timestamp('read_at', { withTimezone: true }),
+});
+
+export const hiveMemoryPolicies = pgTable('hive_memory_policies', {
+  profileId: uuid('profile_id').primaryKey(),
+  crossSpaceEnabled: boolean('cross_space_enabled').notNull().default(false),
+  personalDataEnabled: boolean('personal_data_enabled').notNull().default(false),
+  proactiveMemoryEnabled: boolean('proactive_memory_enabled').notNull().default(true),
+  retentionDays: integer('retention_days'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const hiveMemories = pgTable('hive_memories', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  profileId: uuid('profile_id').notNull(),
+  scope: text('scope').notNull().default('profile'),
+  scopeId: text('scope_id'),
+  category: text('category').notNull(),
+  content: text('content').notNull(),
+  sourceEventIds: uuid('source_event_ids').array().notNull().default([]),
+  confidence: real('confidence').notNull().default(0.7),
+  status: text('status').notNull().default('active'),
+  memoryKey: text('memory_key'),
+  validFrom: timestamp('valid_from', { withTimezone: true }),
+  validTo: timestamp('valid_to', { withTimezone: true }),
+  supersedesId: uuid('supersedes_id'),
+  entities: jsonb('entities').notNull().default([]),
+  metadata: jsonb('metadata').notNull().default('{}'),
+  expiresAt: timestamp('expires_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const hiveCapabilities = pgTable('hive_capabilities', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  profileId: uuid('profile_id').notNull(),
+  key: text('key').notNull(),
+  label: text('label').notNull(),
+  description: text('description').notNull().default(''),
+  modality: text('modality').notNull().default('text'),
+  risk: text('risk').notNull().default('low'),
+  metadata: jsonb('metadata').notNull().default({}),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const hiveCapabilityBindings = pgTable('hive_capability_bindings', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  profileId: uuid('profile_id').notNull(),
+  capabilityId: uuid('capability_id').notNull(),
+  subjectKind: text('subject_kind').notNull(),
+  subjectId: text('subject_id').notNull(),
+  proficiency: real('proficiency').notNull().default(0.7),
+  enabled: boolean('enabled').notNull().default(true),
+  constraints: jsonb('constraints').notNull().default({}),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const hiveVaultItems = pgTable('hive_vault_items', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  profileId: uuid('profile_id').notNull(),
+  space: text('space'),
+  label: text('label').notNull(),
+  kind: text('kind').notNull().default('secret'),
+  ciphertext: text('ciphertext').notNull(),
+  metadata: jsonb('metadata').notNull().default('{}'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const hiveAccessRequests = pgTable('hive_access_requests', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  profileId: uuid('profile_id').notNull(),
+  vaultItemId: uuid('vault_item_id').notNull(),
+  requesterAgentId: uuid('requester_agent_id'),
+  purpose: text('purpose').notNull(),
+  requestedSeconds: integer('requested_seconds').notNull(),
+  status: text('status').notNull().default('pending'),
+  decisionReason: text('decision_reason'),
+  tokenHash: text('token_hash'),
+  expiresAt: timestamp('expires_at', { withTimezone: true }),
+  decidedAt: timestamp('decided_at', { withTimezone: true }),
+  consumedAt: timestamp('consumed_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const hiveRuntimes = pgTable('hive_runtimes', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  profileId: uuid('profile_id').notNull(),
+  name: text('name').notNull(),
+  model: text('model').notNull(),
+  harness: text('harness').notNull(),
+  adapter: text('adapter').notNull(),
+  modalities: text('modalities').array().notNull().default(['text']),
+  capabilities: text('capabilities').array().notNull().default([]),
+  quality: real('quality').notNull().default(0.7),
+  cost: real('cost').notNull().default(0.5),
+  latency: real('latency').notNull().default(0.5),
+  privacy: text('privacy').notNull().default('public_cloud'),
+  entitlement: text('entitlement').notNull().default('metered'),
+  enabled: boolean('enabled').notNull().default(true),
+  configuration: jsonb('configuration').notNull().default('{}'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const hiveEpisodes = pgTable('hive_episodes', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  profileId: uuid('profile_id').notNull(),
+  fingerprint: text('fingerprint').notNull(),
+  space: text('space'),
+  title: text('title').notNull(),
+  summary: text('summary').notNull(),
+  sourceEventIds: uuid('source_event_ids').array().notNull().default([]),
+  startedAt: timestamp('started_at', { withTimezone: true }).notNull(),
+  endedAt: timestamp('ended_at', { withTimezone: true }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const hiveMemoryRelations = pgTable('hive_memory_relations', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  profileId: uuid('profile_id').notNull(),
+  sourceHandoffId: uuid('source_handoff_id'),
+  subjectKind: text('subject_kind').notNull(),
+  subjectId: text('subject_id'),
+  predicate: text('predicate').notNull(),
+  objectKind: text('object_kind').notNull(),
+  objectId: text('object_id'),
+  description: text('description').notNull(),
+  sourceEventIds: uuid('source_event_ids').array().notNull().default([]),
+  occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const hiveAttentionItems = pgTable('hive_attention_items', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  profileId: uuid('profile_id').notNull(),
+  sourceEventId: uuid('source_event_id'),
+  requesterAgentId: uuid('requester_agent_id'),
+  kind: text('kind').notNull(),
+  priority: text('priority').notNull().default('normal'),
+  title: text('title').notNull(),
+  details: text('details').notNull().default(''),
+  options: jsonb('options').notNull().default([]),
+  context: jsonb('context').notNull().default({}),
+  status: text('status').notNull().default('open'),
+  resolution: jsonb('resolution'),
+  dueAt: timestamp('due_at', { withTimezone: true }),
+  resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const hiveCompanionRelationships = pgTable('hive_companion_relationships', {
+  agentId: uuid('agent_id').primaryKey(),
+  profileId: uuid('profile_id').notNull(),
+  affinity: real('affinity').notNull().default(0.3),
+  trust: real('trust').notNull().default(0.3),
+  familiarity: real('familiarity').notNull().default(0.1),
+  interactionCount: integer('interaction_count').notNull().default(0),
+  lastInteractionAt: timestamp('last_interaction_at', { withTimezone: true }),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const hiveAssets = pgTable('hive_assets', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  profileId: uuid('profile_id').notNull(),
+  space: text('space').notNull(),
+  name: text('name').notNull(),
+  assetType: text('asset_type').notNull(),
+  visualKey: text('visual_key').notNull().default('serveur-informatique'),
+  room: text('room'),
+  position: jsonb('position'),
+  endpoint: text('endpoint'),
+  purpose: text('purpose').notNull().default(''),
+  environment: text('environment').notNull().default('production'),
+  status: text('status').notNull().default('unknown'),
+  vaultItemId: uuid('vault_item_id'),
+  metadata: jsonb('metadata').notNull().default('{}'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const hiveRuns = pgTable('hive_runs', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  profileId: uuid('profile_id').notNull(),
+  rootEventId: uuid('root_event_id'),
+  initiatorAgentId: uuid('initiator_agent_id'),
+  objective: text('objective').notNull(),
+  status: text('status').notNull().default('planning'),
+  maxDepth: integer('max_depth').notNull().default(4),
+  maxFanout: integer('max_fanout').notNull().default(3),
+  maxTasks: integer('max_tasks').notNull().default(24),
+  maxRuntimeSeconds: integer('max_runtime_seconds').notNull().default(900),
+  maxCredits: integer('max_credits').notNull().default(100),
+  usedCredits: integer('used_credits').notNull().default(0),
+  deadlineAt: timestamp('deadline_at', { withTimezone: true }),
+  usedTasks: integer('used_tasks').notNull().default(0),
+  metadata: jsonb('metadata').notNull().default({}),
+  startedAt: timestamp('started_at', { withTimezone: true }),
+  completedAt: timestamp('completed_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const hiveTasks = pgTable('hive_tasks', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  runId: uuid('run_id').notNull(),
+  profileId: uuid('profile_id').notNull(),
+  parentTaskId: uuid('parent_task_id'),
+  handoffId: uuid('handoff_id'),
+  assignedAgentId: uuid('assigned_agent_id'),
+  depth: integer('depth').notNull().default(0),
+  sequence: integer('sequence').notNull().default(0),
+  objective: text('objective').notNull(),
+  context: jsonb('context').notNull().default({}),
+  sourceEventIds: uuid('source_event_ids').array().notNull().default([]),
+  status: text('status').notNull().default('pending'),
+  output: text('output'),
+  error: text('error'),
+  startedAt: timestamp('started_at', { withTimezone: true }),
+  completedAt: timestamp('completed_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const hiveUtterances = pgTable('hive_utterances', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  profileId: uuid('profile_id').notNull(),
+  eventId: uuid('event_id').notNull(),
+  deliveryId: uuid('delivery_id'),
+  companionId: uuid('companion_id'),
+  channel: text('channel').notNull(),
+  intent: text('intent').notNull().default('inform'),
+  facts: jsonb('facts').notNull().default([]),
+  emotion: text('emotion').notNull().default('neutral'),
+  confidence: real('confidence').notNull().default(0.7),
+  prosody: jsonb('prosody').notNull().default({}),
+  animation: text('animation'),
+  state: text('state').notNull().default('ready'),
+  interruptedAt: timestamp('interrupted_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const hiveCompanionStates = pgTable('hive_companion_states', {
+  agentId: uuid('agent_id').primaryKey(),
+  profileId: uuid('profile_id').notNull(),
+  availability: text('availability').notNull().default('available'),
+  activity: text('activity').notNull().default('idle'),
+  relationshipState: text('relationship_state').notNull().default('neutral'),
+  currentTaskId: uuid('current_task_id'),
+  urgency: text('urgency').notNull().default('normal'),
+  visualMood: text('visual_mood').notNull().default('neutral'),
+  location: text('location'),
+  metadata: jsonb('metadata').notNull().default({}),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const hiveComputeResources = pgTable('hive_compute_resources', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  profileId: uuid('profile_id').notNull(),
+  assetId: uuid('asset_id'),
+  name: text('name').notNull(),
+  kind: text('kind').notNull(),
+  locality: text('locality').notNull().default('local'),
+  modalities: text('modalities').array().notNull().default(['text']),
+  memoryMb: integer('memory_mb').notNull().default(0),
+  acceleratorMemoryMb: integer('accelerator_memory_mb').notNull().default(0),
+  maxConcurrency: integer('max_concurrency').notNull().default(1),
+  activeAllocations: integer('active_allocations').notNull().default(0),
+  costPerHour: real('cost_per_hour').notNull().default(0),
+  health: text('health').notNull().default('unknown'),
+  enabled: boolean('enabled').notNull().default(true),
+  metadata: jsonb('metadata').notNull().default({}),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const hiveComputeAllocations = pgTable('hive_compute_allocations', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  profileId: uuid('profile_id').notNull(),
+  resourceId: uuid('resource_id').notNull(),
+  taskId: uuid('task_id').notNull(),
+  status: text('status').notNull().default('reserved'),
+  requirements: jsonb('requirements').notNull().default({}),
+  startedAt: timestamp('started_at', { withTimezone: true }),
+  releasedAt: timestamp('released_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const hiveSpacePackages = pgTable('hive_space_packages', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  profileId: uuid('profile_id').notNull(),
+  key: text('key').notNull(),
+  name: text('name').notNull(),
+  version: text('version').notNull().default('1.0.0'),
+  description: text('description').notNull().default(''),
+  visibility: text('visibility').notNull().default('private'),
+  manifest: jsonb('manifest').notNull(),
+  checksum: text('checksum').notNull(),
+  enabled: boolean('enabled').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const hiveSpaceInstallations = pgTable('hive_space_installations', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  profileId: uuid('profile_id').notNull(),
+  packageId: uuid('package_id').notNull(),
+  spaceId: uuid('space_id').notNull(),
+  mode: text('mode').notNull(),
+  installedVersion: text('installed_version').notNull(),
+  configuration: jsonb('configuration').notNull().default({}),
+  installedAt: timestamp('installed_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
 // Journal des fusions d'abeilles (traçabilité du « jardinage de la ruche »).

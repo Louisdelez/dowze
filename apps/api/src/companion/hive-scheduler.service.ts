@@ -6,6 +6,7 @@ import { logger } from '../observability/logger';
 import { redisConnectionFromUrl } from '../jobs/connection';
 import { QUEUE_HIVE_MAINTAIN } from '../jobs/jobs.service';
 import { CompanionService } from './companion.service';
+import { HiveContinuityService } from './hive-continuity.service';
 
 /**
  * Consomme le job nocturne « hive-maintain » (programmé par `JobsService`) et lance la maintenance SÛRE
@@ -20,6 +21,7 @@ export class HiveScheduler implements OnModuleInit, OnModuleDestroy {
   constructor(
     @Inject(ENV) private readonly env: Env,
     private readonly companion: CompanionService,
+    private readonly continuity: HiveContinuityService,
   ) {}
 
   onModuleInit(): void {
@@ -29,8 +31,9 @@ export class HiveScheduler implements OnModuleInit, OnModuleDestroy {
         QUEUE_HIVE_MAINTAIN,
         async () => {
           const r = await this.companion.nightlyMaintenanceAll();
+          const memory = await this.continuity.nightlyConsolidateAll();
           logger.info(
-            `Ruche — maintenance nocturne : ${r.profiles} profils, ${r.embedded} indexées, ${r.retired} retirées`,
+            `Ruche — maintenance nocturne : ${r.profiles} profils, ${r.embedded} abeilles indexées, ${memory.embedded} événements indexés, ${r.retired} retirées, ${memory.created} mémoires consolidées`,
           );
           return { ok: true };
         },

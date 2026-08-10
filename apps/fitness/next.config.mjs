@@ -4,7 +4,6 @@ const nextConfig = {
   output: 'standalone',
   // Paquets internes transpilés depuis leur SOURCE TS (session partagée, SDK, design system).
   transpilePackages: ['@dowze/auth', '@dowze/ui', '@dowze/api-client'],
-  eslint: { ignoreDuringBuilds: true },
 };
 
 export default nextConfig;

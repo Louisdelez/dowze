@@ -14,6 +14,9 @@ import {
   companionMessages,
   companionRelayTokens,
   companionAgentMerges,
+  hiveRuntimes,
+  hiveSpacePackages,
+  hiveSpaceInstallations,
   learnerRank,
   masteryStates,
   specializations,
@@ -30,9 +33,21 @@ import {
   academieTeacher,
   teacherRoleKey,
   rankMeta,
+  roleContractOf,
   type RolePreset,
   type OrgTemplate,
 } from './roles.catalog';
+import { HiveContinuityService } from './hive-continuity.service';
+import {
+  canHandleRequest,
+  selectCompanionForRequest,
+  selectHiveRuntime,
+  findOrganizationalRoute,
+  renderForChannel,
+  shouldDelegate,
+  type HiveRuntime,
+  type RoleContract,
+} from './hive-domain';
 
 /** Planche max après validation (une sprite sheet Codex ~1,5–2,5 Mo). */
 const MAX_BYTES = 6 * 1024 * 1024;
@@ -64,6 +79,13 @@ export interface AgentPersonality {
   /** Règles apprises par l'utilisateur (le compagnon les respecte). */
   rules?: string[];
 }
+interface HiveExecutionContext {
+  runId: string;
+  parentTaskId: string;
+  depth: number;
+  visitedAgentIds: string[];
+  rootEventId?: string;
+}
 /** Détecte un message d'ENSEIGNEMENT (« retiens que… », « dorénavant… », « je préfère que… »). */
 const TEACH_RE =
   /\b(retiens|rappelle[- ]toi|souviens[- ]toi|dor[eé]navant|d[eé]sormais|à l['’]avenir|je pr[eé]f[eè]re que|à partir de maintenant|note que|n['’]oublie pas que)\b/i;
@@ -74,6 +96,7 @@ export interface CompanionAgentDTO {
   size: number;
   personality: AgentPersonality | null;
   role: string | null;
+  roleContract: RoleContract;
   space: string;
   room: string;
   pos: { c: number; r: number } | null;
@@ -91,6 +114,7 @@ export interface CreateAgentInput {
   size?: number;
   personality?: AgentPersonality | null;
   role?: string | null;
+  roleContract?: RoleContract;
   space?: string;
   room?: string;
   pos?: { c: number; r: number } | null;
@@ -211,6 +235,10 @@ const AGENT_CONFIG_SCHEMA = z.object({
   tone: z.string().describe('Son ton en quelques mots (ex : « joyeux et encourageant »).'),
   traits: z.array(z.string()).describe('3 à 6 traits de caractère en un mot chacun.'),
   specialization: z.string().describe('Sa spécialité / ce dans quoi il aide (court).'),
+  capabilities: z.array(z.string()).describe('3 à 10 capacités précises et légitimes.'),
+  limitations: z
+    .array(z.string())
+    .describe('1 à 5 domaines qu’il doit déléguer au lieu d’improviser.'),
   systemPrompt: z
     .string()
     .describe(
@@ -244,6 +272,26 @@ const ORCH_PLAN_SCHEMA = z.object({
             'Si existing = 0 : le nom de l’OPEN-SPACE métier où ranger la nouvelle abeille selon sa compétence (ex : « Code & Dev », « Cours & École », « Langues », « Rédaction », « Business & Admin », « Vie quotidienne », « Santé & Sport », « Créativité »). Réutilise EXACTEMENT le nom d’un open-space existant s’il correspond ; sinon un nom court. JAMAIS « Maison ». Sinon, chaîne vide.',
           ),
         subtask: z.string().describe('La sous-tâche / question précise confiée à cette abeille.'),
+        expectedGain: z
+          .number()
+          .min(0)
+          .max(1)
+          .describe('Gain attendu de spécialisation/parallélisation.'),
+        communicationCost: z
+          .number()
+          .min(0)
+          .max(1)
+          .describe('Coût de transmettre et résumer le contexte.'),
+        computeCost: z
+          .number()
+          .min(0)
+          .max(1)
+          .describe('Coût relatif de calcul de cette délégation.'),
+        coordinationCost: z
+          .number()
+          .min(0)
+          .max(1)
+          .describe('Coût de vérifier et fusionner le résultat.'),
       }),
     )
     .describe(
@@ -305,6 +353,7 @@ export class CompanionService {
   constructor(
     @Inject(DB) private readonly db: Database,
     private readonly copilote: CopiloteService,
+    private readonly continuity: HiveContinuityService,
   ) {}
 
   private async profileIdForAuth(authId: string): Promise<string> {
@@ -463,6 +512,7 @@ export class CompanionService {
       size: r.size,
       personality,
       role: r.role,
+      roleContract: (r.roleContract as RoleContract | null) ?? {},
       space: r.space,
       room: r.room,
       pos: (r.pos as { c: number; r: number } | null) ?? null,
@@ -540,6 +590,7 @@ export class CompanionService {
           size: input.size ?? 96,
           personality: input.personality ?? null,
           role: input.role ?? null,
+          roleContract: input.roleContract ?? {},
           space: (input.space || 'home').slice(0, 60),
           room:
             input.room?.slice(0, 60) ||
@@ -569,6 +620,7 @@ export class CompanionService {
     if (patch.size !== undefined) set.size = patch.size;
     if (patch.personality !== undefined) set.personality = patch.personality;
     if (patch.role !== undefined) set.role = patch.role;
+    if (patch.roleContract !== undefined) set.roleContract = patch.roleContract;
     if (patch.space !== undefined) set.space = patch.space.slice(0, 60);
     if (patch.pos !== undefined) set.pos = patch.pos;
     if (patch.mode !== undefined) set.mode = patch.mode;
@@ -665,6 +717,16 @@ export class CompanionService {
           size: 96,
           personality,
           role: object.specialization?.slice(0, 60) ?? null,
+          roleContract: {
+            responsibilities: [`Aider dans sa spécialité : ${object.specialization.slice(0, 120)}`],
+            capabilities: (object.capabilities ?? [])
+              .slice(0, 10)
+              .map((value) => value.slice(0, 120)),
+            limitations: (object.limitations ?? []).slice(0, 5).map((value) => value.slice(0, 120)),
+            delegatesTo: [],
+            escalationPath: ['primary'],
+            allowedTools: ['calculatrice', 'date_heure', 'chercher_connaissances', 'recherche_web'],
+          },
           space: space.slice(0, 60),
           room,
           isPrimary: false,
@@ -733,7 +795,14 @@ export class CompanionService {
     authId: string,
     id: string,
     message: string,
-  ): Promise<{ reply: string; learned?: string; toolsUsed?: string[] }> {
+    execution?: HiveExecutionContext,
+  ): Promise<{
+    reply: string;
+    learned?: string;
+    toolsUsed?: string[];
+    creditsSpent?: number;
+    routedTo?: { id: string; name: string };
+  }> {
     const profileId = await this.profileIdForAuth(authId);
     const agent = (
       await this.db
@@ -742,6 +811,120 @@ export class CompanionService {
         .where(and(eq(companionAgents.id, id), eq(companionAgents.profileId, profileId)))
     )[0];
     if (!agent) throw new NotFoundException('Compagnon introuvable.');
+    await this.continuity.touchRelationshipForProfile(profileId, agent.id).catch(() => undefined);
+    const storedContract = (agent.roleContract as RoleContract | null) ?? {};
+    const preset = roleByKey(agent.roleKey);
+    const personaForContract = (agent.personality as AgentPersonality | null) ?? {};
+    const contract: RoleContract =
+      storedContract.capabilities?.length || storedContract.responsibilities?.length
+        ? storedContract
+        : preset
+          ? roleContractOf(preset)
+          : {
+              responsibilities: agent.role ? [`Assumer le rôle : ${agent.role}`] : [],
+              capabilities: [agent.role ?? '', ...(personaForContract.traits ?? [])].filter(
+                Boolean,
+              ),
+              limitations: agent.role ? [`Travail sans rapport avec ${agent.role}`] : [],
+              delegatesTo: [],
+              escalationPath: ['primary'],
+              allowedTools: [
+                'calculatrice',
+                'date_heure',
+                'chercher_connaissances',
+                'recherche_web',
+              ],
+            };
+    if (agent.mode === 'agent' && contract.capabilities?.length && contract !== storedContract) {
+      await this.db
+        .update(companionAgents)
+        .set({ roleContract: contract, updatedAt: new Date() })
+        .where(eq(companionAgents.id, agent.id))
+        .catch(() => undefined);
+    }
+    const scoped = Boolean(contract.capabilities?.length || contract.responsibilities?.length);
+    if (agent.mode === 'agent' && scoped && !canHandleRequest(message, contract)) {
+      const candidates = await this.db
+        .select({
+          id: companionAgents.id,
+          name: companionAgents.name,
+          roleKey: companionAgents.roleKey,
+          roleContract: companionAgents.roleContract,
+        })
+        .from(companionAgents)
+        .where(
+          and(
+            eq(companionAgents.profileId, profileId),
+            eq(companionAgents.mode, 'agent'),
+            eq(companionAgents.status, 'active'),
+            ne(companionAgents.id, id),
+          ),
+        )
+        .limit(200);
+      const target = selectCompanionForRequest(
+        message,
+        candidates
+          .filter((candidate) => !execution?.visitedAgentIds.includes(candidate.id))
+          .map((candidate) => ({
+            id: candidate.id,
+            roleKey: candidate.roleKey,
+            contract: (candidate.roleContract as RoleContract | null) ?? {},
+          })),
+      );
+      if (target) {
+        const targetRow = candidates.find((candidate) => candidate.id === target.id)!;
+        if (execution) {
+          const delegated = await this.delegateFromAgent(
+            authId,
+            profileId,
+            agent,
+            message,
+            execution,
+          );
+          return {
+            reply: delegated.result,
+            routedTo: { id: target.id, name: targetRow.name },
+          };
+        }
+        const route = findOrganizationalRoute(id, target.id, [
+          { id, roleKey: agent.roleKey, contract },
+          ...candidates.map((candidate) => ({
+            id: candidate.id,
+            roleKey: candidate.roleKey,
+            contract: (candidate.roleContract as RoleContract | null) ?? {},
+          })),
+        ]);
+        const names = new Map([
+          [id, agent.name],
+          ...candidates.map((candidate) => [candidate.id, candidate.name] as const),
+        ]);
+        const handoffs = [];
+        for (let index = 0; index < route.length - 1; index += 1) {
+          const fromId = route[index]!;
+          const toId = route[index + 1]!;
+          handoffs.push(
+            await this.continuity.createHandoff(authId, {
+              fromAgentId: fromId,
+              toAgentId: toId,
+              targetSpace: agent.space,
+              originalRequest: message,
+              summarizedContext: `${names.get(fromId) ?? 'Un compagnon'} transmet la demande et tout son contexte à ${names.get(toId) ?? 'la bonne personne'}.`,
+              expectedNextAction:
+                toId === target.id
+                  ? 'Répondre à la demande avec le contexte transmis.'
+                  : 'Poursuivre le passage vers le responsable compétent.',
+            }),
+          );
+        }
+        const routed = await this.chatAgent(authId, target.id, message, execution);
+        await Promise.all(
+          handoffs.map((handoff) =>
+            this.continuity.transitionHandoff(authId, handoff.id, 'completed'),
+          ),
+        );
+        return { ...routed, routedTo: { id: target.id, name: targetRow.name } };
+      }
+    }
     const persona =
       (agent.personality as (AgentPersonality & { systemPrompt?: string }) | null) ?? {};
 
@@ -783,6 +966,7 @@ export class CompanionService {
     // outils, ou finit sur un appel d'outil sans texte final.
     let reply: string;
     let toolsUsed: string[] = [];
+    let creditsSpent = 0;
     try {
       // Agent d'une ORGANISATION (open-space) → il peut consulter la base de connaissances de SON space.
       const orgSearch =
@@ -792,16 +976,25 @@ export class CompanionService {
       const out = await this.copilote.runWithTools(profileId, {
         system: sys,
         prompt,
-        tools: buildAgentTools({ copilote: this.copilote, profileId, orgSearch }),
+        tools: buildAgentTools({
+          copilote: this.copilote,
+          profileId,
+          orgSearch,
+          memorySearch: (query) => this.continuity.searchMemoryForProfile(profileId, query),
+          delegate: execution
+            ? (objective) => this.delegateFromAgent(authId, profileId, agent, objective, execution)
+            : undefined,
+        }),
         maxSteps: 4,
         temperature: 0.7,
         ref: `agent:${id}`,
       });
       reply = (out.text || '').slice(0, 600);
       toolsUsed = out.toolsUsed;
+      creditsSpent = out.creditsSpent;
       if (!reply) throw new Error('empty-final'); // finit sur un outil sans rédiger → repli
     } catch {
-      const { object } = await this.copilote.generateStructured(profileId, {
+      const generated = await this.copilote.generateStructured(profileId, {
         schema: z.object({
           reply: z
             .string()
@@ -812,8 +1005,9 @@ export class CompanionService {
         prompt,
         temperature: 0.8,
       });
-      reply = (object.reply || '…').slice(0, 600);
+      reply = (generated.object.reply || '…').slice(0, 600);
       toolsUsed = [];
+      creditsSpent = generated.creditsSpent;
     }
 
     // Persistance de l'échange (mémoire).
@@ -828,13 +1022,162 @@ export class CompanionService {
         createdAt: new Date(now.getTime() + 1),
       },
     ]);
+    // La conversation locale reste utile à l'UI, mais la continuité réelle vit dans le journal universel.
+    const journaled = await this.continuity
+      .recordForProfile(profileId, [
+        {
+          kind: 'message.received',
+          content: message.slice(0, 1000),
+          channel: 'direct',
+          subjectAgentId: id,
+          space: agent.space,
+          importance: learned ? 0.9 : 0.55,
+          metadata: learned ? { learnedRule: learned } : {},
+        },
+        {
+          kind: 'message.sent',
+          content: reply,
+          channel: 'direct',
+          actorAgentId: id,
+          space: agent.space,
+          importance: 0.55,
+          metadata: toolsUsed.length ? { toolsUsed } : {},
+        },
+      ])
+      .catch(() => []);
+    if (learned) {
+      const preference = /\b(je pr[eé]f[eè]re que|dor[eé]navant|d[eé]sormais)\b/i.test(learned);
+      const stableKey = preference
+        ? `agent:${id}:communication-preference`
+        : `agent:${id}:rule:${createHash('sha256').update(learned.toLowerCase().replace(/\s+/g, ' ').slice(0, 120)).digest('hex').slice(0, 20)}`;
+      await this.continuity
+        .rememberTemporal(authId, {
+          memoryKey: stableKey,
+          content: learned,
+          category: preference ? 'preference' : 'rule',
+          scope: 'agent',
+          scopeId: id,
+          confidence: 0.95,
+          validFrom: now,
+          entities: [{ kind: 'agent', id, name: agent.name }],
+          sourceEventIds: journaled[0] ? [journaled[0].id] : [],
+        })
+        .catch(() => undefined);
+    }
     // Efficacité : compte l'usage (chaque mobilisation OU chat direct passe ici).
     await this.db
       .update(companionAgents)
       .set({ useCount: sql`${companionAgents.useCount} + 1`, lastUsedAt: now })
       .where(eq(companionAgents.id, id))
       .catch(() => undefined);
-    return { reply, learned, toolsUsed: toolsUsed.length ? toolsUsed : undefined };
+    return {
+      reply,
+      learned,
+      toolsUsed: toolsUsed.length ? toolsUsed : undefined,
+      creditsSpent,
+    };
+  }
+
+  private async delegateFromAgent(
+    authId: string,
+    profileId: string,
+    source: typeof companionAgents.$inferSelect,
+    objective: string,
+    execution: HiveExecutionContext,
+  ): Promise<{ target: string; result: string; route: string[] }> {
+    const candidates = await this.db
+      .select({
+        id: companionAgents.id,
+        name: companionAgents.name,
+        roleKey: companionAgents.roleKey,
+        roleContract: companionAgents.roleContract,
+      })
+      .from(companionAgents)
+      .where(
+        and(
+          eq(companionAgents.profileId, profileId),
+          eq(companionAgents.mode, 'agent'),
+          eq(companionAgents.status, 'active'),
+          ne(companionAgents.id, source.id),
+        ),
+      )
+      .limit(200);
+    const available = candidates.filter(
+      (candidate) => !execution.visitedAgentIds.includes(candidate.id),
+    );
+    const target = selectCompanionForRequest(
+      objective,
+      available.map((candidate) => ({
+        id: candidate.id,
+        roleKey: candidate.roleKey,
+        contract: (candidate.roleContract as RoleContract | null) ?? {},
+      })),
+    );
+    if (!target)
+      throw new BadRequestException('Aucune abeille légitime disponible pour cette sous-tâche.');
+    const targetRow = available.find((candidate) => candidate.id === target.id)!;
+    const sourceContract = (source.roleContract as RoleContract | null) ?? {};
+    const route = findOrganizationalRoute(source.id, target.id, [
+      { id: source.id, roleKey: source.roleKey, contract: sourceContract },
+      ...available.map((candidate) => ({
+        id: candidate.id,
+        roleKey: candidate.roleKey,
+        contract: (candidate.roleContract as RoleContract | null) ?? {},
+      })),
+    ]);
+    const handoff = await this.continuity.createHandoff(authId, {
+      fromAgentId: source.id,
+      toAgentId: target.id,
+      targetSpace: targetRow.roleKey ?? undefined,
+      originalRequest: objective,
+      summarizedContext: `Sous-délégation de ${source.name} dans le run ${execution.runId}.`,
+      sourceEventIds: execution.rootEventId ? [execution.rootEventId] : [],
+      expectedNextAction: objective,
+    });
+    const task = await this.continuity.createRunTaskForProfile(profileId, {
+      runId: execution.runId,
+      parentTaskId: execution.parentTaskId,
+      handoffId: handoff.id,
+      assignedAgentId: target.id,
+      depth: execution.depth + 1,
+      objective,
+      context: { delegatedBy: source.id, route },
+      sourceEventIds: execution.rootEventId ? [execution.rootEventId] : [],
+    });
+    await this.continuity.transitionHandoff(authId, handoff.id, 'accepted');
+    await this.continuity.transitionHandoff(authId, handoff.id, 'in_progress');
+    await this.continuity.transitionRunTaskForProfile(profileId, task.id, 'running');
+    try {
+      const response = await this.chatAgent(authId, target.id, objective, {
+        ...execution,
+        parentTaskId: task.id,
+        depth: execution.depth + 1,
+        visitedAgentIds: [...execution.visitedAgentIds, target.id],
+      });
+      await this.continuity
+        .chargeRunForProfile(profileId, execution.runId, response.creditsSpent ?? 0)
+        .catch(() => undefined);
+      await this.continuity.transitionHandoff(authId, handoff.id, 'completed');
+      await this.continuity.transitionRunTaskForProfile(
+        profileId,
+        task.id,
+        'completed',
+        response.reply,
+      );
+      return { target: targetRow.name, result: response.reply, route };
+    } catch (error) {
+      await this.continuity.transitionHandoff(authId, handoff.id, 'failed').catch(() => undefined);
+      await this.continuity
+        .transitionRunTaskForProfile(
+          profileId,
+          task.id,
+          'failed',
+          undefined,
+          error instanceof Error ? error.message : 'Échec de sous-délégation',
+        )
+        .catch(() => undefined);
+      throw error;
+    }
   }
 
   /**
@@ -858,7 +1201,12 @@ export class CompanionService {
       const out = await this.copilote.runWithTools(profileId, {
         system: sys,
         prompt: instruction.slice(0, 1200),
-        tools: buildAgentTools({ copilote: this.copilote, profileId, orgSearch }),
+        tools: buildAgentTools({
+          copilote: this.copilote,
+          profileId,
+          orgSearch,
+          memorySearch: (query) => this.continuity.searchMemoryForProfile(profileId, query),
+        }),
         maxSteps: 4,
         temperature: 0.6,
         ref: `produce:${agent.id}`,
@@ -895,6 +1243,13 @@ export class CompanionService {
     toolsUsed: string[];
   }> {
     const profileId = await this.profileIdForAuth(authId);
+    const requestEvent = (
+      await this.continuity
+        .recordForProfile(profileId, [
+          { kind: 'request.received', content: message, channel: 'direct', importance: 0.65 },
+        ])
+        .catch(() => [])
+    )[0];
     // Outils réellement mobilisés par le leader et/ou les abeilles (boucle ReAct) → trace/caption.
     const toolsUsed = new Set<string>();
 
@@ -938,8 +1293,84 @@ export class CompanionService {
         };
     }
     const leaderName = leader?.name || 'Dowze';
+    if (leader?.id)
+      await this.continuity
+        .touchRelationshipForProfile(profileId, leader.id)
+        .catch(() => undefined);
+    const hiveRun = await this.continuity
+      .createRunForProfile(profileId, {
+        objective: message,
+        rootEventId: requestEvent?.id,
+        initiatorAgentId: leader?.id,
+        maxDepth: 4,
+        maxFanout: 3,
+        maxTasks: 24,
+        metadata: { channel: 'direct', leaderName },
+      })
+      .catch(() => null);
     // Un leader-AGENT (compagnon de la Maison non principal) a sa propre mémoire/persona → réponses directes via chatAgent.
     const leaderAgentId = leader && !leader.isPrimary ? leader.id : null;
+
+    // Le méta-harness intervient AVANT la fonderie d'abeilles lorsqu'un harness spécialisé réellement
+    // connecté est plus adapté. Le relais code est asynchrone par nature : la suite arrive dans Messages.
+    const runtimeIntent =
+      /\b(code|coder|dévelop|programm|debug|bug|git|github|déploi|devops|typescript|javascript|python|rust|sql)\b/i.test(
+        message,
+      )
+        ? 'développement code programmation déploiement devops'
+        : null;
+    if (runtimeIntent) {
+      try {
+        const routed = await this.executeHiveRuntime(authId, {
+          capability: runtimeIntent,
+          prompt: message,
+          modality: 'code',
+          availableEntitlements: ['subscription'],
+          channel: 'messages',
+        });
+        if (routed.runtime.adapter === 'relay_mcp') {
+          await this.continuity
+            .recordForProfile(profileId, [
+              {
+                kind: 'response.delivered',
+                content: routed.output,
+                channel: 'messages',
+                actorAgentId: leader?.id,
+                importance: 0.7,
+                sourceEventIds: requestEvent ? [requestEvent.id] : [],
+                metadata: {
+                  orchestration: 'runtime',
+                  runtimeId: routed.runtime.id,
+                  model: routed.runtime.model,
+                  harness: routed.runtime.harness,
+                },
+              },
+            ])
+            .catch(() => undefined);
+          if (hiveRun)
+            await this.continuity
+              .completeRunForProfile(profileId, hiveRun.id, 'waiting_approval', {
+                runtimeId: routed.runtime.id,
+                adapter: routed.runtime.adapter,
+              })
+              .catch(() => undefined);
+          return {
+            reply: routed.output,
+            delegates: [
+              {
+                name: routed.runtime.name,
+                role: routed.runtime.harness,
+                said: routed.output,
+              },
+            ],
+            created: [],
+            toolsUsed: routed.toolsUsed,
+          };
+        }
+      } catch {
+        // Aucun harness spécialisé connecté : l'orchestration d'abeilles reste le repli normal.
+      }
+    }
 
     // La ruche = les abeilles des open-spaces (les compagnons de la Maison sont des LEADERS, pas des travailleuses).
     // RUCHE INFINIE : on ne charge JAMAIS toutes les abeilles. On récupère une SHORT-LIST pertinente à la demande
@@ -1020,13 +1451,18 @@ export class CompanionService {
     const roster = specialists.length
       ? specialists.map((s, i) => `${i + 1}. ${s.name} — ${s.role || 'polyvalent'}`).join('\n')
       : '(la ruche est vide pour l’instant — crée les abeilles nécessaires)';
-    const { object: plan } = await this.copilote.generateStructured(profileId, {
+    const planResult = await this.copilote.generateStructured(profileId, {
       schema: ORCH_PLAN_SCHEMA,
       schemaName: 'OrchestrationPlan',
-      system: `${ASSISTANT}\n\nTu diriges une RUCHE d'abeilles, chacune spécialiste TRÈS PRÉCISE d'une tâche précise. Logique : décompose la demande en sous-tâches précises (MAXIMUM 3, seulement les utiles). Pour CHAQUE sous-tâche, choisis une abeille EXISTANTE si elle correspond vraiment précisément (mets son numéro dans "existing") ; sinon crée-en une neuve et très ciblée (existing=0 + "create" = son domaine exact + "spaceName" = son open-space métier). Ne crée une abeille que si aucune existante ne convient précisément. Les abeilles créées sont rangées dans des OPEN-SPACES par métier (JAMAIS dans la Maison). Open-spaces métier existants : ${spaceList} — réutilise-en un si la compétence correspond, sinon nomme-en un nouveau. Si la demande relève de TA propre spécialité ou que tu peux répondre toi-même sans abeille, remplis "direct" et ne délègue pas. Abeilles actuelles :\n${roster}`,
+      system: `${ASSISTANT}\n\nTu diriges une RUCHE d'abeilles, chacune spécialiste TRÈS PRÉCISE d'une tâche précise. Logique : décompose la demande en sous-tâches précises (MAXIMUM 3, seulement les utiles). LOI ABSOLUE : ne délègue que si expectedGain > communicationCost + computeCost + coordinationCost ; pour une question triviale, réponds directement. Pour CHAQUE sous-tâche, choisis une abeille EXISTANTE si elle correspond vraiment précisément (mets son numéro dans "existing") ; sinon crée-en une neuve et très ciblée (existing=0 + "create" = son domaine exact + "spaceName" = son open-space métier). Ne crée une abeille que si aucune existante ne convient précisément. Les abeilles créées sont rangées dans des OPEN-SPACES par métier (JAMAIS dans la Maison). Open-spaces métier existants : ${spaceList} — réutilise-en un si la compétence correspond, sinon nomme-en un nouveau. Si la demande relève de TA propre spécialité ou que tu peux répondre toi-même sans abeille, remplis "direct" et ne délègue pas. Abeilles actuelles :\n${roster}`,
       prompt: `Demande de l'utilisateur : ${message.slice(0, 1000)}`,
       temperature: 0.4,
     });
+    const plan = planResult.object;
+    if (hiveRun)
+      await this.continuity
+        .chargeRunForProfile(profileId, hiveRun.id, planResult.creditsSpent)
+        .catch(() => undefined);
 
     // Réponse DIRECTE (pas de délégation) : si le leader est un compagnon-agent, il répond dans SA voix avec SA mémoire.
     const directReply = async (): Promise<string> => {
@@ -1046,11 +1482,19 @@ export class CompanionService {
           const out = await this.copilote.runWithTools(profileId, {
             system: `${ASSISTANT}\n\nTu réponds ici toi-même (sans mobiliser d'abeille pour cette fois), mais tu diriges bien une ruche d'abeilles spécialistes : ne dis JAMAIS que tu ne peux pas déléguer ou créer d'assistants. RÈGLE : réponds en 1 à 2 phrases courtes et naturelles, sans markdown ni listes. Français. Tu DOIS appeler l'outil recherche_web AVANT de répondre pour toute question d'actualité, factuelle, chiffrée, de météo/prix, ou dont tu n'es pas certain (ne devine jamais) ; utilise la calculatrice pour tout calcul.`,
             prompt: `Utilisateur : ${message.slice(0, 1000)}`,
-            tools: buildAgentTools({ copilote: this.copilote, profileId }),
+            tools: buildAgentTools({
+              copilote: this.copilote,
+              profileId,
+              memorySearch: (query) => this.continuity.searchMemoryForProfile(profileId, query),
+            }),
             maxSteps: 4,
             temperature: 0.6,
             ref: 'orchestrate-direct',
           });
+          if (hiveRun)
+            await this.continuity
+              .chargeRunForProfile(profileId, hiveRun.id, out.creditsSpent)
+              .catch(() => undefined);
           out.toolsUsed.forEach((t) => toolsUsed.add(t));
           if (out.text) return out.text.slice(0, 600);
         } catch {
@@ -1064,19 +1508,46 @@ export class CompanionService {
     const dels = (plan.delegations || [])
       .filter(
         (d) =>
-          (Number.isInteger(d.existing) && d.existing >= 1 && d.existing <= specialists.length) ||
-          (typeof d.create === 'string' && d.create.trim().length > 0),
+          shouldDelegate(d) &&
+          ((Number.isInteger(d.existing) && d.existing >= 1 && d.existing <= specialists.length) ||
+            (typeof d.create === 'string' && d.create.trim().length > 0)),
       )
       .slice(0, 3);
     if (dels.length === 0) {
-      return { reply: await directReply(), delegates: [], created: [], toolsUsed: [...toolsUsed] };
+      const reply = await directReply();
+      await this.continuity
+        .recordForProfile(profileId, [
+          {
+            kind: 'response.delivered',
+            content: reply,
+            channel: 'direct',
+            actorAgentId: leader?.id,
+            importance: 0.6,
+            sourceEventIds: requestEvent ? [requestEvent.id] : [],
+            metadata: { orchestration: 'direct', toolsUsed: [...toolsUsed] },
+          },
+        ])
+        .catch(() => undefined);
+      if (hiveRun)
+        await this.continuity
+          .completeRunForProfile(profileId, hiveRun.id, 'completed', {
+            mode: 'direct',
+            toolsUsed: [...toolsUsed],
+          })
+          .catch(() => undefined);
+      return { reply, delegates: [], created: [], toolsUsed: [...toolsUsed] };
     }
 
     // 2a) Résoudre chaque abeille (trouver ou créer) SÉQUENTIELLEMENT : la création touche la DB et
     // le dedup (`findSimilarAgent`) — les enchaîner évite que deux délégations similaires créent des
     // doublons en parallèle (la course casserait la prévention-à-la-création de la ruche).
     const created: string[] = [];
-    const jobs: { sp: { id: string; name: string; role: string | null }; subtask: string }[] = [];
+    const jobs: {
+      sp: { id: string; name: string; role: string | null };
+      subtask: string;
+      handoffId?: string;
+      taskId?: string;
+    }[] = [];
     for (const d of dels) {
       let sp: { id: string; name: string; role: string | null } | null = null;
       if (Number.isInteger(d.existing) && d.existing >= 1 && d.existing <= specialists.length) {
@@ -1105,16 +1576,93 @@ export class CompanionService {
       if (sp) jobs.push({ sp, subtask: d.subtask.slice(0, 500) });
     }
 
+    // Le travail n'existe qu'après création de son handoff et de sa tâche : la provenance précède
+    // l'exécution et les états peuvent être observés pendant que l'abeille travaille.
+    for (let index = 0; index < jobs.length; index += 1) {
+      const job = jobs[index]!;
+      try {
+        const handoff = await this.continuity.createHandoff(authId, {
+          fromAgentId: leader?.id,
+          toAgentId: job.sp.id,
+          originalRequest: message,
+          summarizedContext: job.subtask,
+          sourceEventIds: requestEvent ? [requestEvent.id] : [],
+          expectedNextAction: job.subtask,
+        });
+        job.handoffId = handoff.id;
+        await this.continuity.transitionHandoff(authId, handoff.id, 'accepted');
+        await this.continuity.transitionHandoff(authId, handoff.id, 'in_progress');
+        if (hiveRun) {
+          const task = await this.continuity.createRunTaskForProfile(profileId, {
+            runId: hiveRun.id,
+            handoffId: handoff.id,
+            assignedAgentId: job.sp.id,
+            depth: 1,
+            sequence: index,
+            objective: job.subtask,
+            context: { originalRequest: message, leaderId: leader?.id },
+            sourceEventIds: requestEvent ? [requestEvent.id] : [],
+          });
+          job.taskId = task.id;
+          await this.continuity.transitionRunTaskForProfile(profileId, task.id, 'accepted');
+          await this.continuity.transitionRunTaskForProfile(profileId, task.id, 'running');
+        }
+      } catch {
+        // Une migration non encore appliquée ne doit pas rendre l'orchestration inutilisable.
+      }
+    }
+
     // 2b) Déléguer EN PARALLÈLE (les appels IA sont le coût dominant : ~sec chacun) — l'ORDRE est préservé
     // (Promise.all garde l'index → les notes d'utilité de la synthèse restent alignées). Une abeille qui
     // échoue tombe à null et ne bloque pas les autres.
     const settled = await Promise.all(
       jobs.map(async (j) => {
         try {
-          const r = await this.chatAgent(authId, j.sp.id, j.subtask);
+          const r = await this.chatAgent(
+            authId,
+            j.sp.id,
+            j.subtask,
+            hiveRun && j.taskId
+              ? {
+                  runId: hiveRun.id,
+                  parentTaskId: j.taskId,
+                  depth: 1,
+                  visitedAgentIds: [leader?.id, j.sp.id].filter(
+                    (value): value is string => !!value,
+                  ),
+                  rootEventId: requestEvent?.id,
+                }
+              : undefined,
+          );
+          if (hiveRun)
+            await this.continuity
+              .chargeRunForProfile(profileId, hiveRun.id, r.creditsSpent ?? 0)
+              .catch(() => undefined);
           r.toolsUsed?.forEach((t) => toolsUsed.add(t));
+          if (j.handoffId)
+            await this.continuity
+              .transitionHandoff(authId, j.handoffId, 'completed')
+              .catch(() => undefined);
+          if (j.taskId)
+            await this.continuity
+              .transitionRunTaskForProfile(profileId, j.taskId, 'completed', r.reply)
+              .catch(() => undefined);
           return { id: j.sp.id, name: j.sp.name, role: j.sp.role, said: r.reply };
-        } catch {
+        } catch (error) {
+          if (j.handoffId)
+            await this.continuity
+              .transitionHandoff(authId, j.handoffId, 'failed')
+              .catch(() => undefined);
+          if (j.taskId)
+            await this.continuity
+              .transitionRunTaskForProfile(
+                profileId,
+                j.taskId,
+                'failed',
+                undefined,
+                error instanceof Error ? error.message : 'Échec inconnu',
+              )
+              .catch(() => undefined);
           return null; // une abeille indisponible ne bloque pas les autres
         }
       }),
@@ -1122,11 +1670,34 @@ export class CompanionService {
     const results = settled.filter(
       (r): r is { id: string; name: string; role: string | null; said: string } => r !== null,
     );
-    if (results.length === 0)
-      return { reply: await directReply(), delegates: [], created, toolsUsed: [...toolsUsed] };
+    if (results.length === 0) {
+      const reply = await directReply();
+      await this.continuity
+        .recordForProfile(profileId, [
+          {
+            kind: 'response.delivered',
+            content: reply,
+            channel: 'direct',
+            actorAgentId: leader?.id,
+            importance: 0.6,
+            sourceEventIds: requestEvent ? [requestEvent.id] : [],
+            metadata: { orchestration: 'fallback', created, toolsUsed: [...toolsUsed] },
+          },
+        ])
+        .catch(() => undefined);
+      if (hiveRun)
+        await this.continuity
+          .completeRunForProfile(profileId, hiveRun.id, 'failed', {
+            mode: 'fallback',
+            created,
+            reason: 'all_delegates_failed',
+          })
+          .catch(() => undefined);
+      return { reply, delegates: [], created, toolsUsed: [...toolsUsed] };
+    }
 
     // 3) Synthèse DANS LA VOIX DU LEADER + notation de l'utilité de chaque abeille (LLM-as-judge, gratuit).
-    const { object: synth } = await this.copilote.generateStructured(profileId, {
+    const synthesisResult = await this.copilote.generateStructured(profileId, {
       schema: z.object({
         reply: z.string(),
         ratings: z
@@ -1140,6 +1711,11 @@ export class CompanionService {
       prompt: `Demande de l'utilisateur : ${message.slice(0, 1000)}\n\nRéponses de tes abeilles :\n${results.map((r, i) => `${i + 1}. ${r.name} (${r.role || 'spécialiste'}) : ${r.said}`).join('\n')}`,
       temperature: 0.7,
     });
+    const synth = synthesisResult.object;
+    if (hiveRun)
+      await this.continuity
+        .chargeRunForProfile(profileId, hiveRun.id, synthesisResult.creditsSpent)
+        .catch(() => undefined);
     // Qualité glissante (EMA α=0.3) par abeille mobilisée → nourrit le tri/merge/prune du « jardinage ».
     const ratings = Array.isArray(synth.ratings) ? synth.ratings : [];
     await Promise.all(
@@ -1158,6 +1734,24 @@ export class CompanionService {
       }),
     );
     const finalReply = (synth.reply || '…').slice(0, 700);
+    await this.continuity
+      .recordForProfile(profileId, [
+        {
+          kind: 'response.delivered',
+          content: finalReply,
+          channel: 'direct',
+          actorAgentId: leader?.id,
+          importance: 0.7,
+          sourceEventIds: requestEvent ? [requestEvent.id] : [],
+          metadata: {
+            orchestration: 'hive',
+            delegates: results.map((result) => result.id),
+            created,
+            toolsUsed: [...toolsUsed],
+          },
+        },
+      ])
+      .catch(() => undefined);
     // Mémoire du leader-agent : on garde la trace de l'échange (la conversation individuelle reste cohérente).
     if (leaderAgentId) {
       const now = new Date();
@@ -1181,6 +1775,15 @@ export class CompanionService {
         ])
         .catch(() => undefined);
     }
+    if (hiveRun)
+      await this.continuity
+        .completeRunForProfile(profileId, hiveRun.id, 'completed', {
+          mode: 'hive',
+          delegates: results.map((result) => result.id),
+          created,
+          toolsUsed: [...toolsUsed],
+        })
+        .catch(() => undefined);
     return { reply: finalReply, delegates: results, created, toolsUsed: [...toolsUsed] };
   }
 
@@ -1611,6 +2214,52 @@ export class CompanionService {
           .catch(() => undefined);
     } catch {
       /* archivage best-effort */
+    }
+
+    const projectEvents = await this.continuity
+      .recordForProfile(profileId, [
+        {
+          kind: 'project.completed',
+          content: deliverable,
+          channel: 'system',
+          actorAgentId: lead.id,
+          space: spaceId,
+          importance: 0.9,
+          metadata: {
+            goal,
+            knowledgeId,
+            contributors: steps.map((step) => step.id),
+            qa,
+            toolsUsed: [...toolsUsed],
+          },
+        },
+        ...(qa
+          ? [
+              {
+                kind: qa.ok ? 'qa.approved' : 'qa.rejected',
+                content: qa.note,
+                channel: 'system' as const,
+                subjectAgentId: lead.id,
+                space: spaceId,
+                importance: 0.8,
+                metadata: { goal, evaluator: qa.name },
+              },
+            ]
+          : []),
+      ])
+      .catch(() => []);
+    if (qa && !qa.ok) {
+      await this.continuity
+        .createAttentionForProfile(profileId, {
+          sourceEventId: projectEvents.find((event) => event.kind === 'qa.rejected')?.id,
+          requesterAgentId: lead.id,
+          kind: 'warning',
+          priority: 'high',
+          title: `Le contrôle qualité demande une correction dans ${space.name}`,
+          details: `${goal}\n\n${qa.note}`,
+          options: [{ id: 'acknowledge', label: 'Examiner le livrable' }],
+        })
+        .catch(() => undefined);
     }
 
     return { deliverable, steps, qa, knowledgeId, toolsUsed: [...toolsUsed] };
@@ -2293,6 +2942,17 @@ export class CompanionService {
     await this.db
       .insert(companionMessages)
       .values({ profileId, agentId, sender: 'agent', text: (text || '').slice(0, 4000) || '…' });
+    await this.continuity
+      .recordForProfile(profileId, [
+        {
+          kind: 'relay.update.sent',
+          content: (text || '').slice(0, 4000) || '…',
+          channel: 'messages',
+          actorAgentId: agentId,
+          importance: 0.6,
+        },
+      ])
+      .catch(() => undefined);
     return { ok: true };
   }
 
@@ -2338,7 +2998,275 @@ export class CompanionService {
     await this.db
       .insert(companionMessages)
       .values({ profileId, agentId, sender: 'me', text: (text || '').slice(0, 1000) });
+    await this.continuity
+      .recordForProfile(profileId, [
+        {
+          kind: 'relay.instruction.received',
+          content: (text || '').slice(0, 1000),
+          channel: 'messages',
+          subjectAgentId: agentId,
+          importance: 0.7,
+        },
+      ])
+      .catch(() => undefined);
     return { ok: true };
+  }
+
+  private async ensureHiveRuntimes(profileId: string) {
+    const settings = await this.copilote.getSettings(profileId);
+    await this.db
+      .insert(hiveRuntimes)
+      .values([
+        {
+          profileId,
+          name: 'Copilote Dowze',
+          model: settings.modelId,
+          harness: 'dowze-agent-tools',
+          adapter: 'copilote',
+          modalities: ['text'],
+          capabilities: ['conversation', 'recherche', 'rédaction', 'raisonnement', 'éducation'],
+          quality: 0.8,
+          cost: settings.billing === 'credits' ? 0.45 : 0.2,
+          latency: 0.35,
+          privacy: 'private_cloud',
+          entitlement: settings.billing === 'byok' ? 'included' : 'metered',
+          configuration: { modelId: settings.modelId },
+        },
+        {
+          profileId,
+          name: 'Agent de code MCP',
+          model: 'codex-or-claude-code',
+          harness: 'dowze-mcp-relay',
+          adapter: 'relay_mcp',
+          modalities: ['text', 'code'],
+          capabilities: ['code', 'développement', 'programmation', 'déploiement', 'devops'],
+          quality: 0.92,
+          cost: 0.1,
+          latency: 0.65,
+          privacy: 'private_cloud',
+          entitlement: 'subscription',
+          configuration: {},
+        },
+        {
+          profileId,
+          name: 'Générateur visuel',
+          model: 'à-configurer',
+          harness: 'image-adapter',
+          adapter: 'external',
+          modalities: ['image'],
+          capabilities: ['image', 'illustration', 'visuel'],
+          quality: 0.7,
+          cost: 0.5,
+          latency: 0.6,
+          privacy: 'public_cloud',
+          entitlement: 'metered',
+          enabled: false,
+          configuration: { requiresAdapter: true },
+        },
+        {
+          profileId,
+          name: 'Studio audio',
+          model: 'à-configurer',
+          harness: 'audio-music-adapter',
+          adapter: 'external',
+          modalities: ['audio', 'music'],
+          capabilities: ['musique', 'chant', 'audio'],
+          quality: 0.7,
+          cost: 0.5,
+          latency: 0.7,
+          privacy: 'public_cloud',
+          entitlement: 'metered',
+          enabled: false,
+          configuration: { requiresAdapter: true },
+        },
+        {
+          profileId,
+          name: 'Atelier 3D',
+          model: 'à-configurer',
+          harness: '3d-generation-adapter',
+          adapter: 'external',
+          modalities: ['3d'],
+          capabilities: ['3d', 'maillage', 'texture'],
+          quality: 0.7,
+          cost: 0.6,
+          latency: 0.8,
+          privacy: 'public_cloud',
+          entitlement: 'metered',
+          enabled: false,
+          configuration: { requiresAdapter: true },
+        },
+      ])
+      .onConflictDoNothing();
+    await this.db
+      .update(hiveRuntimes)
+      .set({
+        model: settings.modelId,
+        entitlement: settings.billing === 'byok' ? 'included' : 'metered',
+        configuration: { modelId: settings.modelId },
+        updatedAt: new Date(),
+      })
+      .where(and(eq(hiveRuntimes.profileId, profileId), eq(hiveRuntimes.adapter, 'copilote')));
+  }
+
+  async listHiveRuntimes(authId: string) {
+    const profileId = await this.profileIdForAuth(authId);
+    await this.ensureHiveRuntimes(profileId);
+    const [rows, relayTokens] = await Promise.all([
+      this.db
+        .select()
+        .from(hiveRuntimes)
+        .where(eq(hiveRuntimes.profileId, profileId))
+        .orderBy(desc(hiveRuntimes.quality)),
+      this.db
+        .select({ id: companionRelayTokens.id })
+        .from(companionRelayTokens)
+        .where(eq(companionRelayTokens.profileId, profileId))
+        .limit(1),
+    ]);
+    return rows.map((row) => ({
+      ...row,
+      available:
+        row.enabled &&
+        (row.adapter === 'copilote' || (row.adapter === 'relay_mcp' && relayTokens.length > 0)),
+    }));
+  }
+
+  async createHiveRuntime(
+    authId: string,
+    input: {
+      name: string;
+      model: string;
+      harness: string;
+      adapter: 'copilote' | 'relay_mcp' | 'external';
+      modalities: string[];
+      capabilities: string[];
+      quality: number;
+      cost: number;
+      latency: number;
+      privacy: HiveRuntime['privacy'];
+      entitlement: HiveRuntime['entitlement'];
+      configuration?: Record<string, unknown>;
+    },
+  ) {
+    const profileId = await this.profileIdForAuth(authId);
+    const forbidden = Object.keys(input.configuration ?? {}).some((key) =>
+      /(secret|token|password|api.?key)/i.test(key),
+    );
+    if (forbidden)
+      throw new BadRequestException(
+        'Les secrets doivent être placés dans le coffre, jamais dans un runtime.',
+      );
+    return (
+      await this.db
+        .insert(hiveRuntimes)
+        .values({ ...input, profileId })
+        .returning()
+    )[0]!;
+  }
+
+  async setHiveRuntimeEnabled(authId: string, id: string, enabled: boolean) {
+    const profileId = await this.profileIdForAuth(authId);
+    const row = (
+      await this.db
+        .update(hiveRuntimes)
+        .set({ enabled, updatedAt: new Date() })
+        .where(and(eq(hiveRuntimes.id, id), eq(hiveRuntimes.profileId, profileId)))
+        .returning()
+    )[0];
+    if (!row) throw new NotFoundException('Runtime introuvable.');
+    return row;
+  }
+
+  async executeHiveRuntime(
+    authId: string,
+    input: {
+      capability: string;
+      prompt: string;
+      modality?: string;
+      allowedPrivacy?: HiveRuntime['privacy'][];
+      availableEntitlements?: HiveRuntime['entitlement'][];
+      channel?: 'direct' | 'messages' | 'email' | 'push' | 'voice';
+    },
+  ) {
+    const profileId = await this.profileIdForAuth(authId);
+    const listed = await this.listHiveRuntimes(authId);
+    const selected = selectHiveRuntime(
+      {
+        capability: input.capability,
+        modality: input.modality,
+        allowedPrivacy: input.allowedPrivacy,
+        availableEntitlements: input.availableEntitlements,
+      },
+      listed.map((row) => ({
+        id: row.id,
+        model: row.model,
+        harness: row.harness,
+        modalities: row.modalities,
+        capabilities: row.capabilities,
+        quality: row.quality,
+        cost: row.cost,
+        latency: row.latency,
+        privacy: row.privacy as HiveRuntime['privacy'],
+        entitlement: row.entitlement as HiveRuntime['entitlement'],
+        available: row.available,
+      })),
+    );
+    if (!selected)
+      throw new BadRequestException('Aucun couple modèle+harness disponible pour cette capacité.');
+    const runtime = listed.find((row) => row.id === selected.id)!;
+    let output: string;
+    let status: 'completed' | 'queued';
+    let toolsUsed: string[] = [];
+    if (runtime.adapter === 'relay_mcp') {
+      await this.relaySay(authId, input.prompt);
+      output = 'La tâche a été transmise à ton agent de code. Il te répondra dans Messages.';
+      status = 'queued';
+    } else if (runtime.adapter === 'copilote') {
+      const result = await this.copilote.runWithTools(profileId, {
+        system:
+          'Tu es un membre de la Ruche Dowze. Exécute précisément la tâche dans ton domaine et réponds avec des faits vérifiables. Respecte le canal demandé.',
+        prompt: input.prompt,
+        tools: buildAgentTools({
+          copilote: this.copilote,
+          profileId,
+          memorySearch: (query) => this.continuity.searchMemoryForProfile(profileId, query),
+        }),
+        maxSteps: 5,
+        modelId:
+          typeof (runtime.configuration as Record<string, unknown>)?.modelId === 'string'
+            ? ((runtime.configuration as Record<string, unknown>).modelId as string)
+            : runtime.model,
+        ref: `hive-runtime:${runtime.id}`,
+      });
+      output = result.text;
+      toolsUsed = result.toolsUsed;
+      status = 'completed';
+    } else {
+      throw new BadRequestException(
+        'Ce runtime est déclaré mais aucun adaptateur exécutable n’est encore installé.',
+      );
+    }
+    const rendered = renderForChannel(input.channel ?? 'messages', {
+      content: output,
+      companionName: 'Dowze',
+    });
+    await this.continuity.recordForProfile(profileId, [
+      {
+        kind: `runtime.${status}`,
+        content: rendered,
+        channel: input.channel ?? 'messages',
+        importance: 0.75,
+        metadata: {
+          runtimeId: runtime.id,
+          model: runtime.model,
+          harness: runtime.harness,
+          adapter: runtime.adapter,
+          capability: input.capability,
+          toolsUsed,
+        },
+      },
+    ]);
+    return { status, output: rendered, runtime, toolsUsed };
   }
 
   // ---------- PONT IA (ChatGPT/Claude) : capter → SYNTHÉTISER (Mémorialiste) → réinjecter ----------
@@ -2547,6 +3475,25 @@ export class CompanionService {
       .insert(companionMessages)
       .values({ profileId, agentId: bridgeId, sender: 'agent', text: trace.slice(0, 4000) })
       .catch(() => undefined);
+    await this.continuity
+      .recordForProfile(profileId, [
+        {
+          kind: 'bridge.conversation.ingested',
+          content,
+          channel: 'system',
+          actorAgentId: bridgeId,
+          space: spaceId,
+          importance: 0.9,
+          metadata: {
+            source: src,
+            title: titre,
+            next: mem.prochaine,
+            progressed,
+            knowledgeId: row.id,
+          },
+        },
+      ])
+      .catch(() => undefined);
 
     return {
       id: row.id,
@@ -2654,6 +3601,136 @@ export class CompanionService {
     return ORG_TEMPLATES;
   }
 
+  private packageChecksum(manifest: Record<string, unknown>): string {
+    return createHash('sha256').update(JSON.stringify(manifest)).digest('hex');
+  }
+
+  private async seedBuiltinSpacePackages(profileId: string): Promise<void> {
+    for (const template of ORG_TEMPLATES) {
+      const manifest = {
+        schemaVersion: 1,
+        type: template.type,
+        mission: template.defaultMission,
+        building: { kind: 'isometric', rooms: ['travail', 'réunion', 'repos', 'cantine'] },
+        roles: template.roles,
+        capabilities: template.roles.flatMap((key) => roleByKey(key)?.produces ?? []),
+        workflows: ['plan', 'execute', 'qa', 'report'],
+        permissions: { memoryScope: 'space', vault: 'approval_required' },
+      };
+      await this.db
+        .insert(hiveSpacePackages)
+        .values({
+          profileId,
+          key: template.key,
+          name: template.label,
+          description: template.defaultMission,
+          visibility: 'official',
+          manifest,
+          checksum: this.packageChecksum(manifest),
+        })
+        .onConflictDoNothing();
+    }
+  }
+
+  async listSpacePackages(authId: string) {
+    const profileId = await this.profileIdForAuth(authId);
+    await this.seedBuiltinSpacePackages(profileId);
+    return this.db
+      .select()
+      .from(hiveSpacePackages)
+      .where(and(eq(hiveSpacePackages.profileId, profileId), eq(hiveSpacePackages.enabled, true)))
+      .orderBy(asc(hiveSpacePackages.name));
+  }
+
+  async publishSpacePackage(
+    authId: string,
+    input: {
+      key: string;
+      name: string;
+      version: string;
+      description?: string;
+      manifest: Record<string, unknown>;
+    },
+  ) {
+    const profileId = await this.profileIdForAuth(authId);
+    return (
+      await this.db
+        .insert(hiveSpacePackages)
+        .values({
+          profileId,
+          key: input.key,
+          name: input.name,
+          version: input.version,
+          description: input.description ?? '',
+          visibility: 'private',
+          manifest: input.manifest,
+          checksum: this.packageChecksum(input.manifest),
+        })
+        .returning()
+    )[0]!;
+  }
+
+  async installSpacePackage(
+    authId: string,
+    packageId: string,
+    input: { mode: 'join' | 'create'; name?: string },
+  ) {
+    const profileId = await this.profileIdForAuth(authId);
+    const pkg = (
+      await this.db
+        .select()
+        .from(hiveSpacePackages)
+        .where(
+          and(
+            eq(hiveSpacePackages.id, packageId),
+            eq(hiveSpacePackages.profileId, profileId),
+            eq(hiveSpacePackages.enabled, true),
+          ),
+        )
+    )[0];
+    if (!pkg) throw new NotFoundException('Package d’espace introuvable.');
+    if (input.mode === 'join' && !['official', 'shared'].includes(pkg.visibility))
+      throw new BadRequestException('Un package privé doit être installé en mode création.');
+    if (this.packageChecksum(pkg.manifest as Record<string, unknown>) !== pkg.checksum)
+      throw new BadRequestException('Le manifeste du package a été altéré.');
+    const manifest = pkg.manifest as {
+      type?: string;
+      mission?: string;
+      roles?: string[];
+    };
+    const template = templateByKey(pkg.key);
+    const space = await this.createSpace(authId, input.name ?? pkg.name, {
+      type: manifest.type,
+      template: template?.key,
+      mission: manifest.mission,
+    });
+    if (!template && manifest.roles?.length) {
+      for (const roleKey of manifest.roles.slice(0, 50)) {
+        const preset = roleByKey(roleKey);
+        if (preset) await this.seedRoleAgent(profileId, space.id, preset);
+      }
+    }
+    if (input.mode === 'join')
+      await this.db
+        .update(companionSpaces)
+        .set({ ownerKind: 'service' })
+        .where(eq(companionSpaces.id, space.id));
+    const installation = (
+      await this.db
+        .insert(hiveSpaceInstallations)
+        .values({
+          profileId,
+          packageId: pkg.id,
+          spaceId: space.id,
+          mode: input.mode,
+          installedVersion: pkg.version,
+          configuration: { checksum: pkg.checksum },
+        })
+        .returning()
+    )[0]!;
+    return { space, installation };
+  }
+
   /** Seede un agent-employé depuis un preset de rôle (déterministe, sans appel IA — rapide et gratuit). */
   private async seedRoleAgent(profileId: string, space: string, preset: RolePreset): Promise<void> {
     const personality = {
@@ -2676,6 +3753,7 @@ export class CompanionService {
           personality,
           role: preset.title.slice(0, 60),
           roleKey: preset.key,
+          roleContract: roleContractOf(preset),
           space: space.slice(0, 60),
           room,
           isPrimary: false,
@@ -2855,6 +3933,7 @@ export class CompanionService {
           .set({
             name: preset.title.slice(0, 40),
             role: preset.title.slice(0, 60),
+            roleContract: roleContractOf(preset),
             personality: {
               ...prev,
               systemPrompt: preset.systemPromptSeed,

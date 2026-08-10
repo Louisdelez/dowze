@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { CodexPet } from '@/components/companion/codex-pet';
 import {
   getCompanionAgents,
@@ -86,6 +86,12 @@ const I: Record<string, ReactNode> = {
       <path d="M15 3h6v6" />
       <path d="M10 14 21 3" />
       <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+    </>
+  ),
+  mic: (
+    <>
+      <rect x="9" y="2" width="6" height="12" rx="3" />
+      <path d="M5 10a7 7 0 0 0 14 0M12 17v5M8 22h8" />
     </>
   ),
 };
@@ -191,6 +197,47 @@ function seedEmail(nm: string, traits: Traits): { subject: string; body: string 
 /** Skin par défaut universel (robot « Nono ») : chaque compagnon a toujours un skin. */
 const ROBOT_SKIN_URL = '/pets/super-nono-v2.webp';
 
+interface BrowserSpeechRecognition {
+  lang: string;
+  interimResults: boolean;
+  continuous: boolean;
+  onresult:
+    | ((event: { results: ArrayLike<{ 0: { transcript: string }; isFinal: boolean }> }) => void)
+    | null;
+  onend: (() => void) | null;
+  onerror: (() => void) | null;
+  start(): void;
+  stop(): void;
+  abort(): void;
+}
+type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognition;
+
+function recognitionConstructor(): BrowserSpeechRecognitionConstructor | null {
+  if (typeof window === 'undefined') return null;
+  const speechWindow = window as typeof window & {
+    SpeechRecognition?: BrowserSpeechRecognitionConstructor;
+    webkitSpeechRecognition?: BrowserSpeechRecognitionConstructor;
+  };
+  return speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition ?? null;
+}
+
+function speakHuman(text: string, companion: CompanionAgent): void {
+  if (typeof window === 'undefined' || !window.speechSynthesis) return;
+  const utterance = new SpeechSynthesisUtterance(
+    text
+      .replace(/```[\s\S]*?```/g, 'un extrait de code')
+      .replace(/[*_#`]/g, '')
+      .replace(/https?:\/\/\S+/g, 'le lien associé')
+      .slice(0, 600),
+  );
+  utterance.lang = 'fr-FR';
+  const traits = companion.personality?.traits?.join(' ').toLowerCase() ?? '';
+  utterance.rate = traits.includes('calme') ? 0.9 : traits.includes('énergi') ? 1.08 : 1;
+  utterance.pitch = traits.includes('joyeu') ? 1.08 : 1;
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(utterance);
+}
+
 function Avatar({ a, size = 40 }: { a: CompanionAgent; size?: number }) {
   return (
     <span
@@ -235,6 +282,7 @@ export function CompanionDevice({
   const [convs, setConvs] = useState<Record<string, Msg[]>>({});
   const [sel, setSel] = useState<string | null>(null); // id agent sélectionné (messages) ou email
   const [draft, setDraft] = useState('');
+  const [voiceMode, setVoiceMode] = useState(false);
   const midRef = useState(() => ({ n: 1 }))[0];
 
   useEffect(() => {
@@ -274,62 +322,83 @@ export function CompanionDevice({
     if (!sel && agents[0]) setSel(agents[0].id);
   }, [agents]);
 
-  const send = useCallback(() => {
-    const txt = draft.trim();
-    if (!txt || !sel) return;
-    setDraft('');
-    const a = agents.find((x) => x.id === sel);
-    if (!a) return;
-    setConvs((prev) => ({
-      ...prev,
-      [sel]: [...(prev[sel] ?? []), { id: midRef.n++, from: 'me', text: txt, at: Date.now() }],
-    }));
-    const push = (text: string, meta?: boolean) =>
+  const send = useCallback(
+    (voiceText?: string) => {
+      const txt = (voiceText ?? draft).trim();
+      if (!txt || !sel) return;
+      setDraft('');
+      const a = agents.find((x) => x.id === sel);
+      if (!a) return;
       setConvs((prev) => ({
         ...prev,
-        [sel]: [...(prev[sel] ?? []), { id: midRef.n++, from: 'them', text, at: Date.now(), meta }],
+        [sel]: [
+          ...(prev[sel] ?? []),
+          { id: midRef.n++, from: 'me', text: txt, at: Date.now() },
+          {
+            id: midRef.n++,
+            from: 'them',
+            text: `${a.name} réfléchit…`,
+            at: Date.now(),
+            meta: true,
+          },
+        ],
       }));
-    const aiErr = (e: unknown) =>
-      push(
-        /clé|BYOK|crédits|disponible|Service/i.test(String((e as Error)?.message))
-          ? '(Je ne peux pas répondre : configure une clé IA dans les réglages du Copilote.)'
-          : '(Oups, je n’ai pas pu répondre, réessaie.)',
-      );
-    if (a.mode === 'relay') {
-      // Relais : l'instruction est mise en file ; TON Claude Code / Codex la lira via `dowze_get_messages`.
-      relaySayCompanion(txt).catch(() => push('(Instruction non transmise, réessaie.)'));
-    } else if (a.space === 'home') {
-      // Compagnon de la MAISON = LEADER : il répond lui-même OU mobilise/crée des abeilles des open-spaces.
-      orchestrateCompanion(txt, a.isPrimary ? undefined : a.id)
-        .then((r) => {
-          push(r.reply);
-          if (r.created?.length)
-            push(
-              `a créé ${r.created.length > 1 ? 'de nouvelles abeilles' : 'une nouvelle abeille'} : ${r.created.join(', ')}`,
-              true,
-            );
-          if (r.delegates?.length)
-            push(`a mobilisé : ${r.delegates.map((d) => d.name).join(', ')}`, true);
-          const tc = toolCaption(r.toolsUsed);
-          if (tc) push(tc, true);
-        })
-        .catch(aiErr);
-    } else if (a.mode === 'agent') {
-      // Abeille d'open-space (travailleuse) : conversation individuelle directe (mémoire + apprentissage + outils).
-      chatCompanionAgent(a.id, txt)
-        .then((r) => {
-          push(r.reply);
-          const tc = toolCaption(r.toolsUsed);
-          if (tc) push(tc, true);
-        })
-        .catch(aiErr);
-    } else {
-      window.setTimeout(
-        () => push(deviceReply(a.personality?.traits ?? [], a.name, txt)),
-        700 + Math.random() * 700,
-      );
-    }
-  }, [draft, sel, agents, midRef, convs]);
+      const thinkingText = `${a.name} réfléchit…`;
+      const push = (text: string, meta?: boolean) => {
+        setConvs((prev) => ({
+          ...prev,
+          [sel]: [
+            ...(prev[sel] ?? []).filter((message) => message.text !== thinkingText),
+            { id: midRef.n++, from: 'them', text, at: Date.now(), meta },
+          ],
+        }));
+        if (voiceMode && !meta) speakHuman(text, a);
+      };
+      const aiErr = (e: unknown) =>
+        push(
+          /clé|BYOK|crédits|disponible|Service/i.test(String((e as Error)?.message))
+            ? '(Je ne peux pas répondre : configure une clé IA dans les réglages du Copilote.)'
+            : '(Oups, je n’ai pas pu répondre, réessaie.)',
+        );
+      if (a.mode === 'relay') {
+        // Relais : l'instruction est mise en file ; TON Claude Code / Codex la lira via `dowze_get_messages`.
+        relaySayCompanion(txt)
+          .then(() => push('Instruction transmise au relais.', true))
+          .catch(() => push('(Instruction non transmise, réessaie.)'));
+      } else if (a.space === 'home') {
+        // Compagnon de la MAISON = LEADER : il répond lui-même OU mobilise/crée des abeilles des open-spaces.
+        orchestrateCompanion(txt, a.isPrimary ? undefined : a.id)
+          .then((r) => {
+            push(r.reply);
+            if (r.created?.length)
+              push(
+                `a créé ${r.created.length > 1 ? 'de nouvelles abeilles' : 'une nouvelle abeille'} : ${r.created.join(', ')}`,
+                true,
+              );
+            if (r.delegates?.length)
+              push(`a mobilisé : ${r.delegates.map((d) => d.name).join(', ')}`, true);
+            const tc = toolCaption(r.toolsUsed);
+            if (tc) push(tc, true);
+          })
+          .catch(aiErr);
+      } else if (a.mode === 'agent') {
+        // Abeille d'open-space (travailleuse) : conversation individuelle directe (mémoire + apprentissage + outils).
+        chatCompanionAgent(a.id, txt)
+          .then((r) => {
+            push(r.reply);
+            const tc = toolCaption(r.toolsUsed);
+            if (tc) push(tc, true);
+          })
+          .catch(aiErr);
+      } else {
+        window.setTimeout(
+          () => push(deviceReply(a.personality?.traits ?? [], a.name, txt)),
+          700 + Math.random() * 700,
+        );
+      }
+    },
+    [draft, sel, agents, midRef, convs, voiceMode],
+  );
 
   // Charge l'historique PERSISTANT quand on ouvre la conversation d'un compagnon-agent OU du relais (mémoire).
   const loadedRef = useState(() => new Set<string>())[0];
@@ -480,6 +549,8 @@ export function CompanionDevice({
                         draft={draft}
                         setDraft={setDraft}
                         send={send}
+                        voiceMode={voiceMode}
+                        setVoiceMode={setVoiceMode}
                         onBack={() => setSel(null)}
                       />
                     ))}
@@ -491,6 +562,8 @@ export function CompanionDevice({
                         draft={draft}
                         setDraft={setDraft}
                         send={send}
+                        voiceMode={voiceMode}
+                        setVoiceMode={setVoiceMode}
                         onBack={null}
                       />
                     ) : (
@@ -760,15 +833,68 @@ function Thread({
   draft,
   setDraft,
   send,
+  voiceMode,
+  setVoiceMode,
   onBack,
 }: {
   agent: CompanionAgent | undefined;
   msgs: Msg[];
   draft: string;
   setDraft: (v: string) => void;
-  send: () => void;
+  send: (voiceText?: string) => void;
+  voiceMode: boolean;
+  setVoiceMode: (enabled: boolean) => void;
   onBack: (() => void) | null;
 }) {
+  const [listening, setListening] = useState(false);
+  const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
+  const voiceSupported =
+    recognitionConstructor() !== null &&
+    typeof window !== 'undefined' &&
+    'speechSynthesis' in window;
+
+  function listen() {
+    if (listening) {
+      recognitionRef.current?.stop();
+      return;
+    }
+    const Recognition = recognitionConstructor();
+    if (!Recognition) return;
+    // L'utilisateur reprend la parole : le compagnon se tait immédiatement, comme dans une vraie
+    // conversation. Le nouveau tour vocal remplace proprement la synthèse en cours.
+    window.speechSynthesis.cancel();
+    const recognition = new Recognition();
+    recognitionRef.current = recognition;
+    recognition.lang = 'fr-FR';
+    recognition.interimResults = false;
+    recognition.continuous = false;
+    recognition.onresult = (event) => {
+      const transcript = Array.from(event.results)
+        .filter((result) => result.isFinal)
+        .map((result) => result[0].transcript)
+        .join(' ')
+        .trim();
+      if (transcript) send(transcript);
+    };
+    recognition.onend = () => {
+      recognitionRef.current = null;
+      setListening(false);
+    };
+    recognition.onerror = () => {
+      recognitionRef.current = null;
+      setListening(false);
+    };
+    setVoiceMode(true);
+    setListening(true);
+    recognition.start();
+  }
+  useEffect(
+    () => () => {
+      recognitionRef.current?.abort();
+      window.speechSynthesis?.cancel();
+    },
+    [],
+  );
   if (!agent)
     return (
       <div className="flex flex-1 items-center justify-center text-sm text-slate-400">
@@ -812,6 +938,16 @@ function Thread({
         )}
       </div>
       <div className="flex items-center gap-2 border-t border-slate-200 p-2">
+        {voiceSupported && (
+          <button
+            onClick={listen}
+            aria-label={listening ? 'Arrêter de parler' : 'Parler au compagnon'}
+            title="Conversation vocale"
+            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition ${listening || voiceMode ? 'bg-rose-500 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+          >
+            <Ic k="mic" size={16} />
+          </button>
+        )}
         <input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
@@ -825,7 +961,7 @@ function Thread({
           className="min-w-0 flex-1 rounded-full bg-slate-100 px-4 py-2 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none"
         />
         <button
-          onClick={send}
+          onClick={() => send()}
           disabled={!draft.trim()}
           aria-label="Envoyer"
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white transition hover:bg-emerald-600 disabled:opacity-40"

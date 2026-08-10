@@ -160,6 +160,8 @@ export const TOOL_LABELS: Record<string, string> = {
   date_heure: 'la date/heure',
   chercher_connaissances: 'tes connaissances',
   chercher_connaissances_entreprise: 'la base de l’organisation',
+  chercher_memoire_ruche: 'la mémoire de la Ruche',
+  deleguer_dans_la_ruche: 'une abeille spécialiste',
   recherche_web: 'le web',
 };
 
@@ -199,8 +201,18 @@ export function buildAgentTools(deps: {
   profileId: string;
   /** Si l'agent appartient à une organisation (open-space), fournit la recherche dans SA base de connaissances. */
   orgSearch?: (query: string) => Promise<{ title: string; content: string }[]>;
+  /** Bibliothèque universelle transverse aux sessions et canaux, déjà filtrée par le profil. */
+  memorySearch?: (
+    query: string,
+  ) => Promise<{ kind: string; content: string; occurredAt: string }[]>;
+  /** Sous-délégation bornée par le run courant ; absente hors contexte d'exécution Ruche. */
+  delegate?: (objective: string) => Promise<{
+    target: string;
+    result: string;
+    route: string[];
+  }>;
 }): ToolSet {
-  const { copilote, profileId, orgSearch } = deps;
+  const { copilote, profileId, orgSearch, memorySearch, delegate } = deps;
   const tools: ToolSet = {
     calculatrice: tool({
       description:
@@ -264,6 +276,38 @@ export function buildAgentTools(deps: {
       },
     }),
   };
+  if (delegate) {
+    tools.deleguer_dans_la_ruche = tool({
+      description:
+        "Délègue UNE sous-tâche précise à une autre abeille quand son expertise apporte plus que le coût de coordination. N'utilise pas cet outil pour une tâche triviale ni pour contourner ton propre rôle. Le moteur impose profondeur, fan-out, budget total et anti-cycle.",
+      parameters: z.object({
+        objectif: z
+          .string()
+          .min(3)
+          .max(1000)
+          .describe('Le livrable précis attendu, avec le contexte utile.'),
+      }),
+      execute: async ({ objectif }) => delegate(objectif),
+    });
+  }
+  if (memorySearch) {
+    tools.chercher_memoire_ruche = tool({
+      description:
+        "Cherche dans la MÉMOIRE UNIVERSELLE de la Ruche : demandes, décisions, conversations, délégations et événements antérieurs, même issus d'un autre canal. Utilise-la quand l'utilisateur évoque un souvenir, une décision passée, une date, un projet ancien ou dit « je t'avais parlé de… ». Ne prétends jamais te souvenir sans la consulter.",
+      parameters: z.object({
+        requete: z
+          .string()
+          .max(300)
+          .describe('Les indices disponibles, même vagues ou approximatifs.'),
+      }),
+      execute: async ({ requete }) => {
+        const resultats = await memorySearch(requete).catch(() => []);
+        return resultats.length
+          ? { resultats }
+          : { resultats: [], note: 'Aucun souvenir correspondant trouvé.' };
+      },
+    });
+  }
   // Outil scopé à l'organisation : consulté AVANT de répondre pour tout ce qui touche au projet/à l'entreprise.
   if (orgSearch) {
     tools.chercher_connaissances_entreprise = tool({

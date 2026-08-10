@@ -40,6 +40,8 @@ import {
   runSpaceProject,
   getSpaceCare,
   actAgentCare,
+  recordHiveEvent,
+  getHiveCompanionStates,
   type HiveMaintainReport,
   type PetCareState,
   type PetMood,
@@ -50,6 +52,7 @@ import {
   type OrgTemplate,
   type SpaceKnowledge,
   type ProjectResult,
+  type HiveCompanionState,
 } from '@/lib/api';
 import { useProfile } from '@/lib/use-profile';
 import { blockStyle, fmtHour, DAY_FULL, MONTH_FULL, ymd } from '@/lib/calendar';
@@ -1389,6 +1392,9 @@ export function CompanionRoom() {
   const posRef = useRef<Pt>({ c: 3, r: 4 });
   // Famille de compagnons (Maison) : le principal reste le pet existant ; les autres sont des sprites secondaires.
   const [family, setFamily] = useState<CompanionAgent[]>([]);
+  const [operationalStates, setOperationalStates] = useState<Record<string, HiveCompanionState>>(
+    {},
+  );
   const secPhysRef = useRef<Record<string, SecPhys>>({});
   const [secs, setSecs] = useState<SecRender[]>([]);
   const [followId, setFollowId] = useState<string | null>(null); // compagnon sélectionné (clic) qui te suit de salle en salle
@@ -1614,6 +1620,33 @@ export function CompanionRoom() {
   useEffect(() => {
     void loadFamily();
   }, [loadFamily]);
+  useEffect(() => {
+    let active = true;
+    const refresh = () =>
+      getHiveCompanionStates()
+        .then((states) => {
+          if (!active) return;
+          setOperationalStates(Object.fromEntries(states.map((state) => [state.agentId, state])));
+        })
+        .catch(() => undefined);
+    void refresh();
+    const timer = window.setInterval(refresh, 5000);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, []);
+  useEffect(() => {
+    const now = performance.now();
+    for (const [id, state] of Object.entries(operationalStates)) {
+      const physical = secPhysRef.current[id];
+      if (!physical || state.availability !== 'busy') continue;
+      physical.tc = null;
+      physical.tr = null;
+      physical.speech = state.activity;
+      physical.speechUntil = now + 5500;
+    }
+  }, [operationalStates]);
   // Provisionne (idempotent) l'école du service Académie selon le rang, PUIS charge les espaces
   // → l'open-space « École Dowze » et ses profs apparaissent automatiquement dans le menu.
   useEffect(() => {
@@ -2051,6 +2084,29 @@ export function CompanionRoom() {
       }
       // Compagnon PNJ (principal inclus) : réplique scriptée instantanée.
       const line = replyLine(sp.personality, sp.name, msg || raw);
+      const persistedId = sp.id === 'primary' ? primaryAgent?.id : sp.id;
+      void recordHiveEvent({
+        kind: 'message.received',
+        content: msg || raw,
+        channel: 'direct',
+        subjectAgentId: persistedId,
+        space: activeSpace,
+        importance: 0.45,
+        metadata: { scripted: true },
+      })
+        .then((source) =>
+          recordHiveEvent({
+            kind: 'message.sent',
+            content: line,
+            channel: 'direct',
+            actorAgentId: persistedId,
+            space: activeSpace,
+            importance: 0.4,
+            sourceEventIds: [source.id],
+            metadata: { scripted: true },
+          }),
+        )
+        .catch(() => undefined);
       window.setTimeout(() => {
         if (sp.id === 'primary') {
           setAutoAnim(null);
@@ -3691,6 +3747,18 @@ export function CompanionRoom() {
                   ? 'Il t’accompagne partout et veille sur ta progression.'
                   : 'Il vit ici et donne un coup de main à la ruche.')}
             </p>
+            {operationalStates[infoAgent.id] && (
+              <div className="mb-3 rounded-xl border border-accent/20 bg-accent/5 p-2 text-xs">
+                <strong className="block text-accent">
+                  {operationalStates[infoAgent.id]!.availability === 'busy'
+                    ? 'Au travail'
+                    : 'Disponible'}
+                </strong>
+                <span className="mt-1 block text-slate-600">
+                  {operationalStates[infoAgent.id]!.activity}
+                </span>
+              </div>
+            )}
             {!!infoAgent.personality?.traits?.length && (
               <div className="mb-3 flex flex-wrap gap-1">
                 {infoAgent.personality!.traits!.slice(0, 6).map((t) => (

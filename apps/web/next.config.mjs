@@ -25,7 +25,6 @@ const nextConfig = {
   outputFileTracingRoot: repoRoot,
   // Les paquets internes sont transpilés par Next à partir de leur SOURCE TS.
   transpilePackages: ['@dowze/schemas', '@dowze/core', '@dowze/auth', '@dowze/ui'],
-  eslint: { ignoreDuringBuilds: true },
   webpack: (config) => {
     // On résout @dowze/core et @dowze/schemas vers leur source `src/index.ts`
     // (et non le `dist/` CommonJS pré-compilé). Sinon, en dev, le Fast Refresh

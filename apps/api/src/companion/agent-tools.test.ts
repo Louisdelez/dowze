@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { evalExpression } from './agent-tools';
+import type { CopiloteService } from '../copilote/copilote.service';
+import { buildAgentTools, evalExpression } from './agent-tools';
 
 describe('evalExpression (calculatrice sûre)', () => {
   it('opérations de base + priorités', () => {
@@ -41,5 +42,23 @@ describe('evalExpression (calculatrice sûre)', () => {
     expect(() => evalExpression('process')).toThrow(/inconnu/);
     expect(() => evalExpression('1;2')).toThrow();
     expect(() => evalExpression('a'.repeat(201))).toThrow(/trop longue/);
+  });
+});
+
+describe('outils de continuité', () => {
+  it('n’expose la Bibliothèque universelle que lorsqu’elle est profil-scopée', () => {
+    const copilote = {} as CopiloteService;
+    expect(Object.keys(buildAgentTools({ copilote, profileId: 'profil' }))).not.toContain(
+      'chercher_memoire_ruche',
+    );
+    expect(
+      Object.keys(
+        buildAgentTools({
+          copilote,
+          profileId: 'profil',
+          memorySearch: async () => [],
+        }),
+      ),
+    ).toContain('chercher_memoire_ruche');
   });
 });

@@ -15,6 +15,13 @@ sans jamais l'intrusion de Clippy ni la culpabilité de Duolingo.
   (connecteurs officiels, conforme CGU) pour que l'IA externe **donne le cours** en communiquant avec Dowze.
 - [05-pont-webview-tauri.md](05-pont-webview-tauri.md) — **vraie webview ChatGPT/Claude dockée dans l'app Tauri**,
   lue (RAG/mémoire) et pilotée par le compagnon-pont ; **solution anti-bot** (vrai Chromium CEF/extension, pas WebKitGTK).
+- [06-ruche-continuite-universelle.md](06-ruche-continuite-universelle.md) — consolidation de la vision complète :
+  **mémoire universelle sans sessions**, contrats de rôle, handoffs traçables, canaux humains et alignement avec
+  la Ruche déjà implémentée.
+- [07-matrice-vision-ruche.md](07-matrice-vision-ruche.md) — exigences atomiques de la conversation, état réel,
+  preuves, manques et ordre d'implémentation sans déclaration globale trompeuse.
+- [08-audit-systeme-ruche.md](08-audit-systeme-ruche.md) — audit de bout en bout : source récupérée, architecture,
+  sécurité, base, tests, limites vérifiables et éléments nécessitant encore un fournisseur ou un déploiement.
 
 **État** : conçu + **C0/C1 implémentés** (compagnon global déplaçable, réagit aux vrais appels IA).
 Fondé sur 3 recherches sourcées (existant façon Codex « Pets »/Clippy/Duo ; science de l'anthropomorphisme

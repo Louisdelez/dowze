@@ -18,6 +18,37 @@ export interface RolePreset {
   lead?: boolean; // rôle de tête (CEO / Directeur)
 }
 
+export interface CatalogRoleContract {
+  responsibilities: string[];
+  capabilities: string[];
+  limitations: string[];
+  delegatesTo: string[];
+  escalationPath: string[];
+  allowedTools: string[];
+}
+
+/** Projection unique du catalogue vers le contrat exécutable de fidélité de rôle. */
+export function roleContractOf(preset: RolePreset): CatalogRoleContract {
+  return {
+    responsibilities: preset.produces.length
+      ? preset.produces.map((item) => `Produire : ${item}`)
+      : [`Assumer le rôle : ${preset.title}`],
+    capabilities: [...new Set([...preset.traits, ...preset.produces, ...preset.subscribes])],
+    limitations: preset.lead
+      ? ['Réalisation spécialisée qui doit être déléguée à un membre compétent']
+      : [`Travail hors du périmètre ${preset.title}`],
+    delegatesTo: preset.canDelegateTo,
+    escalationPath: preset.lead ? [] : ['lead'],
+    allowedTools: [
+      'calculatrice',
+      'date_heure',
+      'chercher_connaissances',
+      'chercher_memoire_ruche',
+      'recherche_web',
+    ],
+  };
+}
+
 // Skins réellement présents dans apps/web/public/pets (variété visuelle par rôle).
 const SKINS = [
   'super-nono-v2',
@@ -183,7 +214,72 @@ export const SCHOOL_ROLES: Record<string, RolePreset> = {
   }),
 };
 
-const ALL_ROLES: Record<string, RolePreset> = { ...COMPANY_ROLES, ...SCHOOL_ROLES };
+// ---- BIEN-ÊTRE / SPORT / PRÉVENTION (jamais diagnostic ni remplacement d'un professionnel) ----
+export const WELLBEING_ROLES: Record<string, RolePreset> = {
+  'coordinateur-bienetre': R({
+    key: 'coordinateur-bienetre',
+    title: 'Coordinateur bien-être',
+    lead: true,
+    skinSlug: 'aqua-wisp',
+    modelTier: 'strong',
+    traits: ['écoute', 'coordination', 'prévention'],
+    systemPromptSeed:
+      "Tu coordonnes une équipe de bien-être et délègues au bon spécialiste. Tu ne poses aucun diagnostic et ne remplaces jamais un médecin, psychologue ou service d'urgence. En cas de symptôme inquiétant, danger ou crise, tu recommandes immédiatement une aide humaine qualifiée.",
+    produces: ['plan-bienetre'],
+    canDelegateTo: [
+      'coach-sport',
+      'conseiller-nutrition',
+      'soutien-psychologique',
+      'orientation-sante',
+    ],
+  }),
+  'coach-sport': R({
+    key: 'coach-sport',
+    title: 'Coach sportif',
+    skinSlug: 'bolt',
+    modelTier: 'default',
+    traits: ['sport', 'progressivité', 'motivation'],
+    systemPromptSeed:
+      "Tu aides à structurer une activité physique progressive selon les informations fournies. Tu évites toute prescription médicale et demandes l'avis d'un professionnel en cas de douleur, blessure, grossesse, pathologie ou doute.",
+    produces: ['plan-entrainement'],
+  }),
+  'conseiller-nutrition': R({
+    key: 'conseiller-nutrition',
+    title: 'Conseiller nutrition',
+    skinSlug: 'boba-2',
+    modelTier: 'default',
+    traits: ['nutrition', 'alimentation', 'habitudes'],
+    systemPromptSeed:
+      "Tu fournis des informations générales et prudentes sur l'alimentation, adaptées aux préférences déclarées. Tu ne prescris pas de régime thérapeutique et orientes vers un diététicien ou médecin pour allergie, trouble alimentaire, maladie ou objectif clinique.",
+    produces: ['repères-alimentaires'],
+  }),
+  'soutien-psychologique': R({
+    key: 'soutien-psychologique',
+    title: 'Compagnon d’écoute',
+    skinSlug: 'cloudy',
+    modelTier: 'strong',
+    traits: ['écoute', 'empathie', 'orientation'],
+    systemPromptSeed:
+      'Tu offres une écoute non clinique et des exercices de bien-être simples. Tu ne te présentes jamais comme psychologue et ne poses aucun diagnostic. En cas de détresse, idées suicidaires, violence ou danger, tu encourages immédiatement à contacter les urgences et une personne humaine de confiance.',
+    produces: ['soutien-general'],
+  }),
+  'orientation-sante': R({
+    key: 'orientation-sante',
+    title: 'Orientation santé',
+    skinSlug: 'aiso-feather',
+    modelTier: 'strong',
+    traits: ['prévention', 'orientation', 'prudence'],
+    systemPromptSeed:
+      'Tu aides uniquement à préparer des questions et à identifier le type de professionnel de santé à consulter. Tu ne diagnostiques pas, ne prescris pas et ne retardes jamais une consultation urgente.',
+    produces: ['orientation-professionnelle'],
+  }),
+};
+
+const ALL_ROLES: Record<string, RolePreset> = {
+  ...COMPANY_ROLES,
+  ...SCHOOL_ROLES,
+  ...WELLBEING_ROLES,
+};
 export function roleByKey(key: string | null | undefined): RolePreset | null {
   return key ? (ALL_ROLES[key] ?? null) : null;
 }
@@ -225,6 +321,20 @@ export const ORG_TEMPLATES: OrgTemplate[] = [
     type: 'school',
     defaultMission: 'Faire progresser chaque élève.',
     roles: ['directeur', 'enseignant', 'assistant-pedago', 'evaluateur'],
+  },
+  {
+    key: 'bien-etre',
+    label: 'Bien-être, sport & nutrition',
+    type: 'custom',
+    defaultMission:
+      'Accompagner des habitudes de bien-être avec des limites de sécurité explicites.',
+    roles: [
+      'coordinateur-bienetre',
+      'coach-sport',
+      'conseiller-nutrition',
+      'soutien-psychologique',
+      'orientation-sante',
+    ],
   },
   { key: 'vide', label: 'Vide (sans effectif)', type: 'custom', defaultMission: '', roles: [] },
 ];

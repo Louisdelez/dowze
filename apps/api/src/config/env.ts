@@ -23,6 +23,8 @@ export const envSchema = z.object({
   ANTHROPIC_API_KEY: z.string().optional(),
   /** Clé de chiffrement des clés BYOK au repos (AES-256-GCM) : 32 octets en base64 ou hex. */
   COPILOTE_SECRET_KEY: z.string().optional(),
+  /** Clé AES-256-GCM dédiée au coffre de la Ruche. En dev, COPILOTE_SECRET_KEY sert de repli. */
+  HIVE_VAULT_SECRET_KEY: z.string().optional(),
   /** Jeton d'administration pour créditer un solde (en attendant le webhook Stripe). */
   COPILOTE_ADMIN_TOKEN: z.string().optional(),
 

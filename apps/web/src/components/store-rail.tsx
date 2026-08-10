@@ -10,7 +10,7 @@ import { DowzeAuthModal } from '@/components/dowze-auth-modal';
 import { useAuthGate } from '@/lib/auth-gate';
 import { CodexPet } from '@/components/companion/codex-pet';
 import { useCompanionPet, curatedSheetUrl } from '@/lib/companion-pet';
-import { IconGrid, IconGraduation } from '@/components/ui/icons';
+import { IconBook, IconGrid, IconGraduation } from '@/components/ui/icons';
 
 const ROBOT = curatedSheetUrl('super-nono-v2');
 
@@ -84,6 +84,135 @@ export function StoreRail() {
         <IconGrid className="h-5 w-5" />
       </Link>
       <div className="my-1 h-px w-8 bg-border" />
+      <Link
+        href="/memoire"
+        title="Mémoire de la Ruche"
+        className={`flex h-11 w-11 items-center justify-center rounded-2xl border transition ${pathname.startsWith('/memoire') ? 'border-accent bg-accent/10 text-accent' : 'border-border text-foreground hover:border-accent'}`}
+      >
+        <IconBook className="h-5 w-5" />
+      </Link>
+      <Link
+        href="/autorisations"
+        title="Autorisations de la Ruche"
+        className={`flex h-11 w-11 items-center justify-center rounded-2xl border transition ${pathname.startsWith('/autorisations') ? 'border-accent bg-accent/10 text-accent' : 'border-border text-foreground hover:border-accent'}`}
+      >
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <rect x="5" y="10" width="14" height="10" rx="2" />
+          <path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v2" />
+        </svg>
+      </Link>
+      <Link
+        href="/runtimes"
+        title="Moteurs de la Ruche"
+        className={`flex h-11 w-11 items-center justify-center rounded-2xl border transition ${pathname.startsWith('/runtimes') ? 'border-accent bg-accent/10 text-accent' : 'border-border text-foreground hover:border-accent'}`}
+      >
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+          <circle cx="12" cy="12" r="4" />
+        </svg>
+      </Link>
+      <Link
+        href="/attention"
+        title="Ce qui demande ton attention"
+        className={`flex h-11 w-11 items-center justify-center rounded-2xl border transition ${pathname.startsWith('/attention') ? 'border-accent bg-accent/10 text-accent' : 'border-border text-foreground hover:border-accent'}`}
+      >
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" />
+        </svg>
+      </Link>
+      <Link
+        href="/operations"
+        title="Opérations de la Ruche"
+        className={`flex h-11 w-11 items-center justify-center rounded-2xl border transition ${pathname.startsWith('/operations') ? 'border-accent bg-accent/10 text-accent' : 'border-border text-foreground hover:border-accent'}`}
+      >
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <circle cx="5" cy="12" r="2" />
+          <circle cx="19" cy="5" r="2" />
+          <circle cx="19" cy="19" r="2" />
+          <path d="M7 12h4a4 4 0 0 0 4-4V5M11 12a4 4 0 0 1 4 4v3" />
+        </svg>
+      </Link>
+      <Link
+        href="/espaces"
+        title="Espaces installables"
+        className={`flex h-11 w-11 items-center justify-center rounded-2xl border transition ${pathname.startsWith('/espaces') ? 'border-accent bg-accent/10 text-accent' : 'border-border text-foreground hover:border-accent'}`}
+      >
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M3 10.5 12 3l9 7.5V21H3z" />
+          <path d="M9 21v-6h6v6M7 10h.01M17 10h.01" />
+        </svg>
+      </Link>
+      <Link
+        href="/infrastructure"
+        title="Infrastructure visuelle"
+        className={`flex h-11 w-11 items-center justify-center rounded-2xl border transition ${pathname.startsWith('/infrastructure') ? 'border-accent bg-accent/10 text-accent' : 'border-border text-foreground hover:border-accent'}`}
+      >
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <rect x="3" y="3" width="18" height="7" rx="2" />
+          <rect x="3" y="14" width="18" height="7" rx="2" />
+          <path d="M7 6.5h.01M7 17.5h.01M11 6.5h6M11 17.5h6" />
+        </svg>
+      </Link>
 
       {/* Favoris : les services épinglés */}
       <div className="flex flex-1 flex-col items-center gap-2 overflow-y-auto">

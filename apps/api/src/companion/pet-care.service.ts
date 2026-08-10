@@ -141,6 +141,28 @@ function moodOf(s: {
   return 'ok';
 }
 
+export function contextualMood(
+  state: Parameters<typeof moodOf>[0],
+  now: Date,
+  weather?: 'sunny' | 'cloudy' | 'rain' | 'storm' | 'snow',
+): PetMood {
+  const base = moodOf(state);
+  if (base !== 'ok' && base !== 'heureux') return base;
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Europe/Zurich',
+    weekday: 'short',
+    hour: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(now);
+  const weekday = parts.find((part) => part.type === 'weekday')?.value;
+  const hour = Number(parts.find((part) => part.type === 'hour')?.value ?? 12);
+  if ((hour >= 22 || hour < 6) && state.energy < 60) return 'fatigue';
+  if ((weather === 'storm' || weather === 'rain') && state.happiness < 55) return 'triste';
+  if ((weather === 'sunny' || weekday === 'Fri') && state.happiness >= 55) return 'heureux';
+  if (weekday === 'Sun' && hour >= 18 && state.happiness < 55) return 'triste';
+  return base;
+}
+
 interface Row {
   satiety: number;
   happiness: number;
@@ -176,7 +198,7 @@ function toState(row: Row, now: Date): CareState {
     hygiene: row.hygiene,
     health: row.health,
     ageDays,
-    mood: moodOf(row),
+    mood: contextualMood(row, now),
     gold: row.gold ?? 0,
     stock: sanitizeStock(row.owned),
   };
@@ -226,7 +248,7 @@ function toAgentState(row: AgentRow, now: Date): AgentCareState {
     hygiene: row.hygiene,
     health: row.health,
     ageDays,
-    mood: moodOf(row),
+    mood: contextualMood(row, now),
   };
 }
 
