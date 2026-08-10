@@ -90,3 +90,24 @@ animations, bulles et déplacements ne font que le représenter.
 
 Ces limites sont des frontières externes ou des données sources absentes. Elles ne justifient ni une fausse
 affirmation de complétude absolue, ni la création d'une seconde architecture concurrente.
+
+## Déploiement production du 10 août 2026
+
+Production auditée avant changement : serveur `epicube-prod`, Traefik, Supabase autohébergé, API et worker
+NestJS, Redis et frontends Next.js conteneurisés. Tous les domaines publics répondaient en 200. La base était
+au registre `0068`, le web au commit `f865fbd` et l'API à `e6b90ef`.
+
+Déploiement effectué avec :
+
+- dump pré-release vérifié par `gzip -t`, checksum SHA-256 conservé sur le serveur ;
+- archive de l'ancien source et anciennes images Docker immuables conservées pour rollback ;
+- release principale `281970409a95`, puis correctif web `dfa2050a01a1` ;
+- migrations additives `0069..0083`, chacune en transaction et enregistrée avec son checksum ;
+- images finales : API `281970409a95`, web `dfa2050a01a1` ;
+- schéma final : 23 tables Ruche, 23 avec RLS, 23 politiques, 70 index, extensions `vector` et `pg_trgm` ;
+- `/health`, API/worker, huit routes web Ruche, contrôles 401 sans jeton et lectures 200 avec jeton éphémère ;
+- Lighthouse production `/operations` : 100 accessibilité, 100 bonnes pratiques, 100 SEO et 100 navigation
+  agentique, 0 audit échoué.
+
+Aucune donnée utilisateur de test n'a été créée. Le jeton de smoke-test authentifié expirait après cinq
+minutes et n'a servi qu'à des lectures. Les services satellites sont restés disponibles pendant la release.
