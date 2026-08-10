@@ -101,9 +101,10 @@ Déploiement effectué avec :
 
 - dump pré-release vérifié par `gzip -t`, checksum SHA-256 conservé sur le serveur ;
 - archive de l'ancien source et anciennes images Docker immuables conservées pour rollback ;
-- release principale `281970409a95`, puis correctif web `dfa2050a01a1` ;
+- release principale `281970409a95`, correctif session `dfa2050a01a1`, puis correctif d'hydratation du décor
+  `59d9ce5a30c2` ;
 - migrations additives `0069..0083`, chacune en transaction et enregistrée avec son checksum ;
-- images finales : API `281970409a95`, web `dfa2050a01a1` ;
+- images finales : API `281970409a95`, web `59d9ce5a30c2` ;
 - schéma final : 23 tables Ruche, 23 avec RLS, 23 politiques, 70 index, extensions `vector` et `pg_trgm` ;
 - `/health`, API/worker, huit routes web Ruche, contrôles 401 sans jeton et lectures 200 avec jeton éphémère ;
 - Lighthouse production `/operations` : 100 accessibilité, 100 bonnes pratiques, 100 SEO et 100 navigation
