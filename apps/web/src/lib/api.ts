@@ -525,13 +525,18 @@ export function getCompanionAgentMessages(id: string): Promise<CompanionMessage[
 export function orchestrateCompanion(
   message: string,
   leaderId?: string,
+  context?: { route?: string; service?: string; page?: string },
 ): Promise<{
   reply: string;
   delegates: { name: string; role: string | null; said: string }[];
   created: string[];
   toolsUsed?: string[];
 }> {
-  return post('/companion/orchestrate', leaderId ? { message, leaderId } : { message });
+  return post('/companion/orchestrate', {
+    message,
+    ...(leaderId ? { leaderId } : {}),
+    ...(context ? { context } : {}),
+  });
 }
 
 // --- Jardinage de la ruche (cycle de vie & efficacité des abeilles) ---

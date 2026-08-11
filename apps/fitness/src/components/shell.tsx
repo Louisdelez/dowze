@@ -1,8 +1,9 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { AppLauncher, type LauncherApp } from '@dowze/ui';
+import { AppLauncher, CompanionDock, type LauncherApp } from '@dowze/ui';
 import { ACADEMIE_URL, useFitnessSession } from '@/lib/session';
+import { core } from '@/lib/core';
 
 const APPS: LauncherApp[] = [
   { slug: 'academie', name: 'Académie', url: ACADEMIE_URL, color: 'blue' },
@@ -52,6 +53,7 @@ export function Shell({ children }: { children: ReactNode }) {
         </div>
       </header>
       <main className="mx-auto max-w-3xl px-4 py-6">{children}</main>
+      <CompanionDock client={core} service="fitness" />
     </div>
   );
 }

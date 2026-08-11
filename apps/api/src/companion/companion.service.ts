@@ -1254,6 +1254,7 @@ export class CompanionService {
     authId: string,
     message: string,
     leaderId?: string,
+    context?: { route?: string; service?: string; page?: string },
   ): Promise<{
     reply: string;
     delegates: { name: string; role: string | null; said: string }[];
@@ -1261,10 +1262,27 @@ export class CompanionService {
     toolsUsed: string[];
   }> {
     const profileId = await this.profileIdForAuth(authId);
+    const contextDescription = [
+      context?.service ? `service ${context.service}` : '',
+      context?.page ? `page « ${context.page} »` : '',
+      context?.route ? `route ${context.route}` : '',
+    ]
+      .filter(Boolean)
+      .join(', ');
+    const contextualMessage = contextDescription
+      ? `${message}\n\nContexte actuel de l'utilisateur : ${contextDescription}.`
+      : message;
     const requestEvent = (
       await this.continuity
         .recordForProfile(profileId, [
-          { kind: 'request.received', content: message, channel: 'direct', importance: 0.65 },
+          {
+            kind: 'request.received',
+            content: message,
+            channel: 'direct',
+            importance: 0.65,
+            space: context?.service,
+            metadata: context ?? {},
+          },
         ])
         .catch(() => [])
     )[0];
@@ -1323,7 +1341,7 @@ export class CompanionService {
         maxDepth: 4,
         maxFanout: 3,
         maxTasks: 24,
-        metadata: { channel: 'direct', leaderName },
+        metadata: { channel: 'direct', leaderName, context: context ?? {} },
       })
       .catch(() => null);
     // Un leader-AGENT (compagnon de la Maison non principal) a sa propre mémoire/persona → réponses directes via chatAgent.
@@ -1341,7 +1359,7 @@ export class CompanionService {
       try {
         const routed = await this.executeHiveRuntime(authId, {
           capability: runtimeIntent,
-          prompt: message,
+          prompt: contextualMessage,
           modality: 'code',
           availableEntitlements: ['subscription'],
           channel: 'messages',
@@ -1482,7 +1500,7 @@ export class CompanionService {
       schema: ORCH_PLAN_SCHEMA,
       schemaName: 'OrchestrationPlan',
       system: `${ASSISTANT}\n\nTu diriges une RUCHE d'abeilles, chacune spécialiste TRÈS PRÉCISE d'une tâche précise. Logique : décompose la demande en sous-tâches précises (MAXIMUM 3, seulement les utiles). LOI ABSOLUE : ne délègue que si expectedGain > communicationCost + computeCost + coordinationCost ; pour une question triviale, réponds directement. Pour CHAQUE sous-tâche, choisis une abeille EXISTANTE si elle correspond vraiment précisément (mets son numéro dans "existing") ; sinon crée-en une neuve et très ciblée (existing=0 + "create" = son domaine exact + "spaceName" = son open-space métier). Ne crée une abeille que si aucune existante ne convient précisément. Les abeilles créées sont rangées dans des OPEN-SPACES par métier (JAMAIS dans la Maison). Open-spaces métier existants : ${spaceList} — réutilise-en un si la compétence correspond, sinon nomme-en un nouveau. Si la demande relève de TA propre spécialité ou que tu peux répondre toi-même sans abeille, remplis "direct" et ne délègue pas. Abeilles actuelles :\n${roster}`,
-      prompt: `Demande de l'utilisateur : ${message.slice(0, 1000)}`,
+      prompt: `Demande de l'utilisateur : ${contextualMessage.slice(0, 1200)}`,
       temperature: 0.4,
     });
     const plan = planResult.object;
@@ -1508,7 +1526,7 @@ export class CompanionService {
         try {
           const out = await this.copilote.runWithTools(profileId, {
             system: `${ASSISTANT}\n\nTu réponds ici toi-même (sans mobiliser d'abeille pour cette fois), mais tu diriges bien une ruche d'abeilles spécialistes : ne dis JAMAIS que tu ne peux pas déléguer ou créer d'assistants. RÈGLE : réponds en 1 à 2 phrases courtes et naturelles, sans markdown ni listes. Français. Tu DOIS appeler l'outil recherche_web AVANT de répondre pour toute question d'actualité, factuelle, chiffrée, de météo/prix, ou dont tu n'es pas certain (ne devine jamais) ; utilise la calculatrice pour tout calcul.`,
-            prompt: `Utilisateur : ${message.slice(0, 1000)}`,
+            prompt: `Utilisateur : ${contextualMessage.slice(0, 1200)}`,
             tools: buildAgentTools({
               copilote: this.copilote,
               profileId,
@@ -1754,7 +1772,7 @@ export class CompanionService {
       }),
       schemaName: 'AssistantSynthesis',
       system: `${ASSISTANT}\n\nTes abeilles viennent de te rapporter leurs réponses. (1) Fais une SYNTHÈSE courte et naturelle pour l'utilisateur (1 à 3 phrases), comme ${leaderName} qui fait le point après avoir mobilisé son équipe ; tu peux mentionner qui a aidé ; pas de markdown ni de listes. (2) Note l'utilité de chaque abeille (champ "ratings", même ordre).`,
-      prompt: `Demande de l'utilisateur : ${message.slice(0, 1000)}\n\nRéponses de tes abeilles :\n${results.map((r, i) => `${i + 1}. ${r.name} (${r.role || 'spécialiste'}) : ${r.said}`).join('\n')}`,
+      prompt: `Demande de l'utilisateur : ${contextualMessage.slice(0, 1200)}\n\nRéponses de tes abeilles :\n${results.map((r, i) => `${i + 1}. ${r.name} (${r.role || 'spécialiste'}) : ${r.said}`).join('\n')}`,
       temperature: 0.7,
     });
     const synth = synthesisResult.object;

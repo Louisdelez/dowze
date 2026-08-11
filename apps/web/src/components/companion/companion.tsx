@@ -115,7 +115,13 @@ function Face({ state, size }: { state: CompanionState; size: number }) {
   );
 }
 
-export function Companion({ snapshot }: { snapshot: CompanionSnapshot }) {
+export function Companion({
+  snapshot,
+  onOpen,
+}: {
+  snapshot: CompanionSnapshot;
+  onOpen?: () => void;
+}) {
   const petUrl = useCompanionPet((s) => s.url);
   const hidden = useCompanionPet((s) => s.hidden);
   const size = useCompanionPet((s) => s.size);
@@ -236,8 +242,9 @@ export function Companion({ snapshot }: { snapshot: CompanionSnapshot }) {
         window.removeEventListener('pointerup', up);
         if (!d) return;
         if (!d.moved) {
-          // Clic simple : au repos → réplique contextuelle instantanée ; sinon → masquer le message courant.
-          if (snapshot.state === 'idle') say(pickLine(ctxRef.current, lastLine.current));
+          // Clic simple : le compagnon est l'entrée centrale vers la conversation et la ruche.
+          if (snapshot.state === 'idle' && onOpen) onOpen();
+          else if (snapshot.state === 'idle') say(pickLine(ctxRef.current, lastLine.current));
           else setDismissed(snapshot.message);
         } else {
           setPos((p) => {
@@ -255,7 +262,7 @@ export function Companion({ snapshot }: { snapshot: CompanionSnapshot }) {
       window.addEventListener('pointermove', move);
       window.addEventListener('pointerup', up);
     },
-    [pos, snapshot.state, snapshot.message, dispW, dispH, say],
+    [pos, snapshot.state, snapshot.message, dispW, dispH, say, onOpen],
   );
 
   if (hidden || !pos) return null;

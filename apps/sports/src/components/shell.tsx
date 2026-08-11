@@ -1,8 +1,9 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { AppLauncher, type LauncherApp } from '@dowze/ui';
+import { AppLauncher, CompanionDock, type LauncherApp } from '@dowze/ui';
 import { useDowzeProfile } from '@dowze/auth';
+import { core } from '@/lib/core';
 
 const APPS: LauncherApp[] = [
   { slug: 'academie', name: 'Académie', url: 'https://academie.dowze.ch', color: 'blue' },
@@ -52,6 +53,7 @@ export function Shell({ children }: { children: ReactNode }) {
         </div>
       </header>
       <main className="mx-auto max-w-3xl px-4 py-6">{children}</main>
+      <CompanionDock client={core} service="sports" />
     </div>
   );
 }

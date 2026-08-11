@@ -318,10 +318,18 @@ export class CompanionApi {
    * Ruche : un LEADER (le principal ou un compagnon de la Maison via `leaderId`) décompose, délègue aux
    * abeilles des open-spaces et synthétise dans sa voix.
    */
-  orchestrate(message: string, leaderId?: string): Promise<OrchestrateResult> {
+  orchestrate(
+    message: string,
+    leaderId?: string,
+    context?: { route?: string; service?: string; page?: string },
+  ): Promise<OrchestrateResult> {
     return this.client.request<OrchestrateResult>('/companion/orchestrate', {
       method: 'POST',
-      body: JSON.stringify(leaderId ? { message, leaderId } : { message }),
+      body: JSON.stringify({
+        message,
+        ...(leaderId ? { leaderId } : {}),
+        ...(context ? { context } : {}),
+      }),
     });
   }
   /** Mémoire universelle : événements significatifs, indépendants des sessions de modèles. */

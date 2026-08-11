@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { CompanionActivityInterceptor } from './common/companion-activity.interceptor';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { AccountThrottlerGuard } from './common/account-throttler.guard';
 import { ConfigModule } from './config/config.module';
@@ -90,6 +91,9 @@ import { PluginAiModule } from './plugin-ai/plugin-ai.module';
     PluginAiModule,
   ],
   // Throttling par COMPTE (jeton présent) avec repli IP — audit 08-2026.
-  providers: [{ provide: APP_GUARD, useClass: AccountThrottlerGuard }],
+  providers: [
+    { provide: APP_GUARD, useClass: AccountThrottlerGuard },
+    { provide: APP_INTERCEPTOR, useClass: CompanionActivityInterceptor },
+  ],
 })
 export class AppModule {}

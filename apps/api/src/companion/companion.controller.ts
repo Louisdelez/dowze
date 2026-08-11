@@ -134,7 +134,18 @@ const buildAgentBody = z
   .strict();
 const chatAgentBody = z.object({ message: z.string().min(1).max(1000) }).strict();
 const orchestrateBody = z
-  .object({ message: z.string().min(1).max(1000), leaderId: z.string().uuid().optional() })
+  .object({
+    message: z.string().min(1).max(1000),
+    leaderId: z.string().uuid().optional(),
+    context: z
+      .object({
+        route: z.string().max(300).optional(),
+        service: z.string().max(80).optional(),
+        page: z.string().max(120).optional(),
+      })
+      .strict()
+      .optional(),
+  })
   .strict();
 const spaceOrchestrateBody = z.object({ message: z.string().min(1).max(1000) }).strict();
 const projectBody = z.object({ goal: z.string().min(1).max(1000) }).strict();
@@ -524,8 +535,8 @@ export class CompanionController {
   @Throttle({ default: { ttl: 60_000, limit: 15 } })
   async orchestrate(@Req() req: AuthedRequest, @Body() body: unknown) {
     if (!req.accountAuthId) throw new UnauthorizedException('non authentifié');
-    const { message, leaderId } = parseOr400(orchestrateBody, body);
-    return this.service.orchestrate(req.accountAuthId, message, leaderId);
+    const { message, leaderId, context } = parseOr400(orchestrateBody, body);
+    return this.service.orchestrate(req.accountAuthId, message, leaderId, context);
   }
 
   /** P2 — le leader d'un open-space (Directeur/CEO) délègue à l'effectif du space selon le rôle. */

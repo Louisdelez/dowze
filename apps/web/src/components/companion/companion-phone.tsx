@@ -367,7 +367,11 @@ export function CompanionDevice({
           .catch(() => push('(Instruction non transmise, réessaie.)'));
       } else if (a.space === 'home') {
         // Compagnon de la MAISON = LEADER : il répond lui-même OU mobilise/crée des abeilles des open-spaces.
-        orchestrateCompanion(txt, a.isPrimary ? undefined : a.id)
+        orchestrateCompanion(txt, a.isPrimary ? undefined : a.id, {
+          service: 'academie',
+          route: window.location.pathname,
+          page: document.title,
+        })
           .then((r) => {
             push(r.reply);
             if (r.created?.length)
