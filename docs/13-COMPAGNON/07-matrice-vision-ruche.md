@@ -59,7 +59,7 @@ Statuts : `FAIT` = utilisable/testé ; `PARTIEL` = fondation réelle, critère i
 | HUM-01 | Personnalité, ton et spécialité stables par compagnon. | U11 | FAIT. |
 | HUM-02 | Faim, énergie, hygiène, sommeil et humeur persistants. | U7/U11 | FAIT — care + scheduler. |
 | HUM-03 | Jour, heure, météo et contexte influencent l'humeur. | U11 | FAIT local — météo géolocalisée dans le cerveau visuel et humeur temporelle testée côté API. |
-| HUM-04 | Relation humain-compagnon influençant la formulation. | U11/A12 | FAIT local — affinité/confiance/familiarité persistées et conventions de rendu adaptées. |
+| HUM-04 | Relation humain-compagnon influençant la formulation. | U11/A12 | FAIT local — affinité/confiance/familiarité persistées, injectées dans la génération directe et dans le renderer, sans modifier les faits. |
 | HUM-05 | Personnalité/émotion ne modifient jamais les faits. | A12 | FAIT — séparation contenu/rendu. |
 | CAN-01 | Direct : bulle 1–2 phrases brèves, naturelles, sans Markdown. | U11 | FAIT — limite phrases/caractères et nettoyage testés. |
 | CAN-02 | Messages : naturel, un peu plus long, sans Markdown parasite. | U11 | FAIT — téléphone, persistance, nettoyage et limite testés. |
@@ -67,7 +67,7 @@ Statuts : `FAIT` = utilisable/testé ; `PARTIEL` = fondation réelle, critère i
 | CAN-04 | Push : essentiel, longueur bornée. | A12 | FAIT côté rendu/file ; transport EXTERNE. |
 | CAN-05 | Voix : court, prononçable, sans code brut/Markdown/emoji illisible. | U11 | FAIT local si Web Speech disponible — dictée, réponse vocale et renderer prononçable. |
 | CAN-06 | Voix avec accent, hésitations/tics et personnalité. | U11 | PARTIEL — rythme/hauteur selon traits ; voix premium/accent naturel EXTERNE. |
-| CAN-07 | Rendu = contenu × personnalité × émotion × relation × canal. | U11/A12 | FAIT local pour les canaux : faits immuables, personnalité/émotion/relation fournies au renderer, relation persistée. |
+| CAN-07 | Rendu = contenu × personnalité × émotion × relation × canal. | U11/A12 | FAIT local pour les canaux : faits immuables, personnalité/émotion/relation fournies au renderer et les réponses directes ordinaires créent désormais leur livraison/énoncé structuré. |
 | CAN-08 | Changer de canal sans redemander le contexte. | U13/U15 | FAIT données ; E2E UX à prouver. |
 | CAN-09 | Livraisons queued/sent/delivered/read/failed/cancelled auditables. | A12 | FAIT. |
 
@@ -82,7 +82,7 @@ Statuts : `FAIT` = utilisable/testé ; `PARTIEL` = fondation réelle, critère i
 | MEM-05 | Retrouver par date, mot, acteur, projet, espace, action et indice vague. | U13 | FAIT local — FTS + trigrammes + pgvector + filtres. |
 | MEM-06 | Bibliothécaires : brut → épisodes → faits → relations, source intacte. | U13/A14 | FAIT local — tables dédiées, consolidation nocturne, sources et export. |
 | MEM-07 | Connaissance ancienne récupérable depuis tout canal. | U13 | FAIT local — outil de chaque abeille, API/UI et MCP externe. |
-| MEM-08 | Cloisonnement et consentement entre sphères. | A14 | FAIT — RLS/scopes/cross-space opt-in. |
+| MEM-08 | Cloisonnement et consentement entre sphères. | A14 | FAIT — RLS/scopes/cross-space opt-in appliqué jusque dans l’outil de recherche mémoire des abeilles ; sans consentement, seules la mémoire globale et celle de l’espace demandeur sont visibles. |
 | MEM-09 | Export, rétention, oubli sélectif et tombstone. | A14 | FAIT. |
 | MEM-10 | Embeddings/index pour l'échelle. | U13/A14 | FAIT schéma/API — HNSW, GIN FTS/trigram et enrichissement événementiel progressif. |
 | MEM-11 | Brut append-only hors oubli gouverné. | A14 | FAIT architecturalement. |
@@ -115,7 +115,7 @@ Statuts : `FAIT` = utilisable/testé ; `PARTIEL` = fondation réelle, critère i
 
 | ID | Exigence / critère | Source | État et preuve |
 |---|---|---|---|
-| COM-01 | Séparer faits, intention, confiance, émotion, prosodie et animation. | U11/A12 | FAIT — `hive_utterances` et frame pure testée. |
+| COM-01 | Séparer faits, intention, confiance, émotion, prosodie et animation. | U11/A12 | FAIT — `hive_utterances`, frame pure testée et branchement sur le chat direct ainsi que sur les réponses de l’orchestration. |
 | COM-02 | L'animation ne doit pas être la source de vérité de l'activité. | U5/U11 | FAIT — `hive_companion_states` distinct du rendu. |
 | COM-03 | Afficher occupation, activité, urgence, humeur et lieu. | U11 | FAIT — état persisté, polling de la Maison, bulle et fiche. |
 | COM-04 | La voix peut être interrompue quand l'humain reprend la parole. | U11 | FAIT local — arrêt SpeechSynthesis et abort/stop reconnaissance. |
@@ -128,7 +128,7 @@ Statuts : `FAIT` = utilisable/testé ; `PARTIEL` = fondation réelle, critère i
 | TMP-01 | Un fait nouveau peut remplacer l'actuel sans effacer l'ancien. | U13/A14 | FAIT — clé stable, intervalle de validité et chaîne `supersedes`. |
 | TMP-02 | Les préférences apprises sont versionnées et consultables. | U13 | FAIT — mémorisation temporelle et historique dans `/memoire`. |
 | CAP-01 | Les capacités sont des objets normalisés liés aux agents/runtimes. | U3/U5 | FAIT — registre + bindings synchronisés. |
-| CMP-01 | Le calcul est une ressource routable par capacité et localité. | U3/A4 | PARTIEL — registre et sélecteur déterministe prêts ; les appels Copilote restent routés par fournisseur et l'allocation GPU physique est EXTERNE. |
+| CMP-01 | Le calcul est une ressource routable par capacité et localité. | U3/A4 | PARTIEL — le registre est administrable, le moteur choisit réellement un nœud sain compatible avec modalité/confidentialité et journalise ce choix ; la réservation physique d’un GPU et le dispatch hors fournisseur restent EXTERNES. |
 | CMP-02 | Refuser nœud malade, saturé ou incompatible avec la confidentialité. | A4 | FAIT — filtres testés. |
 | PKG-01 | Un espace est un package versionné avec bâtiment, rôles, capacités, workflows et permissions. | U7/A8 | FAIT — manifeste/checksum/catalogue. |
 | PKG-02 | Distinguer créer une instance et rejoindre un service partagé. | U7 | FAIT — installation `create/join`, join interdit aux packages privés. |

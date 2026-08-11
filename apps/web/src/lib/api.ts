@@ -950,6 +950,16 @@ export function createHiveComputeResource(input: {
 }): Promise<HiveComputeResource> {
   return post('/companion/hive/compute-resources', input);
 }
+export function updateHiveComputeResource(
+  id: string,
+  patch: {
+    health?: HiveComputeResource['health'];
+    enabled?: boolean;
+    maxConcurrency?: number;
+  },
+): Promise<HiveComputeResource> {
+  return patch2(`/companion/hive/compute-resources/${id}`, patch);
+}
 export function installHiveSpacePackage(
   id: string,
   mode: 'join' | 'create',

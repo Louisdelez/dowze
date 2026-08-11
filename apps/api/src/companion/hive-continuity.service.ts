@@ -399,6 +399,32 @@ export class HiveContinuityService {
     )[0]!;
   }
 
+  async updateComputeResource(
+    authId: string,
+    id: string,
+    patch: {
+      health?: 'healthy' | 'degraded' | 'offline' | 'unknown';
+      enabled?: boolean;
+      maxConcurrency?: number;
+    },
+  ) {
+    const profileId = await this.profileIdForAuth(authId);
+    const row = (
+      await this.db
+        .update(hiveComputeResources)
+        .set({
+          health: patch.health,
+          enabled: patch.enabled,
+          maxConcurrency: patch.maxConcurrency,
+          updatedAt: new Date(),
+        })
+        .where(and(eq(hiveComputeResources.id, id), eq(hiveComputeResources.profileId, profileId)))
+        .returning()
+    )[0];
+    if (!row) throw new NotFoundException('Ressource de calcul introuvable.');
+    return row;
+  }
+
   private capabilityKey(label: string): string {
     return (
       label
@@ -730,15 +756,30 @@ export class HiveContinuityService {
     };
   }
 
-  async searchMemoryForProfile(profileId: string, query: string, limit = 8) {
+  async searchMemoryForProfile(
+    profileId: string,
+    query: string,
+    limit = 8,
+    requestingSpace?: string | null,
+  ) {
     const q = query.trim().slice(0, 500);
     if (!q) return [];
+    const policy = (
+      await this.db
+        .select({ crossSpaceEnabled: hiveMemoryPolicies.crossSpaceEnabled })
+        .from(hiveMemoryPolicies)
+        .where(eq(hiveMemoryPolicies.profileId, profileId))
+    )[0];
+    const crossSpaceEnabled = policy?.crossSpaceEnabled ?? false;
     const vector = (await this.copilote.embed(profileId, [q]).catch(() => null))?.[0];
     const vectorLiteral = vector?.length === 1024 ? `[${vector.join(',')}]` : null;
     return (await this.db.execute(sql`
       select kind, content, occurred_at as "occurredAt"
       from hive_events
       where profile_id = ${profileId}
+        and (${crossSpaceEnabled}
+          or space is null
+          or (${requestingSpace ?? null}::text is not null and space = ${requestingSpace ?? null}))
         and (to_tsvector('simple', content) @@ websearch_to_tsquery('simple', ${q})
           or similarity(content, ${q}) > 0.12
           or (${vectorLiteral}::text is not null and embedding_vec is not null
@@ -1048,7 +1089,7 @@ export class HiveContinuityService {
       familiarity: relationship?.familiarity ?? null,
       affinity: relationship?.affinity ?? null,
     });
-    const delivered = input.channel === 'messages' && input.companionId;
+    const delivered = ['direct', 'messages', 'voice', 'system'].includes(input.channel);
     const row = (
       await this.db
         .insert(hiveDeliveries)
@@ -1100,7 +1141,7 @@ export class HiveContinuityService {
         state: delivered ? 'completed' : 'ready',
       })
       .catch(() => undefined);
-    if (delivered) {
+    if (input.channel === 'messages' && input.companionId) {
       await this.db.insert(companionMessages).values({
         profileId,
         agentId: input.companionId!,

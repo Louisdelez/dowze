@@ -305,6 +305,14 @@ const computeResourceBody = z
     metadata: z.record(z.unknown()).optional(),
   })
   .strict();
+const computeResourcePatchBody = z
+  .object({
+    health: z.enum(['healthy', 'degraded', 'offline', 'unknown']).optional(),
+    enabled: z.boolean().optional(),
+    maxConcurrency: z.number().int().min(1).max(10_000).optional(),
+  })
+  .strict()
+  .refine((value) => Object.keys(value).length > 0, 'Modification vide.');
 const knowledgeBody = z
   .object({ title: z.string().max(160).default(''), content: z.string().min(1).max(8000) })
   .strict();
@@ -846,6 +854,22 @@ export class CompanionController {
     return this.continuity.createComputeResource(
       req.accountAuthId,
       parseOr400(computeResourceBody, body),
+    );
+  }
+
+  @Patch('hive/compute-resources/:id')
+  @UseGuards(SupabaseAuthGuard)
+  async updateHiveComputeResource(
+    @Req() req: AuthedRequest,
+    @Param('id') id: string,
+    @Body() body: unknown,
+  ) {
+    if (!req.accountAuthId) throw new UnauthorizedException('non authentifié');
+    if (!UUID_RE.test(id)) throw new NotFoundException();
+    return this.continuity.updateComputeResource(
+      req.accountAuthId,
+      id,
+      parseOr400(computeResourcePatchBody, body),
     );
   }
 

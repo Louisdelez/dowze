@@ -161,7 +161,8 @@ immuables.
 - migration `0080` : énoncés structurés séparant intention, faits, émotion, prosodie et animation, y compris
   l'état `interrupted` ;
 - migration `0081` : état opérationnel des compagnons distinct du visuel et registre de calcul sélectionné
-  par modalité, mémoire, confidentialité, santé, charge et coût ;
+  par modalité, mémoire, confidentialité, santé, charge et coût ; l’état de santé/activation est administrable
+  dans `/infrastructure` et le runtime journalise la ressource effectivement choisie ;
 - migration `0082` : packages d'espaces signés par checksum, versionnés, installables en mode créer/rejoindre,
   avec manifeste borné ; page `/espaces` ;
 - migration `0083` : budget réel en crédits et échéance par run ; dépassement bloquant et visible dans le
@@ -170,6 +171,10 @@ immuables.
   `gain attendu > communication + calcul + coordination`, anti-cycle et traçabilité complète.
 - chaque abeille dispose de `chercher_memoire_ruche` et le relais MCP de `dowze_search_context` : les anciennes
   décisions traversent les sessions, canaux et harness sans copier-coller.
+- la recherche interne des abeilles applique le consentement inter-espaces au moment de la lecture ; une
+  politique désactivée ne peut plus être contournée par l’outil mémoire d’un agent.
+- les chats directs et les réponses finales de la Reine passent par `hive_deliveries` et `hive_utterances` ;
+  la relation persistée module aussi la génération directe, jamais son contenu factuel.
 
 ## 8. Dépendances d'activation, sans duplication
 

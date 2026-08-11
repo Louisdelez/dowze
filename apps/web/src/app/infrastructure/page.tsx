@@ -9,6 +9,7 @@ import {
   getHiveVaultItems,
   getHiveComputeResources,
   updateHiveAssetStatus,
+  updateHiveComputeResource,
   type CompanionSpace,
   type HiveAsset,
   type HiveVaultItem,
@@ -214,11 +215,38 @@ export default function InfrastructurePage() {
             <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
               {compute.map((resource) => (
                 <div key={resource.id} className="rounded-xl border p-3 text-sm">
-                  <strong>{resource.name}</strong>
+                  <div className="flex items-center gap-2">
+                    <strong>{resource.name}</strong>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        void updateHiveComputeResource(resource.id, {
+                          enabled: !resource.enabled,
+                        }).then(refresh)
+                      }
+                      className="ml-auto rounded-lg border px-2 py-1 text-xs font-semibold"
+                    >
+                      {resource.enabled ? 'Désactiver' : 'Activer'}
+                    </button>
+                  </div>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {resource.kind} · {resource.locality} · {resource.activeAllocations}/
                     {resource.maxConcurrency}
                   </p>
+                  <select
+                    value={resource.health}
+                    onChange={(event) =>
+                      void updateHiveComputeResource(resource.id, {
+                        health: event.target.value as HiveComputeResource['health'],
+                      }).then(refresh)
+                    }
+                    className="mt-3 rounded-lg border bg-transparent px-2 py-1 text-xs"
+                  >
+                    <option value="healthy">healthy</option>
+                    <option value="degraded">degraded</option>
+                    <option value="offline">offline</option>
+                    <option value="unknown">unknown</option>
+                  </select>
                 </div>
               ))}
             </div>

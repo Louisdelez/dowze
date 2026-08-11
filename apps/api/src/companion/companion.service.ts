@@ -42,10 +42,12 @@ import {
   canHandleRequest,
   selectCompanionForRequest,
   selectHiveRuntime,
+  selectComputeResource,
   findOrganizationalRoute,
   renderForChannel,
   shouldDelegate,
   type HiveRuntime,
+  type HiveComputeResource,
   type RoleContract,
 } from './hive-domain';
 
@@ -811,7 +813,9 @@ export class CompanionService {
         .where(and(eq(companionAgents.id, id), eq(companionAgents.profileId, profileId)))
     )[0];
     if (!agent) throw new NotFoundException('Compagnon introuvable.');
-    await this.continuity.touchRelationshipForProfile(profileId, agent.id).catch(() => undefined);
+    const relationship = await this.continuity
+      .touchRelationshipForProfile(profileId, agent.id)
+      .catch(() => undefined);
     const storedContract = (agent.roleContract as RoleContract | null) ?? {};
     const preset = roleByKey(agent.roleKey);
     const personaForContract = (agent.personality as AgentPersonality | null) ?? {};
@@ -958,7 +962,10 @@ export class CompanionService {
     const rulesBlock = rules.length
       ? `\n\nRÈGLES APPRISES (l'utilisateur t'a enseigné ceci — respecte-les scrupuleusement) :\n${rules.map((r) => `- ${r}`).join('\n')}`
       : '';
-    const sys = `${persona.systemPrompt || `Tu es ${agent.name}, un compagnon bienveillant et polyvalent qui aide l'utilisateur dans ce qu'il demande, quel que soit le domaine.`}${rulesBlock}\n\nOUTILS : tu disposes d'outils (calculatrice, date/heure, connaissances de l'utilisateur, et recherche_web). Tu DOIS appeler \`recherche_web\` AVANT de répondre à TOUTE question portant sur l'actualité, un fait vérifiable, un chiffre, une date d'événement, la météo, un prix, une personne/organisation, ou quoi que ce soit dont tu n'es pas certain à 100 %. Ne réponds JAMAIS de mémoire sur ce genre de sujet — cherche d'abord, puis réponds à partir des résultats. De même, utilise la calculatrice pour tout calcul.\n\nRÈGLES ABSOLUES : réponds en UN seul message court et naturel (1 à 2 phrases), comme un humain sur WhatsApp. Jamais de markdown, de listes, de titres ni de pavé. Reste dans ton personnage. Français.`;
+    const relationshipBlock = relationship
+      ? `\n\nRELATION : familiarité ${Math.round(relationship.familiarity * 100)} %, confiance ${Math.round(relationship.trust * 100)} %, affinité ${Math.round(relationship.affinity * 100)} %. Adapte seulement la chaleur, la proximité et la formulation à cette relation. Ne change jamais les faits, ne simule pas une intimité supérieure à ces valeurs et ne mentionne pas ces scores.`
+      : '';
+    const sys = `${persona.systemPrompt || `Tu es ${agent.name}, un compagnon bienveillant et polyvalent qui aide l'utilisateur dans ce qu'il demande, quel que soit le domaine.`}${rulesBlock}${relationshipBlock}\n\nOUTILS : tu disposes d'outils (calculatrice, date/heure, connaissances de l'utilisateur, et recherche_web). Tu DOIS appeler \`recherche_web\` AVANT de répondre à TOUTE question portant sur l'actualité, un fait vérifiable, un chiffre, une date d'événement, la météo, un prix, une personne/organisation, ou quoi que ce soit dont tu n'es pas certain à 100 %. Ne réponds JAMAIS de mémoire sur ce genre de sujet — cherche d'abord, puis réponds à partir des résultats. De même, utilise la calculatrice pour tout calcul.\n\nRÈGLES ABSOLUES : réponds en UN seul message court et naturel (1 à 2 phrases), comme un humain sur WhatsApp. Jamais de markdown, de listes, de titres ni de pavé. Reste dans ton personnage. Français.`;
     const prompt = `${hist ? hist + '\n' : ''}Utilisateur : ${message.slice(0, 1000)}\n${agent.name} :`;
 
     // Boucle agentique (ReAct) : l'abeille peut mobiliser des outils sûrs (calcul, date, connaissances)
@@ -980,7 +987,8 @@ export class CompanionService {
           copilote: this.copilote,
           profileId,
           orgSearch,
-          memorySearch: (query) => this.continuity.searchMemoryForProfile(profileId, query),
+          memorySearch: (query) =>
+            this.continuity.searchMemoryForProfile(profileId, query, 8, agent.space),
           delegate: execution
             ? (objective) => this.delegateFromAgent(authId, profileId, agent, objective, execution)
             : undefined,
@@ -1045,6 +1053,15 @@ export class CompanionService {
         },
       ])
       .catch(() => []);
+    if (journaled[1])
+      await this.continuity
+        .createDelivery(authId, {
+          eventId: journaled[1].id,
+          companionId: id,
+          channel: 'direct',
+          companionName: agent.name,
+        })
+        .catch(() => undefined);
     if (learned) {
       const preference = /\b(je pr[eé]f[eè]re que|dor[eé]navant|d[eé]sormais)\b/i.test(learned);
       const stableKey = preference
@@ -1205,7 +1222,8 @@ export class CompanionService {
           copilote: this.copilote,
           profileId,
           orgSearch,
-          memorySearch: (query) => this.continuity.searchMemoryForProfile(profileId, query),
+          memorySearch: (query) =>
+            this.continuity.searchMemoryForProfile(profileId, query, 8, agent.space),
         }),
         maxSteps: 4,
         temperature: 0.6,
@@ -1329,7 +1347,7 @@ export class CompanionService {
           channel: 'messages',
         });
         if (routed.runtime.adapter === 'relay_mcp') {
-          await this.continuity
+          const [runtimeEvent] = await this.continuity
             .recordForProfile(profileId, [
               {
                 kind: 'response.delivered',
@@ -1346,7 +1364,16 @@ export class CompanionService {
                 },
               },
             ])
-            .catch(() => undefined);
+            .catch(() => []);
+          if (runtimeEvent)
+            await this.continuity
+              .createDelivery(authId, {
+                eventId: runtimeEvent.id,
+                companionId: leader?.id,
+                channel: 'messages',
+                companionName: leaderName,
+              })
+              .catch(() => undefined);
           if (hiveRun)
             await this.continuity
               .completeRunForProfile(profileId, hiveRun.id, 'waiting_approval', {
@@ -1485,7 +1512,8 @@ export class CompanionService {
             tools: buildAgentTools({
               copilote: this.copilote,
               profileId,
-              memorySearch: (query) => this.continuity.searchMemoryForProfile(profileId, query),
+              memorySearch: (query) =>
+                this.continuity.searchMemoryForProfile(profileId, query, 8, 'home'),
             }),
             maxSteps: 4,
             temperature: 0.6,
@@ -1515,7 +1543,7 @@ export class CompanionService {
       .slice(0, 3);
     if (dels.length === 0) {
       const reply = await directReply();
-      await this.continuity
+      const [directEvent] = await this.continuity
         .recordForProfile(profileId, [
           {
             kind: 'response.delivered',
@@ -1527,7 +1555,16 @@ export class CompanionService {
             metadata: { orchestration: 'direct', toolsUsed: [...toolsUsed] },
           },
         ])
-        .catch(() => undefined);
+        .catch(() => []);
+      if (directEvent)
+        await this.continuity
+          .createDelivery(authId, {
+            eventId: directEvent.id,
+            companionId: leader?.id,
+            channel: 'direct',
+            companionName: leaderName,
+          })
+          .catch(() => undefined);
       if (hiveRun)
         await this.continuity
           .completeRunForProfile(profileId, hiveRun.id, 'completed', {
@@ -1672,7 +1709,7 @@ export class CompanionService {
     );
     if (results.length === 0) {
       const reply = await directReply();
-      await this.continuity
+      const [fallbackEvent] = await this.continuity
         .recordForProfile(profileId, [
           {
             kind: 'response.delivered',
@@ -1684,7 +1721,16 @@ export class CompanionService {
             metadata: { orchestration: 'fallback', created, toolsUsed: [...toolsUsed] },
           },
         ])
-        .catch(() => undefined);
+        .catch(() => []);
+      if (fallbackEvent)
+        await this.continuity
+          .createDelivery(authId, {
+            eventId: fallbackEvent.id,
+            companionId: leader?.id,
+            channel: 'direct',
+            companionName: leaderName,
+          })
+          .catch(() => undefined);
       if (hiveRun)
         await this.continuity
           .completeRunForProfile(profileId, hiveRun.id, 'failed', {
@@ -1734,7 +1780,7 @@ export class CompanionService {
       }),
     );
     const finalReply = (synth.reply || '…').slice(0, 700);
-    await this.continuity
+    const [finalEvent] = await this.continuity
       .recordForProfile(profileId, [
         {
           kind: 'response.delivered',
@@ -1751,7 +1797,16 @@ export class CompanionService {
           },
         },
       ])
-      .catch(() => undefined);
+      .catch(() => []);
+    if (finalEvent)
+      await this.continuity
+        .createDelivery(authId, {
+          eventId: finalEvent.id,
+          companionId: leader?.id,
+          channel: 'direct',
+          companionName: leaderName,
+        })
+        .catch(() => undefined);
     // Mémoire du leader-agent : on garde la trace de l'échange (la conversation individuelle reste cohérente).
     if (leaderAgentId) {
       const now = new Date();
@@ -3214,6 +3269,27 @@ export class CompanionService {
     if (!selected)
       throw new BadRequestException('Aucun couple modèle+harness disponible pour cette capacité.');
     const runtime = listed.find((row) => row.id === selected.id)!;
+    const configuredCompute = await this.continuity.listComputeResources(authId);
+    const allowedLocality: HiveComputeResource['locality'][] =
+      runtime.privacy === 'local'
+        ? ['local']
+        : runtime.privacy === 'private_cloud'
+          ? ['local', 'private_cloud']
+          : ['local', 'private_cloud', 'public_cloud'];
+    const computeResource = selectComputeResource(
+      {
+        modality: input.modality ?? runtime.modalities[0] ?? 'text',
+        allowedLocality,
+      },
+      configuredCompute as HiveComputeResource[],
+    );
+    const hasSchedulableCompute = configuredCompute.some(
+      (resource) => resource.enabled && resource.health === 'healthy',
+    );
+    if (hasSchedulableCompute && !computeResource)
+      throw new BadRequestException(
+        'Aucune ressource de calcul saine et compatible avec la modalité et la confidentialité.',
+      );
     let output: string;
     let status: 'completed' | 'queued';
     let toolsUsed: string[] = [];
@@ -3229,7 +3305,8 @@ export class CompanionService {
         tools: buildAgentTools({
           copilote: this.copilote,
           profileId,
-          memorySearch: (query) => this.continuity.searchMemoryForProfile(profileId, query),
+          memorySearch: (query) =>
+            this.continuity.searchMemoryForProfile(profileId, query, 8, null),
         }),
         maxSteps: 5,
         modelId:
@@ -3263,10 +3340,12 @@ export class CompanionService {
           adapter: runtime.adapter,
           capability: input.capability,
           toolsUsed,
+          computeResourceId: computeResource?.id,
+          computeLocality: computeResource?.locality,
         },
       },
     ]);
-    return { status, output: rendered, runtime, toolsUsed };
+    return { status, output: rendered, runtime, computeResource, toolsUsed };
   }
 
   // ---------- PONT IA (ChatGPT/Claude) : capter → SYNTHÉTISER (Mémorialiste) → réinjecter ----------

@@ -22,6 +22,8 @@ sans jamais l'intrusion de Clippy ni la culpabilité de Duolingo.
   preuves, manques et ordre d'implémentation sans déclaration globale trompeuse.
 - [08-audit-systeme-ruche.md](08-audit-systeme-ruche.md) — audit de bout en bout : source récupérée, architecture,
   sécurité, base, tests, limites vérifiables et éléments nécessitant encore un fournisseur ou un déploiement.
+- [09-audit-integration-2026-08-12.md](09-audit-integration-2026-08-12.md) — contre-audit des chemins réels
+  d’exécution, écarts découverts, corrections intégrées et dettes qui ne doivent pas être maquillées en « fait ».
 
 **État** : conçu + **C0/C1 implémentés** (compagnon global déplaçable, réagit aux vrais appels IA).
 Fondé sur 3 recherches sourcées (existant façon Codex « Pets »/Clippy/Duo ; science de l'anthropomorphisme

@@ -498,6 +498,19 @@ export class CompanionApi {
       body: JSON.stringify(input),
     });
   }
+  updateComputeResource(
+    id: string,
+    patch: {
+      health?: HiveComputeResource['health'];
+      enabled?: boolean;
+      maxConcurrency?: number;
+    },
+  ): Promise<HiveComputeResource> {
+    return this.client.request(`/companion/hive/compute-resources/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(patch),
+    });
+  }
   /** Passages de relais organisationnels avec provenance et état. */
   handoffs(status?: HiveHandoff['status']): Promise<HiveHandoff[]> {
     return this.client.request(
