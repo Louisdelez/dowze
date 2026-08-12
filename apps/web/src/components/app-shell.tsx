@@ -12,19 +12,11 @@ import { XpBar } from '@/components/xp-bar';
 import { IconMenu } from '@/components/ui/icons';
 import { AiBridge } from '@/components/desktop/ai-dock';
 import { isDesktop } from '@/lib/desktop';
+import { COMPANION_DEVICE_APPS } from '@/components/companion/device-apps';
 
-const DEVICE_ONLY_APPS: Record<string, string> = {
-  '/dashboard': 'academie',
-  '/seance': 'seance',
-  '/langues': 'langues',
-  '/expeditions': 'expeditions',
-  '/tests': 'tests',
-  '/resultats': 'resultats',
-  '/planning': 'planning',
-  '/communaute': 'classe',
-  '/carnet': 'carnet',
-  '/validation': 'validation',
-};
+const DEVICE_ONLY_APPS: Record<string, string> = Object.fromEntries(
+  COMPANION_DEVICE_APPS.filter((app) => app.id !== 'store').map((app) => [app.href, app.id]),
+);
 
 /**
  * Coquille de l'application.
