@@ -12,6 +12,11 @@ import {
   type CompanionAgent,
 } from '@/lib/api';
 import { isDesktop, webSearch, wikipediaSearch, openExternal, type WebResult } from '@/lib/desktop';
+import {
+  COMPANION_DEVICE_APPS,
+  getCompanionDeviceApp,
+  type CompanionDeviceApp,
+} from '@/components/companion/device-apps';
 
 /* ---------- Icônes (Lucide inline, cohérent avec le reste du jeu) ---------- */
 const I: Record<string, ReactNode> = {
@@ -267,18 +272,93 @@ function StatusBar() {
   );
 }
 
-/** L'appareil complet (téléphone ou tablette) avec écran d'accueil + apps Messages & Email. */
+function DeviceAppIcon({ app, compact = false }: { app: CompanionDeviceApp; compact?: boolean }) {
+  return (
+    <span
+      className={`flex items-center justify-center font-black text-white shadow-lg ${compact ? 'h-10 w-10 rounded-xl text-sm' : 'h-14 w-14 rounded-2xl text-lg'}`}
+      style={{
+        background: `linear-gradient(145deg, ${app.color}, color-mix(in srgb, ${app.color} 72%, black))`,
+      }}
+    >
+      {app.glyph}
+    </span>
+  );
+}
+
+function DesktopStatusBar() {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
+  return (
+    <div className="flex h-9 shrink-0 items-center justify-between bg-slate-950/90 px-4 text-xs text-white backdrop-blur">
+      <div className="flex items-center gap-2 font-semibold">
+        <span className="text-sky-400">◆</span> Dowze OS
+      </div>
+      <div className="text-white/75">Compagnon connecté</div>
+      <div>{now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</div>
+    </div>
+  );
+}
+
+function EmbeddedDowzeApp({
+  app,
+  desktop,
+  onHome,
+}: {
+  app: CompanionDeviceApp;
+  desktop: boolean;
+  onHome: () => void;
+}) {
+  return (
+    <div className={`flex h-full flex-col bg-slate-100 ${desktop ? 'p-3 pt-2' : ''}`}>
+      <div
+        className={`flex shrink-0 items-center gap-2 border-b border-slate-200 bg-white px-3 py-2 ${desktop ? 'rounded-t-xl border-x border-t' : ''}`}
+      >
+        <button
+          onClick={onHome}
+          aria-label="Retour aux applications"
+          className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100"
+        >
+          <Ic k="grid" size={17} />
+        </button>
+        <DeviceAppIcon app={app} compact />
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-sm font-semibold text-slate-800">{app.label}</div>
+          {desktop && <div className="text-[10px] text-emerald-600">Application active</div>}
+        </div>
+        {desktop && (
+          <div className="flex gap-1">
+            <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
+            <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+          </div>
+        )}
+      </div>
+      <iframe
+        src={`${app.href}${app.href.includes('?') ? '&' : '?'}device=companion`}
+        title={app.label}
+        className={`min-h-0 flex-1 bg-white ${desktop ? 'rounded-b-xl border-x border-b border-slate-200 shadow-2xl' : ''}`}
+      />
+    </div>
+  );
+}
+
+/** Smartphone, tablette ou PC virtuel : même catalogue, présentation adaptée à l'appareil. */
 export function CompanionDevice({
   mode,
   onClose,
+  initialApp,
 }: {
-  mode: 'phone' | 'tablet';
+  mode: 'phone' | 'tablet' | 'desktop';
   onClose: () => void;
+  initialApp?: string;
 }) {
-  const tablet = mode === 'tablet';
+  const tablet = mode !== 'phone';
+  const pc = mode === 'desktop';
   const [agents, setAgents] = useState<CompanionAgent[]>([]);
-  const [app, setApp] = useState<'home' | 'messages' | 'email' | 'search'>('home');
-  const desktop = isDesktop();
+  const [app, setApp] = useState(initialApp ?? 'home');
+  const nativeDesktop = isDesktop();
   const [convs, setConvs] = useState<Record<string, Msg[]>>({});
   const [sel, setSel] = useState<string | null>(null); // id agent sélectionné (messages) ou email
   const [draft, setDraft] = useState('');
@@ -463,12 +543,15 @@ export function CompanionDevice({
     [agents],
   );
 
-  const frame = tablet
-    ? 'h-[84vh] max-h-[820px] w-[92vw] max-w-4xl rounded-[26px] p-2.5'
-    : 'h-[86vh] max-h-[780px] w-[min(92vw,392px)] rounded-[44px] p-2.5';
+  const frame = pc
+    ? 'h-[88vh] max-h-[900px] w-[96vw] max-w-6xl rounded-[16px] p-2'
+    : tablet
+      ? 'h-[84vh] max-h-[820px] w-[92vw] max-w-4xl rounded-[26px] p-2.5'
+      : 'h-[86vh] max-h-[780px] w-[min(92vw,392px)] rounded-[44px] p-2.5';
 
   const selAgent = agents.find((a) => a.id === sel);
   const selEmail = emails.find((e) => e.a.id === sel);
+  const deviceApp = getCompanionDeviceApp(app);
 
   return (
     <div
@@ -482,25 +565,32 @@ export function CompanionDevice({
         onClick={(e) => e.stopPropagation()}
       >
         <div
-          className={`flex h-full w-full flex-col overflow-hidden bg-white ${tablet ? 'rounded-[18px]' : 'rounded-[36px]'}`}
+          className={`flex h-full w-full flex-col overflow-hidden bg-white ${pc ? 'rounded-[10px]' : tablet ? 'rounded-[18px]' : 'rounded-[36px]'}`}
         >
-          <StatusBar />
+          {pc ? <DesktopStatusBar /> : <StatusBar />}
           {/* Contenu de l'app */}
           <div className="min-h-0 flex-1">
-            {app === 'home' && (
+            {app === 'home' && !pc && (
               <div
                 className="flex h-full flex-col"
                 style={{ background: 'linear-gradient(160deg,#6ea8e6,#8f7fe0)' }}
               >
-                <div className="flex-1" />
-                <div className="grid grid-cols-4 gap-4 p-6">
+                <div className="h-16 shrink-0" />
+                <div className="grid flex-1 content-start grid-cols-4 gap-4 overflow-y-auto p-6 pt-3">
                   {[
                     { k: 'message', label: 'Messages', bg: '#22c55e', to: 'messages' as const },
                     { k: 'mail', label: 'Email', bg: '#0ea5e9', to: 'email' as const },
                     // « Recherche » = outils locaux de l'app de bureau (SearXNG/Wikipédia) — masqué sur le web.
-                    ...(desktop
+                    ...(nativeDesktop
                       ? [{ k: 'search', label: 'Recherche', bg: '#8b5cf6', to: 'search' as const }]
                       : []),
+                    ...COMPANION_DEVICE_APPS.map((item) => ({
+                      k: item.id,
+                      label: item.shortLabel,
+                      bg: item.color,
+                      to: item.id,
+                      deviceApp: item,
+                    })),
                   ].map((ap) => (
                     <button
                       key={ap.k}
@@ -513,7 +603,11 @@ export function CompanionDevice({
                         className="flex h-14 w-14 items-center justify-center rounded-2xl text-white shadow-lg"
                         style={{ background: ap.bg }}
                       >
-                        <Ic k={ap.k} size={26} />
+                        {'deviceApp' in ap && ap.deviceApp ? (
+                          ap.deviceApp.glyph
+                        ) : (
+                          <Ic k={ap.k} size={26} />
+                        )}
                       </span>
                       <span className="text-[11px] font-medium text-white drop-shadow">
                         {ap.label}
@@ -523,6 +617,49 @@ export function CompanionDevice({
                 </div>
                 <div className="flex justify-center pb-2">
                   <div className="h-1 w-28 rounded-full bg-white/60" />
+                </div>
+              </div>
+            )}
+
+            {app === 'home' && pc && (
+              <div className="relative flex h-full flex-col overflow-hidden bg-[radial-gradient(circle_at_70%_20%,#38bdf8_0,#2563eb_28%,#172554_72%,#020617_100%)]">
+                <div className="grid w-fit grid-cols-2 gap-x-5 gap-y-4 p-6">
+                  {COMPANION_DEVICE_APPS.map((item) => (
+                    <button
+                      key={item.id}
+                      onDoubleClick={() => setApp(item.id)}
+                      onClick={() => setApp(item.id)}
+                      className="flex w-24 flex-col items-center gap-1 rounded-xl p-2 text-white transition hover:bg-white/15"
+                    >
+                      <DeviceAppIcon app={item} />
+                      <span className="text-center text-xs font-medium drop-shadow">
+                        {item.shortLabel}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-auto flex justify-center pb-4">
+                  <div className="flex items-center gap-2 rounded-2xl border border-white/20 bg-slate-950/55 p-2 shadow-2xl backdrop-blur-xl">
+                    <button
+                      onClick={() => setApp('messages')}
+                      title="Messages"
+                      className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500 text-white"
+                    >
+                      <Ic k="message" size={23} />
+                    </button>
+                    <button
+                      onClick={() => setApp('email')}
+                      title="Email"
+                      className="flex h-12 w-12 items-center justify-center rounded-xl bg-sky-500 text-white"
+                    >
+                      <Ic k="mail" size={23} />
+                    </button>
+                    {COMPANION_DEVICE_APPS.slice(0, 4).map((item) => (
+                      <button key={item.id} onClick={() => setApp(item.id)} title={item.label}>
+                        <DeviceAppIcon app={item} compact />
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
@@ -649,6 +786,9 @@ export function CompanionDevice({
             )}
 
             {app === 'search' && <SearchApp onHome={() => setApp('home')} />}
+            {deviceApp && (
+              <EmbeddedDowzeApp app={deviceApp} desktop={pc} onHome={() => setApp('home')} />
+            )}
           </div>
         </div>
         {/* Fermer (hors écran, sur le cadre) */}

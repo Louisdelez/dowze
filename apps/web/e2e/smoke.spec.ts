@@ -22,3 +22,13 @@ test('le compagnon propose la connexion hors session', async ({ page }) => {
   await page.goto('/compagnon');
   await expect(page.getByText('Connecte-toi pour retrouver ton compagnon')).toBeVisible();
 });
+
+test('la racine de Dowze ouvre le système du compagnon', async ({ page }) => {
+  await page.goto('/');
+  await expect(page).toHaveURL(/\/compagnon$/);
+});
+
+test('une interface Académie directe revient dans le PC du compagnon', async ({ page }) => {
+  await page.goto('/planning');
+  await expect(page).toHaveURL(/\/compagnon\?app=planning$/);
+});

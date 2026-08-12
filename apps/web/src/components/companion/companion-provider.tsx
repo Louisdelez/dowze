@@ -15,11 +15,13 @@ const HIDE_ON = new Set(['/compagnon', '/compagnon/']);
  */
 export function CompanionProvider({ children }: { children: ReactNode }) {
   const [snapshot, setSnapshot] = useState<CompanionSnapshot | null>(null);
+  const [embedded, setEmbedded] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   useCompanionSync(); // hydrate/sauvegarde le pet par compte
 
   useEffect(() => {
+    setEmbedded(window.self !== window.top);
     const unsub = subscribeCompanion(setSnapshot);
     return unsub;
   }, []);
@@ -27,7 +29,7 @@ export function CompanionProvider({ children }: { children: ReactNode }) {
   return (
     <>
       {children}
-      {snapshot && !HIDE_ON.has(pathname) && (
+      {snapshot && !embedded && !HIDE_ON.has(pathname) && (
         <Companion
           snapshot={snapshot}
           onOpen={() => router.push(`/compagnon?from=${encodeURIComponent(pathname)}`)}

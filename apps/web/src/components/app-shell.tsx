@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { PUBLIC_PATHS } from '@/lib/nav';
 import { SidebarNav } from '@/components/app-sidebar';
 import { StoreRail } from '@/components/store-rail';
@@ -12,6 +12,19 @@ import { XpBar } from '@/components/xp-bar';
 import { IconMenu } from '@/components/ui/icons';
 import { AiBridge } from '@/components/desktop/ai-dock';
 import { isDesktop } from '@/lib/desktop';
+
+const DEVICE_ONLY_APPS: Record<string, string> = {
+  '/dashboard': 'academie',
+  '/seance': 'seance',
+  '/langues': 'langues',
+  '/expeditions': 'expeditions',
+  '/tests': 'tests',
+  '/resultats': 'resultats',
+  '/planning': 'planning',
+  '/communaute': 'classe',
+  '/carnet': 'carnet',
+  '/validation': 'validation',
+};
 
 /**
  * Coquille de l'application.
@@ -29,6 +42,7 @@ export function AppShell({
   forceHub?: boolean;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [desktop, setDesktop] = useState(false);
   const [host, setHost] = useState(initialHost);
   useEffect(() => {
@@ -37,6 +51,10 @@ export function AppShell({
   }, [host]);
 
   const p = pathname.replace(/\/+$/, '') || '/';
+  useEffect(() => {
+    const app = DEVICE_ONLY_APPS[p];
+    if (app && window.self === window.top) router.replace(`/compagnon?app=${app}`);
+  }, [p, router]);
   // CHROME PAR DOMAINE = quel service t'affiche la page. Le compagnon est le MÊME partout mais s'intègre
   // dans le chrome du contexte où tu es :
   //  - hub DOWZE / infra (infra.dowze.ch, ou l'app de bureau) → rail Dowze. La racine = le STORE.
@@ -52,24 +70,23 @@ export function AppShell({
     pathname === '/compagnon';
   const [open, setOpen] = useState(false);
 
-  const withRail = hubContext && !isPublic; // le rail Dowze n'apparaît que dans le hub Dowze
+  const withRail = hubContext && !isPublic && p !== '/compagnon'; // la Maison est le bureau racine, sans chrome concurrent
 
   // Contenu « intérieur » (sans le rail du lanceur).
   let inner: ReactNode;
 
-  if (isStore) {
+  if (p === '/compagnon') {
+    // Le compagnon est le système principal, plein écran, quel que soit le domaine d'entrée.
+    inner = <div className="min-w-0 flex-1 overflow-hidden bg-surface">{children}</div>;
+  } else if (isStore) {
     inner = <div className="min-w-0 flex-1 overflow-y-auto bg-surface">{children}</div>; // store = lanceur, rail Dowze
   } else if (hubContext && !isPublic) {
     // HUB DOWZE (compagnon, profil, …) : rail Dowze + contenu, JAMAIS la barre d'Académie.
-    if (p === '/compagnon') {
-      inner = <div className="min-w-0 flex-1 overflow-hidden bg-surface">{children}</div>; // compagnon plein écran
-    } else {
-      inner = (
-        <div className="min-w-0 flex-1 overflow-y-auto bg-surface">
-          <main className="mx-auto w-full max-w-3xl px-6 py-10">{children}</main>
-        </div>
-      );
-    }
+    inner = (
+      <div className="min-w-0 flex-1 overflow-y-auto bg-surface">
+        <main className="mx-auto w-full max-w-3xl px-6 py-10">{children}</main>
+      </div>
+    );
   } else if (isPublic) {
     inner = (
       <div className="min-h-dvh w-full">

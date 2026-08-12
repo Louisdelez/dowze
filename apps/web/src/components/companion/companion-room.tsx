@@ -430,6 +430,12 @@ const ICON: Record<string, ReactNode> = {
       <line x1="12" x2="12.01" y1="18" y2="18" />
     </>
   ),
+  desktop: (
+    <>
+      <rect width="20" height="14" x="2" y="3" rx="2" />
+      <path d="M8 21h8M12 17v4" />
+    </>
+  ),
   home: (
     <>
       <path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8" />
@@ -1437,7 +1443,15 @@ export function CompanionRoom() {
   // Believabilité : rassemblement des membres autour du leader pendant un échange d'organisation.
   const [gather, setGather] = useState<{ leaderId: string; memberIds: string[] } | null>(null);
   const gatherTimer = useRef<number | null>(null);
-  const [device, setDevice] = useState<'phone' | 'tablet' | null>(null);
+  const [device, setDevice] = useState<'phone' | 'tablet' | 'desktop' | null>(null);
+  const [initialDeviceApp, setInitialDeviceApp] = useState<string | undefined>();
+  useEffect(() => {
+    const requestedApp = new URLSearchParams(window.location.search).get('app');
+    if (requestedApp) {
+      setInitialDeviceApp(requestedApp);
+      setDevice('desktop');
+    }
+  }, []);
   const [relayToken, setRelayToken] = useState<string | null>(null); // jeton MCP montré une fois
   const [relayBusy, setRelayBusy] = useState(false);
   const [relayCopied, setRelayCopied] = useState(false);
@@ -3512,7 +3526,7 @@ export function CompanionRoom() {
         </button>
       </div>
 
-      {/* Smartphone & tablette : parler à TOUS les compagnons (Messages + Email). Toujours visible. */}
+      {/* Les trois appareils virtuels partagent les compagnons et les applications Dowze. */}
       <div className="absolute bottom-14 left-3 z-30 flex gap-1.5">
         <button
           onClick={() => setDevice('phone')}
@@ -3528,8 +3542,25 @@ export function CompanionRoom() {
         >
           <Ico k="tablet" size={17} />
         </button>
+        <button
+          onClick={() => setDevice('desktop')}
+          aria-label="Ordinateur"
+          className="flex h-9 w-9 items-center justify-center rounded-full bg-white/85 text-slate-700 shadow-lg backdrop-blur transition hover:bg-white"
+        >
+          <Ico k="desktop" size={17} />
+        </button>
       </div>
-      {device && <CompanionDevice mode={device} onClose={() => setDevice(null)} />}
+      {device && (
+        <CompanionDevice
+          key={`${device}:${initialDeviceApp ?? 'home'}`}
+          mode={device}
+          initialApp={initialDeviceApp}
+          onClose={() => {
+            setDevice(null);
+            setInitialDeviceApp(undefined);
+          }}
+        />
+      )}
 
       {/* Bas-droite : Boutique (partout — gold + stock sont globaux au profil) */}
       <div className="absolute bottom-3 right-3 z-20">
