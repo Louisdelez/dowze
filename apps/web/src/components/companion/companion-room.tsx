@@ -1364,6 +1364,7 @@ export function CompanionRoom() {
   const [fx, setFx] = useState<{ text: string; id: number } | null>(null);
   const [speech, setSpeech] = useState<string | null>(null);
   const [speechSpeaker, setSpeechSpeaker] = useState<string | null>(null);
+  const speechSpeakerId = useRef<string | null>(null);
   const [speechHasNext, setSpeechHasNext] = useState(false);
   const speechPages = useRef<{ pages: string[]; index: number } | null>(null);
   const [speechAutoPlay, setSpeechAutoPlay] = useState(false);
@@ -2063,20 +2064,31 @@ export function CompanionRoom() {
       if (!dialogue || !page) return;
       dialogue.index = index;
       setSpeechHasNext(false);
-      say('…', null);
+      const specialistId = speechSpeakerId.current;
+      if (specialistId && secPhysRef.current[specialistId]) {
+        setSpeech(null);
+        saySec(specialistId, '…', 30000);
+      } else say('…', null);
+      const showPage = () => {
+        if (specialistId && secPhysRef.current[specialistId]) {
+          setSpeech(null);
+          saySec(specialistId, page, Number.POSITIVE_INFINITY);
+        } else say(page, null);
+      };
       if (voiceSettings) {
-        await speakCompanionNaturally(page, voiceSettings, 1, 1, () => say(page, null)).catch(() =>
-          say(page, null),
-        );
-      } else say(page, null);
+        await speakCompanionNaturally(page, voiceSettings, 1, 1, showPage).catch(showPage);
+      } else showPage();
       const hasNext = index + 1 < dialogue.pages.length;
       setSpeechHasNext(hasNext);
       if (hasNext && speechAutoPlayRef.current) {
         setSpeechHasNext(false);
         await playSpeechPageRef.current(index + 1);
-      } else if (!hasNext) say(page, 3500);
+      } else if (!hasNext) {
+        if (specialistId && secPhysRef.current[specialistId]) saySec(specialistId, page, 3500);
+        else say(page, 3500);
+      }
     },
-    [say, voiceSettings],
+    [say, saySec, voiceSettings],
   );
   playSpeechPageRef.current = playSpeechPage;
 
@@ -2107,8 +2119,9 @@ export function CompanionRoom() {
   }, [playSpeechPage, speechHasNext]);
 
   const startSpeechDialogue = useCallback(
-    (text: string, speaker?: string) => {
+    (text: string, speaker?: string, speakerId?: string) => {
       setSpeechSpeaker(speaker || null);
+      speechSpeakerId.current = speakerId || null;
       const pages = dialoguePages(text);
       speechPages.current = { pages, index: 0 };
       void playSpeechPage(0);
@@ -2226,10 +2239,31 @@ export function CompanionRoom() {
             page: document.title,
           }).then((result) => {
             const specialist = result.delegates.at(-1);
-            return { text: specialist?.said || result.reply, speaker: specialist?.name };
+            return { text: specialist?.said || result.reply, specialist };
           });
           replyPromise
-            .then(({ text, speaker }) => startSpeechDialogue(text, speaker))
+            .then(({ text, specialist }) => {
+              if (!specialist?.id || !specialist.space) {
+                startSpeechDialogue(text);
+                return;
+              }
+              // Rencontre visible avec l'abeille mobilisée : on rejoint son open-space, elle entre
+              // dans la pièce, marche vers le centre, puis prend elle-même la parole.
+              say(`${specialist.name} a accepté. Je t’emmène le voir.`, 2200);
+              setFade(true);
+              window.setTimeout(() => {
+                setActiveSpace(specialist.space!);
+                setFade(false);
+                window.setTimeout(() => {
+                  setRoom(specialist.room || 'travail:0');
+                  setFollowId(specialist.id);
+                  window.setTimeout(
+                    () => startSpeechDialogue(text, specialist.name, specialist.id),
+                    1200,
+                  );
+                }, 700);
+              }, 500);
+            })
             .catch(() =>
               say('Configure une clé IA dans le Copilote pour que je puisse réfléchir.'),
             );
@@ -3188,7 +3222,7 @@ export function CompanionRoom() {
                 return (
                   <div
                     key={`secb-${sr.id}`}
-                    className="pointer-events-none absolute"
+                    className="absolute"
                     style={{
                       left: x,
                       top: y + TOP,
@@ -3198,8 +3232,27 @@ export function CompanionRoom() {
                     }}
                   >
                     <div className="relative flex h-20 w-20 flex-col items-center">
-                      <div className="absolute bottom-full left-1/2 mb-1 -translate-x-1/2 whitespace-nowrap rounded-2xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-lg">
+                      <div className="pointer-events-auto absolute bottom-full left-1/2 mb-1 w-56 max-w-[min(14rem,70vw)] -translate-x-1/2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium leading-relaxed text-slate-700 shadow-lg">
+                        {speechSpeakerId.current === sr.id && (
+                          <span className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-accent">
+                            {sr.name}
+                          </span>
+                        )}
                         {sr.speech}
+                        {speechSpeakerId.current === sr.id && speechHasNext && (
+                          <button
+                            type="button"
+                            aria-label="Afficher la suite"
+                            title="Suite"
+                            onClick={() => {
+                              const dialogue = speechPages.current;
+                              if (dialogue) void playSpeechPage(dialogue.index + 1);
+                            }}
+                            className="absolute bottom-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-accent text-accent-foreground shadow transition hover:bg-accent-active"
+                          >
+                            <Ico k="chevronRight" size={12} />
+                          </button>
+                        )}
                         <span className="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 border-b border-r border-slate-200 bg-white" />
                       </div>
                     </div>

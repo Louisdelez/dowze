@@ -1365,7 +1365,14 @@ export class CompanionService {
     context?: { route?: string; service?: string; page?: string },
   ): Promise<{
     reply: string;
-    delegates: { name: string; role: string | null; said: string }[];
+    delegates: {
+      id: string;
+      name: string;
+      role: string | null;
+      said: string;
+      space?: string;
+      room?: string;
+    }[];
     created: string[];
     toolsUsed: string[];
   }> {
@@ -1511,6 +1518,7 @@ export class CompanionService {
             reply: routed.output,
             delegates: [
               {
+                id: routed.runtime.id,
                 name: routed.runtime.name,
                 role: routed.runtime.harness,
                 said: routed.output,
@@ -2025,7 +2033,19 @@ export class CompanionService {
           toolsUsed: [...toolsUsed],
         })
         .catch(() => undefined);
-    return { reply: finalReply, delegates: results, created, toolsUsed: [...toolsUsed] };
+    const locations = results.length
+      ? await this.db
+          .select({ id: companionAgents.id, space: companionAgents.space, room: companionAgents.room })
+          .from(companionAgents)
+          .where(inArray(companionAgents.id, results.map((result) => result.id)))
+      : [];
+    const locationById = new Map(locations.map((location) => [location.id, location]));
+    const locatedResults = results.map((result) => ({
+      ...result,
+      space: locationById.get(result.id)?.space,
+      room: locationById.get(result.id)?.room,
+    }));
+    return { reply: finalReply, delegates: locatedResults, created, toolsUsed: [...toolsUsed] };
   }
 
   /**

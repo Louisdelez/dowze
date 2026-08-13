@@ -573,7 +573,14 @@ export function orchestrateCompanion(
   context?: { route?: string; service?: string; page?: string },
 ): Promise<{
   reply: string;
-  delegates: { name: string; role: string | null; said: string }[];
+  delegates: {
+    id: string;
+    name: string;
+    role: string | null;
+    said: string;
+    space?: string;
+    room?: string;
+  }[];
   created: string[];
   toolsUsed?: string[];
 }> {
