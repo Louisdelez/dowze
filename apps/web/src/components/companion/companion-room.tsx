@@ -2131,15 +2131,24 @@ export function CompanionRoom() {
     list.forEach((sp, i) => {
       if (sp.id === 'primary') {
         say('…');
-        orchestrateCompanion(msg || raw, undefined, {
-          service: 'infra',
-          route: window.location.pathname,
-          page: document.title,
-        })
-          .then((result) => {
-            say(result.reply);
+        const request = msg || raw;
+        const needsHive =
+          /\b(d[eé]l[eè]gue|d[eé]l[eé]guer|mobilise|abeille|ruche|sp[eé]cialiste|open[- ]space)\b/i.test(
+            request,
+          );
+        const replyPromise =
+          needsHive || !primaryAgent?.id
+            ? orchestrateCompanion(request, undefined, {
+                service: 'infra',
+                route: window.location.pathname,
+                page: document.title,
+              }).then((result) => result.reply)
+            : chatCompanionAgent(primaryAgent.id, request).then((result) => result.reply);
+        replyPromise
+          .then((reply) => {
+            say(reply);
             if (voiceSettings) {
-              void speakCompanionNaturally(result.reply, voiceSettings).catch(() => {});
+              void speakCompanionNaturally(reply, voiceSettings).catch(() => {});
             }
           })
           .catch(() => say('Configure une clé IA dans le Copilote pour que je puisse réfléchir.'));
