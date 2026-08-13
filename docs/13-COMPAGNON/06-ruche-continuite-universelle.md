@@ -182,8 +182,9 @@ immuables.
    le registre les expose sans prétendre qu'ils sont disponibles.
 2. Ajouter les transporteurs externes email/push lorsque les fournisseurs et consentements de notification
    seront choisis ; les rendus et leur file de livraison sont déjà prêts.
-3. Ajouter une voix premium si souhaité : la boucle locale Web Speech fonctionne sans compte, mais un accent
-   naturel stable, une identité vocale entraînée et le streaming temps réel dépendent d'un moteur STT/TTS.
+3. ✅ Voix premium et locale ajoutées (migration `0086`) : STT/TTS OpenAI ou ElevenLabs avec clés chiffrées,
+   et Speaches sur le poste Desktop avec faster-whisper + Kokoro. Web Speech ne sert plus que de repli. Le
+   serveur ne contacte jamais le moteur local et l'audio local reste sur `127.0.0.1`.
 4. Appliquer les migrations et déployer l'API/web en production après autorisation explicite ; fournir
    `HIVE_VAULT_SECRET_KEY` dans le gestionnaire de secrets de l'environnement.
 5. Activer le relais MCP avec un jeton généré par l'utilisateur et son abonnement officiel Codex/Claude.

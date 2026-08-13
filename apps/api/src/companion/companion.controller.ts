@@ -25,6 +25,7 @@ import { parseOr400 } from '../common/validate-body';
 import { CompanionService, type UploadedPetFile } from './companion.service';
 import { PetCareService } from './pet-care.service';
 import { HiveContinuityService } from './hive-continuity.service';
+import { VoiceService, type VoiceUpload } from './voice.service';
 
 interface AuthedRequest {
   accountAuthId?: string;
@@ -353,6 +354,22 @@ const roomBody = z
     rooms: z.record(z.string().max(40), roomItemsSchema),
   })
   .strict();
+const voiceProvider = z.enum(['browser', 'openai', 'elevenlabs', 'local']);
+const voiceSettingsBody = z
+  .object({
+    sttProvider: voiceProvider.optional(),
+    sttModel: z.string().min(1).max(160).optional(),
+    ttsProvider: voiceProvider.optional(),
+    ttsModel: z.string().min(1).max(160).optional(),
+    voiceId: z.string().min(1).max(160).optional(),
+    localSttModel: z.string().min(1).max(240).optional(),
+    localTtsModel: z.string().min(1).max(240).optional(),
+    localVoiceId: z.string().min(1).max(160).optional(),
+    openaiApiKey: z.string().max(500).nullable().optional(),
+    elevenlabsApiKey: z.string().max(500).nullable().optional(),
+  })
+  .strict();
+const synthesizeVoiceBody = z.object({ text: z.string().min(1).max(1200) }).strict();
 
 @Controller('companion')
 export class CompanionController {
@@ -360,7 +377,48 @@ export class CompanionController {
     private readonly service: CompanionService,
     private readonly care: PetCareService,
     private readonly continuity: HiveContinuityService,
+    private readonly voice: VoiceService,
   ) {}
+
+  @Get('voice/settings')
+  @UseGuards(SupabaseAuthGuard)
+  getVoiceSettings(@Req() req: AuthedRequest) {
+    if (!req.accountAuthId) throw new UnauthorizedException('non authentifié');
+    return this.voice.getSettings(req.accountAuthId);
+  }
+
+  @Put('voice/settings')
+  @UseGuards(SupabaseAuthGuard)
+  updateVoiceSettings(@Req() req: AuthedRequest, @Body() body: unknown) {
+    if (!req.accountAuthId) throw new UnauthorizedException('non authentifié');
+    return this.voice.updateSettings(req.accountAuthId, parseOr400(voiceSettingsBody, body));
+  }
+
+  @Post('voice/transcribe')
+  @UseGuards(SupabaseAuthGuard)
+  @Throttle({ default: { ttl: 60_000, limit: 20 } })
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 15 * 1024 * 1024, files: 1 } }))
+  transcribeVoice(@Req() req: AuthedRequest, @UploadedFile() file: VoiceUpload | undefined) {
+    if (!req.accountAuthId) throw new UnauthorizedException('non authentifié');
+    if (!file) throw new BadRequestException('Enregistrement audio absent.');
+    return this.voice.transcribe(req.accountAuthId, file);
+  }
+
+  @Post('voice/synthesize')
+  @UseGuards(SupabaseAuthGuard)
+  @Throttle({ default: { ttl: 60_000, limit: 30 } })
+  async synthesizeVoice(
+    @Req() req: AuthedRequest,
+    @Body() body: unknown,
+    @Res() res: HttpResponse,
+  ) {
+    if (!req.accountAuthId) throw new UnauthorizedException('non authentifié');
+    const { text } = parseOr400(synthesizeVoiceBody, body);
+    const audio = await this.voice.synthesize(req.accountAuthId, text);
+    res.setHeader('content-type', audio.mime);
+    res.setHeader('cache-control', 'no-store');
+    res.send(audio.audio);
+  }
 
   /** Tamagotchi : état de soin (jauges décroissantes, humeur, âge). */
   @Get('care')

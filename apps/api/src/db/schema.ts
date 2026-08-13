@@ -836,6 +836,21 @@ export const localAiJobs = pgTable('local_ai_jobs', {
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
 });
 
+export const companionVoiceSettings = pgTable('companion_voice_settings', {
+  accountId: uuid('account_id').primaryKey(),
+  sttProvider: text('stt_provider').notNull().default('browser'),
+  sttModel: text('stt_model').notNull().default('gpt-4o-mini-transcribe'),
+  ttsProvider: text('tts_provider').notNull().default('browser'),
+  ttsModel: text('tts_model').notNull().default('gpt-4o-mini-tts'),
+  voiceId: text('voice_id').notNull().default('marin'),
+  localSttModel: text('local_stt_model').notNull().default('Systran/faster-whisper-small'),
+  localTtsModel: text('local_tts_model').notNull().default('speaches-ai/Kokoro-82M-v1.0-ONNX'),
+  localVoiceId: text('local_voice_id').notNull().default('ff_siwis'),
+  openaiKeyEnc: text('openai_key_enc'),
+  elevenlabsKeyEnc: text('elevenlabs_key_enc'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const creditBalances = pgTable('credit_balances', {
   profileId: uuid('profile_id').primaryKey(),
   balance: doublePrecision('balance').notNull().default(0),

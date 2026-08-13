@@ -9,9 +9,16 @@ import {
   getCompanionAgentMessages,
   orchestrateCompanion,
   relaySayCompanion,
+  getCompanionVoiceSettings,
   type CompanionAgent,
+  type CompanionVoiceSettings,
 } from '@/lib/api';
 import { isDesktop, webSearch, wikipediaSearch, openExternal, type WebResult } from '@/lib/desktop';
+import {
+  speakCompanionNaturally,
+  stopCompanionVoice,
+  transcribeRecordedVoice,
+} from '@/lib/companion-voice';
 import {
   COMPANION_DEVICE_APPS,
   getCompanionDeviceApp,
@@ -226,21 +233,12 @@ function recognitionConstructor(): BrowserSpeechRecognitionConstructor | null {
   return speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition ?? null;
 }
 
-function speakHuman(text: string, companion: CompanionAgent): void {
-  if (typeof window === 'undefined' || !window.speechSynthesis) return;
-  const utterance = new SpeechSynthesisUtterance(
-    text
-      .replace(/```[\s\S]*?```/g, 'un extrait de code')
-      .replace(/[*_#`]/g, '')
-      .replace(/https?:\/\/\S+/g, 'le lien associé')
-      .slice(0, 600),
-  );
-  utterance.lang = 'fr-FR';
+function browserVoiceStyle(companion: CompanionAgent): { rate: number; pitch: number } {
   const traits = companion.personality?.traits?.join(' ').toLowerCase() ?? '';
-  utterance.rate = traits.includes('calme') ? 0.9 : traits.includes('énergi') ? 1.08 : 1;
-  utterance.pitch = traits.includes('joyeu') ? 1.08 : 1;
-  window.speechSynthesis.cancel();
-  window.speechSynthesis.speak(utterance);
+  return {
+    rate: traits.includes('calme') ? 0.9 : traits.includes('énergi') ? 1.08 : 1,
+    pitch: traits.includes('joyeu') ? 1.08 : 1,
+  };
 }
 
 function Avatar({ a, size = 40 }: { a: CompanionAgent; size?: number }) {
@@ -363,6 +361,7 @@ export function CompanionDevice({
   const [sel, setSel] = useState<string | null>(null); // id agent sélectionné (messages) ou email
   const [draft, setDraft] = useState('');
   const [voiceMode, setVoiceMode] = useState(false);
+  const [voiceSettings, setVoiceSettings] = useState<CompanionVoiceSettings | null>(null);
   const midRef = useState(() => ({ n: 1 }))[0];
 
   useEffect(() => {
@@ -380,6 +379,10 @@ export function CompanionDevice({
         /* réseau */
       }
     })();
+  }, []);
+
+  useEffect(() => {
+    getCompanionVoiceSettings().then(setVoiceSettings).catch(() => {});
   }, []);
 
   // Conversations : chaque compagnon a un message d'accueil.
@@ -432,7 +435,10 @@ export function CompanionDevice({
             { id: midRef.n++, from: 'them', text, at: Date.now(), meta },
           ],
         }));
-        if (voiceMode && !meta) speakHuman(text, a);
+        if (voiceMode && !meta && voiceSettings) {
+          const style = browserVoiceStyle(a);
+          void speakCompanionNaturally(text, voiceSettings, style.rate, style.pitch).catch(() => {});
+        }
       };
       const aiErr = (e: unknown) =>
         push(
@@ -481,7 +487,7 @@ export function CompanionDevice({
         );
       }
     },
-    [draft, sel, agents, midRef, convs, voiceMode],
+    [draft, sel, agents, midRef, convs, voiceMode, voiceSettings],
   );
 
   // Charge l'historique PERSISTANT quand on ouvre la conversation d'un compagnon-agent OU du relais (mémoire).
@@ -692,6 +698,7 @@ export function CompanionDevice({
                         send={send}
                         voiceMode={voiceMode}
                         setVoiceMode={setVoiceMode}
+                        voiceSettings={voiceSettings}
                         onBack={() => setSel(null)}
                       />
                     ))}
@@ -705,6 +712,7 @@ export function CompanionDevice({
                         send={send}
                         voiceMode={voiceMode}
                         setVoiceMode={setVoiceMode}
+                        voiceSettings={voiceSettings}
                         onBack={null}
                       />
                     ) : (
@@ -979,6 +987,7 @@ function Thread({
   send,
   voiceMode,
   setVoiceMode,
+  voiceSettings,
   onBack,
 }: {
   agent: CompanionAgent | undefined;
@@ -988,25 +997,69 @@ function Thread({
   send: (voiceText?: string) => void;
   voiceMode: boolean;
   setVoiceMode: (enabled: boolean) => void;
+  voiceSettings: CompanionVoiceSettings | null;
   onBack: (() => void) | null;
 }) {
   const [listening, setListening] = useState(false);
   const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
-  const voiceSupported =
-    recognitionConstructor() !== null &&
-    typeof window !== 'undefined' &&
-    'speechSynthesis' in window;
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const voiceSupported = Boolean(
+    voiceSettings &&
+      (voiceSettings.sttProvider === 'browser'
+        ? recognitionConstructor() !== null
+        : typeof navigator !== 'undefined' && navigator.mediaDevices?.getUserMedia),
+  );
 
-  function listen() {
+  async function listen() {
     if (listening) {
-      recognitionRef.current?.stop();
+      if (voiceSettings?.sttProvider === 'browser') recognitionRef.current?.stop();
+      else recorderRef.current?.stop();
+      return;
+    }
+    if (!voiceSettings) return;
+    stopCompanionVoice();
+    setVoiceMode(true);
+    setListening(true);
+    if (voiceSettings.sttProvider !== 'browser') {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        streamRef.current = stream;
+        const chunks: BlobPart[] = [];
+        const recorder = new MediaRecorder(stream);
+        recorderRef.current = recorder;
+        recorder.ondataavailable = (event) => {
+          if (event.data.size) chunks.push(event.data);
+        };
+        recorder.onstop = () => {
+          const audio = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
+          stream.getTracks().forEach((track) => track.stop());
+          streamRef.current = null;
+          recorderRef.current = null;
+          setListening(false);
+          void transcribeRecordedVoice(audio, voiceSettings)
+            .then((transcript) => {
+              if (transcript) send(transcript);
+            })
+            .catch(() => {});
+        };
+        recorder.onerror = () => {
+          stream.getTracks().forEach((track) => track.stop());
+          setListening(false);
+        };
+        recorder.start();
+      } catch {
+        setListening(false);
+      }
       return;
     }
     const Recognition = recognitionConstructor();
-    if (!Recognition) return;
+    if (!Recognition) {
+      setListening(false);
+      return;
+    }
     // L'utilisateur reprend la parole : le compagnon se tait immédiatement, comme dans une vraie
     // conversation. Le nouveau tour vocal remplace proprement la synthèse en cours.
-    window.speechSynthesis.cancel();
     const recognition = new Recognition();
     recognitionRef.current = recognition;
     recognition.lang = 'fr-FR';
@@ -1028,14 +1081,14 @@ function Thread({
       recognitionRef.current = null;
       setListening(false);
     };
-    setVoiceMode(true);
-    setListening(true);
     recognition.start();
   }
   useEffect(
     () => () => {
       recognitionRef.current?.abort();
-      window.speechSynthesis?.cancel();
+      recorderRef.current?.stop();
+      streamRef.current?.getTracks().forEach((track) => track.stop());
+      stopCompanionVoice();
     },
     [],
   );
@@ -1084,7 +1137,7 @@ function Thread({
       <div className="flex items-center gap-2 border-t border-slate-200 p-2">
         {voiceSupported && (
           <button
-            onClick={listen}
+            onClick={() => void listen()}
             aria-label={listening ? 'Arrêter de parler' : 'Parler au compagnon'}
             title="Conversation vocale"
             className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition ${listening || voiceMode ? 'bg-rose-500 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}

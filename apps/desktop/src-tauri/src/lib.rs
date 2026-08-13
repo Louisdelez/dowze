@@ -235,7 +235,7 @@ fn desktop_info() -> serde_json::Value {
         "version": env!("CARGO_PKG_VERSION"),
         "os": std::env::consts::OS,
         "searxng": std::env::var("DOWZE_SEARXNG_URL").ok(),
-        "tools": ["web_search", "wikipedia_search", "ollama_request"],
+        "tools": ["web_search", "wikipedia_search", "ollama_request", "voice_request"],
     })
 }
 
@@ -271,6 +271,89 @@ async fn ollama_request(payload: serde_json::Value) -> Result<serde_json::Value,
         .map_err(|error| format!("Réponse Ollama invalide : {error}"))
 }
 
+/// Moteur vocal local OpenAI-compatible (Speaches) sur le poste client.
+/// faster-whisper assure le STT et Kokoro le TTS ; aucune donnée vocale ne part vers Dowze.
+#[tauri::command]
+async fn voice_request(payload: serde_json::Value) -> Result<serde_json::Value, String> {
+    use base64::{engine::general_purpose::STANDARD, Engine as _};
+    let operation = payload
+        .get("operation")
+        .and_then(|value| value.as_str())
+        .ok_or("opération vocale absente")?;
+    let client = reqwest::Client::new();
+    match operation {
+        "transcribe" => {
+            let encoded = payload
+                .get("audioBase64")
+                .and_then(|value| value.as_str())
+                .ok_or("audio absent")?;
+            let audio = STANDARD.decode(encoded).map_err(|_| "audio local invalide")?;
+            if audio.len() > 15 * 1024 * 1024 {
+                return Err("enregistrement vocal trop volumineux".into());
+            }
+            let model = payload
+                .get("model")
+                .and_then(|value| value.as_str())
+                .unwrap_or("Systran/faster-whisper-small");
+            let mime = payload
+                .get("mime")
+                .and_then(|value| value.as_str())
+                .unwrap_or("audio/webm");
+            let part = reqwest::multipart::Part::bytes(audio)
+                .file_name("voice.webm")
+                .mime_str(mime)
+                .map_err(|error| error.to_string())?;
+            let form = reqwest::multipart::Form::new()
+                .part("file", part)
+                .text("model", model.to_string());
+            client
+                .post("http://127.0.0.1:8000/v1/audio/transcriptions")
+                .multipart(form)
+                .timeout(std::time::Duration::from_secs(120))
+                .send()
+                .await
+                .map_err(|_| "Speaches n'est pas joignable sur cette machine (127.0.0.1:8000).".to_string())?
+                .error_for_status()
+                .map_err(|error| format!("Speaches STT a refusé la requête : {error}"))?
+                .json()
+                .await
+                .map_err(|error| format!("Transcription locale invalide : {error}"))
+        }
+        "synthesize" => {
+            let text = payload
+                .get("text")
+                .and_then(|value| value.as_str())
+                .ok_or("texte vocal absent")?;
+            let model = payload
+                .get("model")
+                .and_then(|value| value.as_str())
+                .unwrap_or("speaches-ai/Kokoro-82M-v1.0-ONNX");
+            let voice = payload
+                .get("voice")
+                .and_then(|value| value.as_str())
+                .unwrap_or("ff_siwis");
+            let response = client
+                .post("http://127.0.0.1:8000/v1/audio/speech")
+                .json(&serde_json::json!({
+                    "model": model,
+                    "voice": voice,
+                    "input": text,
+                    "response_format": "mp3",
+                    "speed": 1.0
+                }))
+                .timeout(std::time::Duration::from_secs(120))
+                .send()
+                .await
+                .map_err(|_| "Speaches n'est pas joignable sur cette machine (127.0.0.1:8000).".to_string())?
+                .error_for_status()
+                .map_err(|error| format!("Speaches TTS a refusé la requête : {error}"))?;
+            let audio = response.bytes().await.map_err(|error| error.to_string())?;
+            Ok(serde_json::json!({ "audioBase64": STANDARD.encode(audio), "mime": "audio/mpeg" }))
+        }
+        _ => Err("opération vocale non autorisée".into()),
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let app = tauri::Builder::default()
@@ -284,6 +367,7 @@ pub fn run() {
             tools::web_search,
             tools::wikipedia_search,
             ollama_request,
+            voice_request,
         ])
         .build(tauri::generate_context!())
         .expect("erreur au démarrage de Dowze Infra Desktop");

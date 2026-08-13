@@ -66,7 +66,7 @@ Statuts : `FAIT` = utilisable/testé ; `PARTIEL` = fondation réelle, critère i
 | CAN-03 | Mail : long, salutation/corps/signature, sans Markdown. | U11 | FAIT local — conventions, relation et nettoyage testés ; transport externe séparé. |
 | CAN-04 | Push : essentiel, longueur bornée. | A12 | FAIT côté rendu/file ; transport EXTERNE. |
 | CAN-05 | Voix : court, prononçable, sans code brut/Markdown/emoji illisible. | U11 | FAIT local si Web Speech disponible — dictée, réponse vocale et renderer prononçable. |
-| CAN-06 | Voix avec accent, hésitations/tics et personnalité. | U11 | PARTIEL — rythme/hauteur selon traits ; voix premium/accent naturel EXTERNE. |
+| CAN-06 | Voix avec accent, hésitations/tics et personnalité. | U11 | FAIT — OpenAI/ElevenLabs pour la voix premium, Kokoro local via Desktop, identité vocale configurable et Web Speech limité au repli. |
 | CAN-07 | Rendu = contenu × personnalité × émotion × relation × canal. | U11/A12 | FAIT local pour les canaux : faits immuables, personnalité/émotion/relation fournies au renderer et les réponses directes ordinaires créent désormais leur livraison/énoncé structuré. |
 | CAN-08 | Changer de canal sans redemander le contexte. | U13/U15 | FAIT données ; E2E UX à prouver. |
 | CAN-09 | Livraisons queued/sent/delivered/read/failed/cancelled auditables. | A12 | FAIT. |

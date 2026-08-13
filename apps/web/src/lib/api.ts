@@ -521,6 +521,51 @@ export function chatCompanionAgent(
 export function getCompanionAgentMessages(id: string): Promise<CompanionMessage[]> {
   return get(`/companion/agents/${id}/messages`);
 }
+
+export type VoiceProvider = 'browser' | 'openai' | 'elevenlabs' | 'local';
+export interface CompanionVoiceSettings {
+  sttProvider: VoiceProvider;
+  sttModel: string;
+  ttsProvider: VoiceProvider;
+  ttsModel: string;
+  voiceId: string;
+  localSttModel: string;
+  localTtsModel: string;
+  localVoiceId: string;
+  hasOpenaiKey: boolean;
+  hasElevenlabsKey: boolean;
+}
+export type CompanionVoiceSettingsUpdate = Partial<
+  Omit<CompanionVoiceSettings, 'hasOpenaiKey' | 'hasElevenlabsKey'>
+> & { openaiApiKey?: string | null; elevenlabsApiKey?: string | null };
+export function getCompanionVoiceSettings(): Promise<CompanionVoiceSettings> {
+  return get('/companion/voice/settings');
+}
+export function updateCompanionVoiceSettings(
+  input: CompanionVoiceSettingsUpdate,
+): Promise<CompanionVoiceSettings> {
+  return put('/companion/voice/settings', input);
+}
+export async function transcribeCompanionVoice(file: Blob): Promise<string> {
+  const form = new FormData();
+  form.append('file', file, `voice.${file.type.includes('ogg') ? 'ogg' : 'webm'}`);
+  const res = await fetch(`${API_BASE}/companion/voice/transcribe`, {
+    method: 'POST',
+    headers: { ...(await authHeaders()) },
+    body: form,
+  });
+  if (!res.ok) throw new Error(`${res.status} — ${await res.text()}`);
+  return ((await res.json()) as { text: string }).text;
+}
+export async function synthesizeCompanionVoice(text: string): Promise<Blob> {
+  const res = await fetch(`${API_BASE}/companion/voice/synthesize`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', ...(await authHeaders()) },
+    body: JSON.stringify({ text }),
+  });
+  if (!res.ok) throw new Error(`${res.status} — ${await res.text()}`);
+  return res.blob();
+}
 /** Orchestration « ruche » : le compagnon principal délègue aux spécialistes et synthétise. */
 export function orchestrateCompanion(
   message: string,

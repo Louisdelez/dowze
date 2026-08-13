@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from 'react';
 import { CompanionPicker } from '@/components/companion/companion-picker';
 import { CopiloteSettings } from '@/components/copilote-settings';
+import { CompanionVoiceSettings } from '@/components/companion-voice-settings';
 
 const ICON: Record<string, ReactNode> = {
   sparkles: (
@@ -16,6 +17,12 @@ const ICON: Record<string, ReactNode> = {
       <rect x="4" y="4" width="16" height="16" rx="2" />
       <rect x="9" y="9" width="6" height="6" />
       <path d="M9 2v2M15 2v2M9 20v2M15 20v2M2 9h2M2 15h2M20 9h2M20 15h2" />
+    </>
+  ),
+  mic: (
+    <>
+      <rect x="9" y="2" width="6" height="12" rx="3" />
+      <path d="M5 10a7 7 0 0 0 14 0M12 17v5M8 22h8" />
     </>
   ),
   home: (
@@ -46,6 +53,7 @@ function Ico({ k }: { k: string }) {
 const SECTIONS = [
   { id: 'apparence', label: 'Compagnon', icon: 'sparkles' },
   { id: 'copilote', label: 'Copilote (IA)', icon: 'cpu' },
+  { id: 'voix', label: 'Voix', icon: 'mic' },
   { id: 'maison', label: 'Maison', icon: 'home' },
 ];
 
@@ -76,6 +84,7 @@ export function SettingsMenu({ onClearRoom }: { onClearRoom: () => void }) {
       <div className="min-w-0 flex-1 overflow-auto pr-1">
         {section === 'apparence' && <CompanionPicker />}
         {section === 'copilote' && <CopiloteSettings />}
+        {section === 'voix' && <CompanionVoiceSettings />}
         {section === 'maison' && (
           <div className="space-y-3">
             <div className="text-sm font-medium">Ta pièce</div>

@@ -21,6 +21,7 @@ export const envSchema = z.object({
   MISTRAL_API_KEY: z.string().optional(),
   DEEPSEEK_API_KEY: z.string().optional(),
   ANTHROPIC_API_KEY: z.string().optional(),
+  ELEVENLABS_API_KEY: z.string().optional(),
   /** Clé de chiffrement des clés BYOK au repos (AES-256-GCM) : 32 octets en base64 ou hex. */
   COPILOTE_SECRET_KEY: z.string().optional(),
   /** Clé AES-256-GCM dédiée au coffre de la Ruche. En dev, COPILOTE_SECRET_KEY sert de repli. */
