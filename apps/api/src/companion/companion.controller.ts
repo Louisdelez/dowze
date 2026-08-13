@@ -736,6 +736,19 @@ export class CompanionController {
     return this.continuity.createDelivery(req.accountAuthId, parseOr400(deliveryBody, body));
   }
 
+  @Get('hive/deliveries')
+  @UseGuards(SupabaseAuthGuard)
+  async listHiveDeliveries(
+    @Req() req: AuthedRequest,
+    @Query('channel') channel?: 'email' | 'messages',
+  ) {
+    if (!req.accountAuthId) throw new UnauthorizedException('non authentifié');
+    return this.continuity.listDeliveries(
+      req.accountAuthId,
+      channel === 'email' || channel === 'messages' ? channel : undefined,
+    );
+  }
+
   @Get('hive/memory/policy')
   @UseGuards(SupabaseAuthGuard)
   async memoryPolicy(@Req() req: AuthedRequest) {

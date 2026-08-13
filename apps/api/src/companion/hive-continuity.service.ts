@@ -1152,6 +1152,27 @@ export class HiveContinuityService {
     return row;
   }
 
+  async listDeliveries(authId: string, channel?: 'email' | 'messages') {
+    const profileId = await this.profileIdForAuth(authId);
+    const filters = [eq(hiveDeliveries.profileId, profileId)];
+    if (channel) filters.push(eq(hiveDeliveries.channel, channel));
+    return this.db
+      .select({
+        id: hiveDeliveries.id,
+        channel: hiveDeliveries.channel,
+        content: hiveDeliveries.renderedContent,
+        status: hiveDeliveries.status,
+        createdAt: hiveDeliveries.createdAt,
+        metadata: hiveEvents.metadata,
+        companionId: hiveDeliveries.companionId,
+      })
+      .from(hiveDeliveries)
+      .innerJoin(hiveEvents, eq(hiveEvents.id, hiveDeliveries.eventId))
+      .where(and(...filters))
+      .orderBy(desc(hiveDeliveries.createdAt))
+      .limit(100);
+  }
+
   async touchRelationshipForProfile(profileId: string, agentId: string, positive = true) {
     const now = new Date();
     return (

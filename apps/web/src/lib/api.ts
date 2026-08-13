@@ -699,6 +699,18 @@ export function deliverHiveEvent(input: {
 }): Promise<{ id: string; status: string; renderedContent: string }> {
   return post('/companion/hive/deliveries', input);
 }
+export interface HiveDelivery {
+  id: string;
+  channel: 'email' | 'messages';
+  content: string;
+  status: string;
+  createdAt: string;
+  companionId: string | null;
+  metadata: { subject?: string | null; recipient?: string };
+}
+export function getHiveDeliveries(channel?: 'email' | 'messages'): Promise<HiveDelivery[]> {
+  return get(`/companion/hive/deliveries${channel ? `?channel=${channel}` : ''}`);
+}
 export function transitionHiveHandoff(
   id: string,
   status: HiveHandoff['status'],

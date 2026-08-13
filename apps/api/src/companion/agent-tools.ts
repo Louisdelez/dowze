@@ -213,8 +213,14 @@ export function buildAgentTools(deps: {
     result: string;
     route: string[];
   }>;
+  /** Dépose un contenu dans l'application virtuelle Mail ou Messages de l'utilisateur. */
+  sendToApp?: (input: {
+    canal: 'email' | 'messages';
+    contenu: string;
+    objet?: string;
+  }) => Promise<{ envoye: true; canal: 'email' | 'messages'; contenu: string }>;
 }): ToolSet {
-  const { copilote, profileId, orgSearch, memorySearch, delegate } = deps;
+  const { copilote, profileId, orgSearch, memorySearch, delegate, sendToApp } = deps;
   const tools: ToolSet = {
     calculatrice: tool({
       description:
@@ -278,6 +284,18 @@ export function buildAgentTools(deps: {
       },
     }),
   };
+  if (sendToApp) {
+    tools.envoyer_dans_application = tool({
+      description:
+        "Envoie réellement un contenu dans l'application virtuelle Mail ou Messages de l'utilisateur. Utilise TOUJOURS cet outil quand il demande « envoie-moi ça », « mets ça dans mes messages », « par mail » ou une formulation équivalente. Choisis email pour un courriel structuré avec objet, salutation et signature ; messages pour un texte bref et conversationnel. Ne dis jamais que tu ne peux pas envoyer.",
+      parameters: z.object({
+        canal: z.enum(['email', 'messages']),
+        objet: z.string().max(160).optional(),
+        contenu: z.string().min(1).max(5000),
+      }),
+      execute: sendToApp,
+    });
+  }
   if (delegate) {
     tools.deleguer_dans_la_ruche = tool({
       description:

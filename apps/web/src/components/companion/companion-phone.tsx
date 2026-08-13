@@ -10,6 +10,8 @@ import {
   orchestrateCompanion,
   relaySayCompanion,
   getCompanionVoiceSettings,
+  getHiveDeliveries,
+  type HiveDelivery,
   type CompanionAgent,
   type CompanionVoiceSettings,
 } from '@/lib/api';
@@ -362,6 +364,7 @@ export function CompanionDevice({
   const [draft, setDraft] = useState('');
   const [voiceMode, setVoiceMode] = useState(false);
   const [voiceSettings, setVoiceSettings] = useState<CompanionVoiceSettings | null>(null);
+  const [deliveredEmails, setDeliveredEmails] = useState<HiveDelivery[]>([]);
   const midRef = useState(() => ({ n: 1 }))[0];
 
   useEffect(() => {
@@ -384,6 +387,14 @@ export function CompanionDevice({
   useEffect(() => {
     getCompanionVoiceSettings().then(setVoiceSettings).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (app !== 'email') return;
+    const load = () => getHiveDeliveries('email').then(setDeliveredEmails).catch(() => {});
+    void load();
+    const timer = window.setInterval(load, 5000);
+    return () => window.clearInterval(timer);
+  }, [app]);
 
   // Conversations : chaque compagnon a un message d'accueil.
   useEffect(() => {
@@ -496,8 +507,7 @@ export function CompanionDevice({
     if (!sel) return;
     const a = agents.find((x) => x.id === sel);
     // Historique persistant : abeilles IA, relais, et compagnons de la Maison (leaders, sauf le principal qui n'a pas de mémoire).
-    const hasMemory =
-      a && (a.mode === 'agent' || a.mode === 'relay' || (a.space === 'home' && !a.isPrimary));
+    const hasMemory = a && (a.mode === 'agent' || a.mode === 'relay' || a.space === 'home');
     if (!a || !hasMemory || loadedRef.has(sel)) return;
     loadedRef.add(sel);
     getCompanionAgentMessages(sel)
@@ -544,10 +554,20 @@ export function CompanionDevice({
     };
   }, [app, sel, agents]);
 
-  const emails = useMemo(
-    () => agents.map((a) => ({ a, ...seedEmail(a.name, a.personality?.traits ?? []) })),
-    [agents],
-  );
+  const emails = useMemo(() => {
+    const sent = deliveredEmails.map((delivery) => {
+      const a = agents.find((agent) => agent.id === delivery.companionId) ?? agents[0];
+      return a ? {
+        a,
+        id: delivery.id,
+        subject: delivery.metadata?.subject || 'Message de ton compagnon',
+        body: delivery.content,
+        at: new Date(delivery.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+      } : null;
+    }).filter(Boolean) as { a: CompanionAgent; id: string; subject: string; body: string; at: string }[];
+    if (sent.length) return sent;
+    return agents.map((a) => ({ a, id: a.id, ...seedEmail(a.name, a.personality?.traits ?? []), at: 'maint.' }));
+  }, [agents, deliveredEmails]);
 
   const frame = pc
     ? 'h-[88vh] max-h-[900px] w-[96vw] max-w-6xl rounded-[16px] p-2'
@@ -556,7 +576,7 @@ export function CompanionDevice({
       : 'h-[86vh] max-h-[780px] w-[min(92vw,392px)] rounded-[44px] p-2.5';
 
   const selAgent = agents.find((a) => a.id === sel);
-  const selEmail = emails.find((e) => e.a.id === sel);
+  const selEmail = emails.find((e) => e.id === sel);
   const deviceApp = getCompanionDeviceApp(app);
 
   return (
@@ -734,9 +754,9 @@ export function CompanionDevice({
                     <div className="min-h-0 flex-1 overflow-y-auto">
                       {emails.map((e) => (
                         <button
-                          key={e.a.id}
-                          onClick={() => setSel(e.a.id)}
-                          className={`flex w-full items-start gap-3 border-b border-slate-100 px-4 py-3 text-left transition hover:bg-slate-50 ${sel === e.a.id ? 'bg-sky-50' : ''}`}
+                          key={e.id}
+                          onClick={() => setSel(e.id)}
+                          className={`flex w-full items-start gap-3 border-b border-slate-100 px-4 py-3 text-left transition hover:bg-slate-50 ${sel === e.id ? 'bg-sky-50' : ''}`}
                         >
                           <Avatar a={e.a} size={38} />
                           <div className="min-w-0 flex-1">
@@ -744,7 +764,7 @@ export function CompanionDevice({
                               <span className="truncate text-sm font-semibold text-slate-800">
                                 {e.a.name}
                               </span>
-                              <span className="shrink-0 text-[10px] text-slate-400">maint.</span>
+                              <span className="shrink-0 text-[10px] text-slate-400">{e.at}</span>
                             </div>
                             <div className="truncate text-[13px] font-medium text-slate-700">
                               {e.subject}

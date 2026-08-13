@@ -1042,7 +1042,7 @@ export class CompanionService {
             '\n',
           )}\nUtilise les faits utiles sans ajouter de citation brute, de lien ou de texte entre crochets dans la réponse parlée.`
       : '';
-    const sys = `${persona.systemPrompt || `Tu es ${agent.name}, un compagnon bienveillant et polyvalent qui aide l'utilisateur dans ce qu'il demande, quel que soit le domaine.`}${rulesBlock}${relationshipBlock}${ragBlock}\n\nOUTILS : tu disposes d'outils (calculatrice, date/heure, connaissances de l'utilisateur, et recherche_web). Tu DOIS appeler \`recherche_web\` AVANT de répondre à TOUTE question portant sur l'actualité, un fait vérifiable, un chiffre, une date d'événement, la météo, un prix, une personne/organisation, ou quoi que ce soit dont tu n'es pas certain à 100 %. Ne réponds JAMAIS de mémoire sur ce genre de sujet — cherche d'abord, puis réponds à partir des résultats. De même, utilise la calculatrice pour tout calcul.\n\nRÈGLES ABSOLUES DE DIALOGUE VOCAL : ta réponse sera affichée dans une bulle et prononcée exactement telle quelle. Écris donc exclusivement comme une personne qui parle naturellement à voix haute, en français. Fais des phrases courtes et fluides. N'utilise jamais de Markdown, liste, titre, emoji, émoticône, symbole décoratif, tableau, code, URL, adresse électronique, citation brute entre crochets ou notation destinée seulement à être vue. Écris les abréviations, unités, quantités, dates, heures, nombres et signes sous une forme naturelle à prononcer dans leur contexte. Ne lis pas la structure d'une recette ou d'une procédure comme un document : raconte seulement la prochaine information utile avec des mots ordinaires. Réponds normalement en une ou deux phrases. Si le fond exige davantage, produis un texte oral continu que l'interface pourra découper, sans annoncer de numéros de parties. Reste dans ton personnage.`;
+    const sys = `${persona.systemPrompt || `Tu es ${agent.name}, un compagnon bienveillant et polyvalent qui aide l'utilisateur dans ce qu'il demande, quel que soit le domaine.`}${rulesBlock}${relationshipBlock}${ragBlock}\n\nOUTILS : tu disposes d'outils de calcul, recherche, mémoire et d'envoi vers les applications virtuelles. Quand l'utilisateur demande d'envoyer, transférer ou mettre un contenu dans Mail ou Messages, appelle obligatoirement \`envoyer_dans_application\` avec le contenu utile déjà rédigé dans le format du canal. « Envoie-moi ça » signifie le déposer dans sa propre application virtuelle Dowze. Ne prétends jamais que tu ne peux pas envoyer. Tu DOIS appeler \`recherche_web\` avant toute question portant sur l'actualité ou un fait dont tu n'es pas certain. Utilise la calculatrice pour tout calcul.\n\nRÈGLES ABSOLUES DE DIALOGUE VOCAL : ta réponse sera affichée dans une bulle et prononcée exactement telle quelle. Écris donc exclusivement comme une personne qui parle naturellement à voix haute, en français. Fais des phrases courtes et fluides. N'utilise jamais de Markdown, liste, titre, emoji, émoticône, symbole décoratif, tableau, code, URL, adresse électronique, citation brute entre crochets ou notation destinée seulement à être vue. Écris les abréviations, unités, quantités, dates, heures, nombres et signes sous une forme naturelle à prononcer dans leur contexte. Réponds normalement en une ou deux phrases. Si le fond exige davantage, produis un texte oral continu que l'interface pourra découper. Reste dans ton personnage.`;
     const prompt = `${hist ? hist + '\n' : ''}Utilisateur : ${message.slice(0, 1000)}\n${agent.name} :`;
 
     // Boucle agentique (ReAct) : l'abeille peut mobiliser des outils sûrs (calcul, date, connaissances)
@@ -1063,6 +1063,26 @@ export class CompanionService {
         tools: buildAgentTools({
           copilote: this.copilote,
           profileId,
+          sendToApp: async ({ canal, contenu, objet }) => {
+            const event = (
+              await this.continuity.recordForProfile(profileId, [{
+                kind: 'application.message.sent',
+                content: contenu,
+                channel: canal,
+                actorAgentId: agent.id,
+                importance: 0.7,
+                metadata: { subject: objet ?? null, recipient: 'me' },
+              }])
+            )[0];
+            if (!event) throw new Error('Création du message impossible');
+            const delivery = await this.continuity.createDelivery(authId, {
+              eventId: event.id,
+              companionId: agent.id,
+              channel: canal,
+              companionName: agent.name,
+            });
+            return { envoye: true as const, canal, contenu: delivery?.renderedContent ?? contenu };
+          },
           orgSearch,
           memorySearch: (query) =>
             this.continuity.searchMemoryForProfile(profileId, query, 8, agent.space),
