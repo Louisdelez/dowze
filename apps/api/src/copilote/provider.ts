@@ -15,7 +15,14 @@ export function resolveModel(
   provider: AiProvider,
   modelId: string,
   apiKey: string,
+  env?: Env,
 ): LanguageModelV1 {
+  if (apiKey === 'ollama-local' && env?.OLLAMA_BASE_URL) {
+    return createOpenAI({
+      apiKey: 'ollama',
+      baseURL: `${env.OLLAMA_BASE_URL.replace(/\/$/, '')}/v1`,
+    })(env.OLLAMA_MODEL);
+  }
   switch (provider) {
     case 'openai':
       return createOpenAI({ apiKey })(modelId);
@@ -34,7 +41,7 @@ export function resolveModel(
 export function platformKeyFor(provider: AiProvider, env: Env): string | undefined {
   switch (provider) {
     case 'openai':
-      return env.OPENAI_API_KEY;
+      return env.OPENAI_API_KEY ?? (env.OLLAMA_BASE_URL ? 'ollama-local' : undefined);
     case 'google':
       return env.GOOGLE_GENERATIVE_AI_API_KEY;
     case 'mistral':

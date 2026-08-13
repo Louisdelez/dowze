@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -325,7 +326,7 @@ const computeResourcePatchBody = z
   .strict()
   .refine((value) => Object.keys(value).length > 0, 'Modification vide.');
 const knowledgeBody = z
-  .object({ title: z.string().max(160).default(''), content: z.string().min(1).max(8000) })
+  .object({ title: z.string().max(160).default(''), content: z.string().min(1).max(120_000) })
   .strict();
 const protectBody = z.object({ protected: z.boolean() }).strict();
 const mergeBody = z
@@ -1106,6 +1107,22 @@ export class CompanionController {
     if (!req.accountAuthId) throw new UnauthorizedException('non authentifié');
     if (!UUID_RE.test(id)) throw new NotFoundException();
     return this.service.listSpaceKnowledge(req.accountAuthId, id);
+  }
+
+  /** Recherche RAG explicite avec fragments, scores et citations vérifiables. */
+  @Get('spaces/:id/knowledge/search')
+  @UseGuards(SupabaseAuthGuard)
+  async searchSpaceKnowledge(
+    @Req() req: AuthedRequest,
+    @Param('id') id: string,
+    @Query('q') query?: string,
+    @Query('limit') rawLimit?: string,
+  ) {
+    if (!req.accountAuthId) throw new UnauthorizedException('non authentifié');
+    if (!UUID_RE.test(id)) throw new NotFoundException();
+    if (!query?.trim()) throw new BadRequestException('Requête vide.');
+    const limit = Math.max(1, Math.min(20, Number(rawLimit) || 5));
+    return this.service.searchOwnedSpaceKnowledge(req.accountAuthId, id, query, limit);
   }
 
   @Post('spaces/:id/knowledge')

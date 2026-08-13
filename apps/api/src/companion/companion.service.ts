@@ -11,6 +11,7 @@ import {
   companionAgents,
   companionSpaces,
   companionSpaceKnowledge,
+  companionSpaceKnowledgeChunks,
   companionMessages,
   companionRelayTokens,
   companionAgentMerges,
@@ -70,6 +71,43 @@ const ROBOT_SKIN_URL = `${PET_HOST}/pets/${ROBOT_SKIN_SLUG}.webp`;
 const WORKSPACE_CAP = 100;
 /** Dimension des embeddings de la ruche (Jina v3 = 1024) → colonne pgvector `embedding_vec`. */
 const HIVE_EMBED_DIM = 1024;
+
+export interface RagChunk {
+  content: string;
+  startOffset: number;
+  endOffset: number;
+}
+
+/** Découpage stable avec chevauchement : privilégie paragraphes/phrases sans perdre les offsets source. */
+export function chunkKnowledgeDocument(content: string, size = 1400, overlap = 240): RagChunk[] {
+  const source = content.replace(/\r\n?/g, '\n').trim();
+  if (!source) return [];
+  const chunks: RagChunk[] = [];
+  let start = 0;
+  while (start < source.length) {
+    let end = Math.min(source.length, start + size);
+    if (end < source.length) {
+      const window = source.slice(start + Math.floor(size * 0.55), end);
+      const cuts = [window.lastIndexOf('\n\n'), window.lastIndexOf('. '), window.lastIndexOf('\n')];
+      const cut = Math.max(...cuts);
+      if (cut >= 0) end = start + Math.floor(size * 0.55) + cut + (window[cut] === '.' ? 1 : 0);
+    }
+    const raw = source.slice(start, end);
+    const leftTrim = raw.length - raw.trimStart().length;
+    const rightTrim = raw.length - raw.trimEnd().length;
+    const chunkStart = start + leftTrim;
+    const chunkEnd = end - rightTrim;
+    if (chunkEnd > chunkStart)
+      chunks.push({
+        content: source.slice(chunkStart, chunkEnd),
+        startOffset: chunkStart,
+        endOffset: chunkEnd,
+      });
+    if (end >= source.length) break;
+    start = Math.max(start + 1, end - overlap);
+  }
+  return chunks;
+}
 
 /** Persona PNJ d'un compagnon (pilote les répliques scriptées ; base du mode agent plus tard). */
 export interface AgentPersonality {
@@ -247,6 +285,28 @@ const AGENT_CONFIG_SCHEMA = z.object({
       'Le « personnage » : 3–6 phrases décrivant sa personnalité, son rôle et son style (court, naturel, sans markdown). C’est ce qui pilotera ses réponses.',
     ),
 });
+type AgentConfig = z.infer<typeof AGENT_CONFIG_SCHEMA>;
+
+/** Configuration locale minimale quand le générateur IA est indisponible ou invalide. */
+export function fallbackAgentConfig(description: string): AgentConfig {
+  const specialization =
+    description.trim().replace(/\s+/g, ' ').slice(0, 120) || 'Assistance ciblée';
+  const meaningful = specialization
+    .replace(/^(recherche et |expert(?:e)? en |sp[eé]cialiste (?:en|de|du|des) )/i, '')
+    .trim();
+  const firstWord = meaningful.match(/[\p{L}\p{N}]+/u)?.[0] || 'Expert';
+  const name = `${firstWord.charAt(0).toUpperCase()}${firstWord.slice(1)} Expert`.slice(0, 40);
+  return {
+    name,
+    greeting: `Je m'occupe de ${specialization.toLowerCase()}.`.slice(0, 200),
+    tone: 'précis, factuel et concis',
+    traits: ['rigoureux', 'fiable', 'méthodique'],
+    specialization,
+    capabilities: [specialization, 'Recherche documentaire', 'Vérification avec citations'],
+    limitations: ['Demander validation lorsque les sources sont insuffisantes'],
+    systemPrompt: `Tu es un spécialiste de ${specialization}. Tu travailles avec rigueur, utilises les sources disponibles et cites exactement les documents mobilisés. Tu signales clairement toute information manquante.`,
+  };
+}
 /** Plan d'orchestration : pour chaque sous-tâche, mobiliser une abeille EXISTANTE ou en CRÉER une précise. */
 const ORCH_PLAN_SCHEMA = z.object({
   direct: z
@@ -688,15 +748,21 @@ export class CompanionService {
     description: string,
     space = 'home',
     skinUrl?: string | null,
+    deterministic = false,
   ): Promise<typeof companionAgents.$inferSelect> {
     // Aucune limite de nombre : la ruche peut grandir sans plafond.
-    const { object } = await this.copilote.generateStructured(profileId, {
-      schema: AGENT_CONFIG_SCHEMA,
-      schemaName: 'CompanionAgentConfig',
-      system: BUILD_AGENT_SYSTEM,
-      prompt: description.slice(0, 500),
-      temperature: 0.7,
-    });
+    const object = deterministic
+      ? fallbackAgentConfig(description)
+      : await this.copilote
+          .generateStructured(profileId, {
+            schema: AGENT_CONFIG_SCHEMA,
+            schemaName: 'CompanionAgentConfig',
+            system: BUILD_AGENT_SYSTEM,
+            prompt: description.slice(0, 500),
+            temperature: 0.7,
+          })
+          .then((result) => result.object)
+          .catch(() => fallbackAgentConfig(description));
     const personality: AgentPersonality & { systemPrompt?: string; greeting?: string } = {
       tone: object.tone?.slice(0, 80),
       traits: (object.traits ?? []).slice(0, 8).map((t) => t.slice(0, 40)),
@@ -965,7 +1031,18 @@ export class CompanionService {
     const relationshipBlock = relationship
       ? `\n\nRELATION : familiarité ${Math.round(relationship.familiarity * 100)} %, confiance ${Math.round(relationship.trust * 100)} %, affinité ${Math.round(relationship.affinity * 100)} %. Adapte seulement la chaleur, la proximité et la formulation à cette relation. Ne change jamais les faits, ne simule pas une intimité supérieure à ces valeurs et ne mentionne pas ces scores.`
       : '';
-    const sys = `${persona.systemPrompt || `Tu es ${agent.name}, un compagnon bienveillant et polyvalent qui aide l'utilisateur dans ce qu'il demande, quel que soit le domaine.`}${rulesBlock}${relationshipBlock}\n\nOUTILS : tu disposes d'outils (calculatrice, date/heure, connaissances de l'utilisateur, et recherche_web). Tu DOIS appeler \`recherche_web\` AVANT de répondre à TOUTE question portant sur l'actualité, un fait vérifiable, un chiffre, une date d'événement, la météo, un prix, une personne/organisation, ou quoi que ce soit dont tu n'es pas certain à 100 %. Ne réponds JAMAIS de mémoire sur ce genre de sujet — cherche d'abord, puis réponds à partir des résultats. De même, utilise la calculatrice pour tout calcul.\n\nRÈGLES ABSOLUES : réponds en UN seul message court et naturel (1 à 2 phrases), comme un humain sur WhatsApp. Jamais de markdown, de listes, de titres ni de pavé. Reste dans ton personnage. Français.`;
+    const ragHits =
+      agent.space && agent.space !== 'home'
+        ? await this.searchSpaceKnowledge(profileId, agent.space, message, 4).catch(() => [])
+        : [];
+    const ragBlock = ragHits.length
+      ? `\n\nCONTEXTE RAG DE L'ORGANISATION (prioritaire sur ta mémoire générale) :\n${ragHits
+          .map((hit) => `[${hit.citation}] ${hit.content}`)
+          .join(
+            '\n',
+          )}\nSi tu utilises une information de ce contexte, termine par sa citation entre crochets.`
+      : '';
+    const sys = `${persona.systemPrompt || `Tu es ${agent.name}, un compagnon bienveillant et polyvalent qui aide l'utilisateur dans ce qu'il demande, quel que soit le domaine.`}${rulesBlock}${relationshipBlock}${ragBlock}\n\nOUTILS : tu disposes d'outils (calculatrice, date/heure, connaissances de l'utilisateur, et recherche_web). Tu DOIS appeler \`recherche_web\` AVANT de répondre à TOUTE question portant sur l'actualité, un fait vérifiable, un chiffre, une date d'événement, la météo, un prix, une personne/organisation, ou quoi que ce soit dont tu n'es pas certain à 100 %. Ne réponds JAMAIS de mémoire sur ce genre de sujet — cherche d'abord, puis réponds à partir des résultats. De même, utilise la calculatrice pour tout calcul.\n\nRÈGLES ABSOLUES : réponds en UN seul message court et naturel (1 à 2 phrases), comme un humain sur WhatsApp. Pas de liste, de titre ni de pavé. Reste dans ton personnage. Français.`;
     const prompt = `${hist ? hist + '\n' : ''}Utilisateur : ${message.slice(0, 1000)}\n${agent.name} :`;
 
     // Boucle agentique (ReAct) : l'abeille peut mobiliser des outils sûrs (calcul, date, connaissances)
@@ -1209,7 +1286,18 @@ export class CompanionService {
   ): Promise<{ text: string; toolsUsed: string[] }> {
     const persona =
       (agent.personality as (AgentPersonality & { systemPrompt?: string }) | null) ?? {};
-    const sys = `${persona.systemPrompt || `Tu es ${agent.name}, spécialiste dans ton domaine.`}\n\nTu travailles au sein de ton organisation et tu dois PRODUIRE un livrable de travail. RÈGLES : réalise concrètement ce qui t'est demandé, dans TA spécialité — ne refuse JAMAIS et ne réponds pas de façon méta (« je vois que tu veux… ») : produis directement le contenu. Livrable clair, complet et directement utilisable (plusieurs phrases ou courts paragraphes). Si un point sort de ta spécialité, concentre-toi sur ta part. Français.`;
+    const ragHits =
+      agent.space && agent.space !== 'home'
+        ? await this.searchSpaceKnowledge(profileId, agent.space, instruction, 6).catch(() => [])
+        : [];
+    const ragBlock = ragHits.length
+      ? `\n\nSOURCES RAG À UTILISER :\n${ragHits
+          .map((hit) => `[${hit.citation}] ${hit.content}`)
+          .join(
+            '\n',
+          )}\nToute affirmation provenant de ces sources doit porter la citation correspondante entre crochets.`
+      : '';
+    const sys = `${persona.systemPrompt || `Tu es ${agent.name}, spécialiste dans ton domaine.`}${ragBlock}\n\nTu travailles au sein de ton organisation et tu dois PRODUIRE un livrable de travail. RÈGLES : réalise concrètement ce qui t'est demandé, dans TA spécialité — ne refuse JAMAIS et ne réponds pas de façon méta (« je vois que tu veux… ») : produis directement le contenu. Livrable clair, complet et directement utilisable (plusieurs phrases ou courts paragraphes). Si un point sort de ta spécialité, concentre-toi sur ta part. Français.`;
     const orgSearch =
       agent.space && agent.space !== 'home'
         ? (query: string) => this.searchSpaceKnowledge(profileId, agent.space, query)
@@ -1499,7 +1587,7 @@ export class CompanionService {
     const planResult = await this.copilote.generateStructured(profileId, {
       schema: ORCH_PLAN_SCHEMA,
       schemaName: 'OrchestrationPlan',
-      system: `${ASSISTANT}\n\nTu diriges une RUCHE d'abeilles, chacune spécialiste TRÈS PRÉCISE d'une tâche précise. Logique : décompose la demande en sous-tâches précises (MAXIMUM 3, seulement les utiles). LOI ABSOLUE : ne délègue que si expectedGain > communicationCost + computeCost + coordinationCost ; pour une question triviale, réponds directement. Pour CHAQUE sous-tâche, choisis une abeille EXISTANTE si elle correspond vraiment précisément (mets son numéro dans "existing") ; sinon crée-en une neuve et très ciblée (existing=0 + "create" = son domaine exact + "spaceName" = son open-space métier). Ne crée une abeille que si aucune existante ne convient précisément. Les abeilles créées sont rangées dans des OPEN-SPACES par métier (JAMAIS dans la Maison). Open-spaces métier existants : ${spaceList} — réutilise-en un si la compétence correspond, sinon nomme-en un nouveau. Si la demande relève de TA propre spécialité ou que tu peux répondre toi-même sans abeille, remplis "direct" et ne délègue pas. Abeilles actuelles :\n${roster}`,
+      system: `${ASSISTANT}\n\nTu diriges une RUCHE d'abeilles, chacune spécialiste TRÈS PRÉCISE d'une tâche précise. Logique : décompose la demande en sous-tâches précises (MAXIMUM 3, seulement les utiles). Si l'utilisateur demande explicitement de déléguer, tu dois créer au moins une délégation exploitable. Sinon, ne délègue que si expectedGain > communicationCost + computeCost + coordinationCost ; pour une question triviale, réponds directement. Pour CHAQUE sous-tâche, choisis une abeille EXISTANTE si elle correspond vraiment précisément (mets son numéro dans "existing") ; sinon crée-en une neuve et très ciblée (existing=0 + "create" = son domaine exact + "spaceName" = son open-space métier). Ne crée une abeille que si aucune existante ne convient précisément. Les abeilles créées sont rangées dans des OPEN-SPACES par métier (JAMAIS dans la Maison). Open-spaces métier existants : ${spaceList} — réutilise-en un si la compétence correspond, sinon nomme-en un nouveau. Si la demande relève de TA propre spécialité ou que tu peux répondre toi-même sans abeille, remplis "direct" et ne délègue pas. Abeilles actuelles :\n${roster}`,
       prompt: `Demande de l'utilisateur : ${contextualMessage.slice(0, 1200)}`,
       temperature: 0.4,
     });
@@ -1533,7 +1621,7 @@ export class CompanionService {
               memorySearch: (query) =>
                 this.continuity.searchMemoryForProfile(profileId, query, 8, 'home'),
             }),
-            maxSteps: 4,
+            maxSteps: 6,
             temperature: 0.6,
             ref: 'orchestrate-direct',
           });
@@ -1547,11 +1635,14 @@ export class CompanionService {
           /* repli vers la réponse directe du plan */
         }
       }
-      return (plan.direct || '…').slice(0, 600);
+      return (plan.direct || "Je n'ai pas réussi à produire une réponse exploitable.").slice(
+        0,
+        600,
+      );
     };
 
     // Ne garde que les délégations exploitables : abeille existante valide OU demande de création non vide.
-    const dels = (plan.delegations || [])
+    let dels = (plan.delegations || [])
       .filter(
         (d) =>
           shouldDelegate(d) &&
@@ -1559,6 +1650,31 @@ export class CompanionService {
             (typeof d.create === 'string' && d.create.trim().length > 0)),
       )
       .slice(0, 3);
+    // Une demande explicite de délégation est un choix utilisateur, pas une suggestion au
+    // planificateur. Les petits modèles locaux peuvent parfois rendre `direct` malgré cette
+    // consigne : on construit alors une vraie tâche traçable au lieu de prétendre avoir délégué.
+    const explicitDelegation =
+      /\b(d[eé]l[eè]gue|d[eé]l[eé]guer|mobilise|confie\s+(?:ce|cette|la|le)\s+(?:travail|t[aâ]che|v[eé]rification))\b/i.test(
+        message,
+      );
+    const forceCreateDelegate =
+      explicitDelegation &&
+      (specialists.length === 0 ||
+        /\b(?:nouvelle?|cr[eé]e)\s+(?:une?\s+)?abeille\b/i.test(message));
+    if (forceCreateDelegate || (explicitDelegation && dels.length === 0)) {
+      dels = [
+        {
+          existing: forceCreateDelegate ? 0 : 1,
+          create: forceCreateDelegate ? 'Recherche et vérification documentaire RAG' : '',
+          spaceName: forceCreateDelegate ? 'Recherche & Documentation' : '',
+          subtask: message.slice(0, 500),
+          expectedGain: 1,
+          communicationCost: 0,
+          computeCost: 0,
+          coordinationCost: 0,
+        },
+      ];
+    }
     if (dels.length === 0) {
       const reply = await directReply();
       const [directEvent] = await this.continuity
@@ -1610,7 +1726,7 @@ export class CompanionService {
       } else {
         try {
           // DEDUP-À-LA-CRÉATION (prévention > guérison) : si une abeille active très proche existe déjà, on la RÉUTILISE.
-          const dup = await this.findSimilarAgent(profileId, d.create);
+          const dup = forceCreateDelegate ? null : await this.findSimilarAgent(profileId, d.create);
           if (dup) {
             sp = dup;
           } else {
@@ -1620,12 +1736,17 @@ export class CompanionService {
               profileId,
               d.create.slice(0, 300),
               spaceId,
+              undefined,
+              forceCreateDelegate,
             );
             sp = { id: row.id, name: row.name, role: row.role };
             created.push(row.name);
           }
-        } catch {
-          /* IA indispo → on saute cette abeille */
+        } catch (error) {
+          console.error(
+            '[ruche] création automatique d’abeille impossible :',
+            error instanceof Error ? error.message : error,
+          );
         }
       }
       if (sp) jobs.push({ sp, subtask: d.subtask.slice(0, 500) });
@@ -4210,13 +4331,23 @@ export class CompanionService {
       .catch(() => undefined);
   }
 
+  private async storeChunkEmbedding(id: string, vec: number[] | undefined): Promise<void> {
+    if (!Array.isArray(vec) || vec.length !== HIVE_EMBED_DIM) return;
+    const lit = `[${vec.join(',')}]`;
+    await this.db
+      .execute(
+        sql`update companion_space_knowledge_chunks set embedding_vec = ${lit}::vector where id = ${id}`,
+      )
+      .catch(() => undefined);
+  }
+
   /** Ajoute une connaissance (document/fait/règle) à la base d'un open-space = organisation. */
   async addSpaceKnowledge(
     authId: string,
     spaceId: string,
     title: string,
     content: string,
-  ): Promise<{ id: string; title: string }> {
+  ): Promise<{ id: string; title: string; chunks: number }> {
     const profileId = await this.profileIdForAuth(authId);
     const space = (
       await this.db
@@ -4226,7 +4357,7 @@ export class CompanionService {
     )[0];
     if (!space) throw new NotFoundException('Espace introuvable.');
     const t = title.trim().slice(0, 160);
-    const c = content.trim().slice(0, 8000);
+    const c = content.trim().slice(0, 120_000);
     if (!c) throw new BadRequestException('Contenu vide.');
     const row = (
       await this.db
@@ -4234,12 +4365,41 @@ export class CompanionService {
         .values({ profileId, space: spaceId, title: t || c.slice(0, 60), content: c })
         .returning({ id: companionSpaceKnowledge.id, title: companionSpaceKnowledge.title })
     )[0]!;
-    // Embedding en tâche de fond (ne bloque pas l'ajout).
+    const chunks = chunkKnowledgeDocument(c);
+    const chunkRows = chunks.length
+      ? await this.db
+          .insert(companionSpaceKnowledgeChunks)
+          .values(
+            chunks.map((chunk, chunkIndex) => ({
+              knowledgeId: row.id,
+              profileId,
+              space: spaceId,
+              chunkIndex,
+              content: chunk.content,
+              startOffset: chunk.startOffset,
+              endOffset: chunk.endOffset,
+            })),
+          )
+          .returning({
+            id: companionSpaceKnowledgeChunks.id,
+            content: companionSpaceKnowledgeChunks.content,
+          })
+      : [];
+    // Embeddings en tâche de fond (le repli lexical rend le document disponible immédiatement).
     void this.copilote
-      .embed(profileId, [`${row.title}. ${c}`.slice(0, 2000)])
-      .then((v) => this.storeKnowledgeEmbedding(row.id, v?.[0]))
+      .embed(
+        profileId,
+        chunkRows.map((chunk) => `${row.title}. ${chunk.content}`.slice(0, 2000)),
+      )
+      .then(async (vectors) => {
+        if (!vectors) return;
+        await Promise.all(
+          chunkRows.map((chunk, index) => this.storeChunkEmbedding(chunk.id, vectors[index])),
+        );
+        await this.storeKnowledgeEmbedding(row.id, vectors[0]);
+      })
       .catch(() => undefined);
-    return row;
+    return { ...row, chunks: chunkRows.length };
   }
 
   /** Liste les connaissances d'un open-space (aperçu du contenu). */
@@ -4291,7 +4451,7 @@ export class CompanionService {
     space: string,
     query: string,
     k = 5,
-  ): Promise<{ title: string; content: string }[]> {
+  ): Promise<{ id: string; title: string; content: string; citation: string; score: number }[]> {
     const q = (query || '').trim().slice(0, 300);
     if (!q) return [];
     const qv = (await this.copilote.embed(profileId, [q]).catch(() => null))?.[0];
@@ -4300,14 +4460,24 @@ export class CompanionService {
       const rows = (await this.db
         .execute(
           sql`
-        select title, content from companion_space_knowledge
-        where profile_id = ${profileId} and space = ${space} and embedding_vec is not null
-        order by embedding_vec <=> ${lit}::vector limit ${k}
+        select c.id, d.title, c.content, c.chunk_index as "chunkIndex",
+          1 - (c.embedding_vec <=> ${lit}::vector) as score
+        from companion_space_knowledge_chunks c
+        join companion_space_knowledge d on d.id = c.knowledge_id
+        where c.profile_id = ${profileId} and c.space = ${space} and c.embedding_vec is not null
+        order by c.embedding_vec <=> ${lit}::vector limit ${k}
       `,
         )
-        .catch(() => null)) as unknown as { title: string; content: string }[] | null;
+        .catch(() => null)) as unknown as
+        { id: string; title: string; content: string; chunkIndex: number; score: number }[] | null;
       if (rows && rows.length)
-        return rows.map((r) => ({ title: r.title, content: r.content.slice(0, 800) }));
+        return rows.map((r) => ({
+          id: r.id,
+          title: r.title,
+          content: r.content.slice(0, 1400),
+          citation: `${r.title} §${r.chunkIndex + 1}`,
+          score: Number(r.score),
+        }));
     }
     // Repli lexical : mots-clés de la requête sur titre/contenu.
     const words = [...new Set(q.toLowerCase().match(/[a-zàâäéèêëïîôöùûüç0-9]{4,}/g) ?? [])].slice(
@@ -4321,22 +4491,62 @@ export class CompanionService {
         ])
       : [];
     const rows2 = await this.db
-      .select({ title: companionSpaceKnowledge.title, content: companionSpaceKnowledge.content })
-      .from(companionSpaceKnowledge)
+      .select({
+        id: companionSpaceKnowledgeChunks.id,
+        title: companionSpaceKnowledge.title,
+        content: companionSpaceKnowledgeChunks.content,
+        chunkIndex: companionSpaceKnowledgeChunks.chunkIndex,
+      })
+      .from(companionSpaceKnowledgeChunks)
+      .innerJoin(
+        companionSpaceKnowledge,
+        eq(companionSpaceKnowledge.id, companionSpaceKnowledgeChunks.knowledgeId),
+      )
       .where(
         conds.length
           ? and(
-              eq(companionSpaceKnowledge.profileId, profileId),
-              eq(companionSpaceKnowledge.space, space),
-              or(...conds),
+              eq(companionSpaceKnowledgeChunks.profileId, profileId),
+              eq(companionSpaceKnowledgeChunks.space, space),
+              or(
+                ...words.map((word) => ilike(companionSpaceKnowledgeChunks.content, `%${word}%`)),
+                ...words.map((word) => ilike(companionSpaceKnowledge.title, `%${word}%`)),
+              ),
             )
           : and(
-              eq(companionSpaceKnowledge.profileId, profileId),
-              eq(companionSpaceKnowledge.space, space),
+              eq(companionSpaceKnowledgeChunks.profileId, profileId),
+              eq(companionSpaceKnowledgeChunks.space, space),
             ),
       )
-      .orderBy(desc(companionSpaceKnowledge.createdAt))
-      .limit(k);
-    return rows2.map((r) => ({ title: r.title, content: r.content.slice(0, 800) }));
+      .orderBy(desc(companionSpaceKnowledgeChunks.createdAt))
+      .limit(Math.min(200, Math.max(k * 20, 20)));
+    return rows2
+      .map((r) => {
+        const body = r.content.toLowerCase();
+        const title = r.title.toLowerCase();
+        const bodyHits = words.filter((word) => body.includes(word)).length;
+        const titleHits = words.filter((word) => title.includes(word)).length;
+        return {
+          id: r.id,
+          title: r.title,
+          content: r.content.slice(0, 1400),
+          citation: `${r.title} §${r.chunkIndex + 1}`,
+          // Le corps vaut quatre fois le titre : un titre partagé ne masque pas le bon fragment.
+          score: (bodyHits * 4 + titleHits) / Math.max(1, words.length * 4),
+        };
+      })
+      .sort((a, b) => b.score - a.score)
+      .slice(0, k);
+  }
+
+  async searchOwnedSpaceKnowledge(authId: string, spaceId: string, query: string, k = 5) {
+    const profileId = await this.profileIdForAuth(authId);
+    const owned = (
+      await this.db
+        .select({ id: companionSpaces.id })
+        .from(companionSpaces)
+        .where(and(eq(companionSpaces.id, spaceId), eq(companionSpaces.profileId, profileId)))
+    )[0];
+    if (!owned) throw new NotFoundException('Espace introuvable.');
+    return this.searchSpaceKnowledge(profileId, spaceId, query, k);
   }
 }

@@ -3321,7 +3321,7 @@ export function CompanionRoom() {
                     value={knowContent}
                     onChange={(e) => setKnowContent(e.target.value)}
                     placeholder="Contenu : le document, le fait, la règle…"
-                    maxLength={8000}
+                    maxLength={120000}
                     rows={3}
                     className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-accent"
                   />
@@ -3361,7 +3361,7 @@ export function CompanionRoom() {
                       }}
                       className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground transition hover:opacity-90 disabled:opacity-50"
                     >
-                      {knowBusy ? 'Ajout…' : 'Ajouter'}
+                      {knowBusy ? 'Indexation…' : 'Ajouter et indexer'}
                     </button>
                   </div>
                 </div>

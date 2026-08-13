@@ -200,7 +200,9 @@ export function buildAgentTools(deps: {
   copilote: CopiloteService;
   profileId: string;
   /** Si l'agent appartient à une organisation (open-space), fournit la recherche dans SA base de connaissances. */
-  orgSearch?: (query: string) => Promise<{ title: string; content: string }[]>;
+  orgSearch?: (
+    query: string,
+  ) => Promise<{ id: string; title: string; content: string; citation: string; score: number }[]>;
   /** Bibliothèque universelle transverse aux sessions et canaux, déjà filtrée par le profil. */
   memorySearch?: (
     query: string,

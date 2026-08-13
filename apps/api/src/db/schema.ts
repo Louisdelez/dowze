@@ -157,6 +157,18 @@ export const companionSpaceKnowledge = pgTable('companion_space_knowledge', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const companionSpaceKnowledgeChunks = pgTable('companion_space_knowledge_chunks', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  knowledgeId: uuid('knowledge_id').notNull(),
+  profileId: uuid('profile_id').notNull(),
+  space: text('space').notNull(),
+  chunkIndex: integer('chunk_index').notNull(),
+  content: text('content').notNull(),
+  startOffset: integer('start_offset').notNull(),
+  endOffset: integer('end_offset').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 // Mémoire de conversation des compagnons-agents (le compagnon se souvient).
 export const companionMessages = pgTable('companion_messages', {
   id: uuid('id').primaryKey().defaultRandom(),

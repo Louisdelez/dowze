@@ -162,7 +162,8 @@ values
 on conflict (id) do nothing;
 
 insert into public.prerequisites (skill_id, prerequisite_id)
-values
+select links.skill_id::uuid, links.prerequisite_id::uuid
+from (values
 ('10000000-0000-4000-8000-000000000000', '00000000-0000-4000-8000-000000000302'),
 ('10000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000000'),
 ('10000000-0000-4000-8000-000000000002', '10000000-0000-4000-8000-000000000001'),
@@ -317,4 +318,7 @@ values
 ('60000000-0000-4000-8000-000000000021', '60000000-0000-4000-8000-000000000020'),
 ('60000000-0000-4000-8000-000000000022', '60000000-0000-4000-8000-000000000021'),
 ('60000000-0000-4000-8000-000000000023', '60000000-0000-4000-8000-000000000022')
+) as links(skill_id, prerequisite_id)
+join public.skills skill on skill.id = links.skill_id::uuid
+join public.skills prerequisite on prerequisite.id = links.prerequisite_id::uuid
 on conflict do nothing;

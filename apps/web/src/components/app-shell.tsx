@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { PUBLIC_PATHS } from '@/lib/nav';
 import { SidebarNav } from '@/components/app-sidebar';
 import { StoreRail } from '@/components/store-rail';
@@ -12,11 +12,6 @@ import { XpBar } from '@/components/xp-bar';
 import { IconMenu } from '@/components/ui/icons';
 import { AiBridge } from '@/components/desktop/ai-dock';
 import { isDesktop } from '@/lib/desktop';
-import { COMPANION_DEVICE_APPS } from '@/components/companion/device-apps';
-
-const DEVICE_ONLY_APPS: Record<string, string> = Object.fromEntries(
-  COMPANION_DEVICE_APPS.filter((app) => app.id !== 'store').map((app) => [app.href, app.id]),
-);
 
 /**
  * Coquille de l'application.
@@ -34,7 +29,6 @@ export function AppShell({
   forceHub?: boolean;
 }) {
   const pathname = usePathname();
-  const router = useRouter();
   const [desktop, setDesktop] = useState(false);
   const [host, setHost] = useState(initialHost);
   useEffect(() => {
@@ -43,10 +37,6 @@ export function AppShell({
   }, [host]);
 
   const p = pathname.replace(/\/+$/, '') || '/';
-  useEffect(() => {
-    const app = DEVICE_ONLY_APPS[p];
-    if (app && window.self === window.top) router.replace(`/compagnon?app=${app}`);
-  }, [p, router]);
   // CHROME PAR DOMAINE = quel service t'affiche la page. Le compagnon est le MÊME partout mais s'intègre
   // dans le chrome du contexte où tu es :
   //  - hub DOWZE / infra (infra.dowze.ch, ou l'app de bureau) → rail Dowze. La racine = le STORE.
@@ -69,7 +59,11 @@ export function AppShell({
 
   if (p === '/compagnon') {
     // Le compagnon est le système principal, plein écran, quel que soit le domaine d'entrée.
-    inner = <div className="min-w-0 flex-1 overflow-hidden bg-surface">{children}</div>;
+    inner = (
+      <div className={`min-w-0 flex-1 overflow-hidden bg-surface ${desktop ? 'h-full' : 'h-dvh'}`}>
+        {children}
+      </div>
+    );
   } else if (isStore) {
     inner = <div className="min-w-0 flex-1 overflow-y-auto bg-surface">{children}</div>; // store = lanceur, rail Dowze
   } else if (hubContext && !isPublic) {

@@ -21,6 +21,10 @@ export const envSchema = z.object({
   MISTRAL_API_KEY: z.string().optional(),
   DEEPSEEK_API_KEY: z.string().optional(),
   ANTHROPIC_API_KEY: z.string().optional(),
+  /** Moteur IA local OpenAI-compatible, utilisé sans facturation quand il est configuré. */
+  OLLAMA_BASE_URL: z.string().url().optional(),
+  OLLAMA_MODEL: z.string().default('qwen2.5:3b'),
+  OLLAMA_EMBED_MODEL: z.string().default('bge-m3'),
   /** Clé de chiffrement des clés BYOK au repos (AES-256-GCM) : 32 octets en base64 ou hex. */
   COPILOTE_SECRET_KEY: z.string().optional(),
   /** Clé AES-256-GCM dédiée au coffre de la Ruche. En dev, COPILOTE_SECRET_KEY sert de repli. */

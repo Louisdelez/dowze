@@ -362,8 +362,8 @@ export class CopiloteService {
           'Traduction indisponible : aucune clé configurée pour ce modèle.',
         );
       apiKey = key;
-      held = estimateCredits(model);
-      const ok = await this.credits.tryDebit(profileId, held, 'hold', 'translate');
+      held = key === 'ollama-local' ? 0 : estimateCredits(model);
+      const ok = held === 0 || (await this.credits.tryDebit(profileId, held, 'hold', 'translate'));
       if (!ok) {
         throw new HttpException(
           'Crédits insuffisants. Recharge ton solde ou passe en BYOK.',
@@ -373,7 +373,7 @@ export class CopiloteService {
     }
 
     const langName = CopiloteService.LANG_NAMES[targetLang] ?? targetLang;
-    const lm = resolveModel(model.provider, model.modelId, apiKey);
+    const lm = resolveModel(model.provider, model.modelId, apiKey, this.env);
     let res: Awaited<ReturnType<typeof generateText>>;
     try {
       res = await generateText({
@@ -428,13 +428,13 @@ export class CopiloteService {
     const ref = `grow:${frontier.slug}`;
     let held = 0;
     if (billing === 'credits') {
-      held = estimateCredits(model) * (P + 1); // P générations + vérification
-      const ok = await this.credits.tryDebit(profileId, held, 'hold', ref);
+      held = apiKey === 'ollama-local' ? 0 : estimateCredits(model) * (P + 1); // P générations + vérification
+      const ok = held === 0 || (await this.credits.tryDebit(profileId, held, 'hold', ref));
       if (!ok) throw new BadRequestException("Crédits insuffisants pour étendre l'Atlas.");
     }
 
     try {
-      const lm = resolveModel(model.provider, model.modelId, apiKey);
+      const lm = resolveModel(model.provider, model.modelId, apiKey, this.env);
       const rankHint =
         typeof frontier.rank === 'number' ? ` (rang actuel ${frontier.rank}/10)` : '';
       const prompt =
@@ -547,12 +547,12 @@ export class CopiloteService {
     const ref = `goal:${goal.slice(0, 24)}`;
     let held = 0;
     if (billing === 'credits') {
-      held = estimateCredits(model) * 2;
-      const ok = await this.credits.tryDebit(profileId, held, 'hold', ref);
+      held = apiKey === 'ollama-local' ? 0 : estimateCredits(model) * 2;
+      const ok = held === 0 || (await this.credits.tryDebit(profileId, held, 'hold', ref));
       if (!ok) throw new BadRequestException('Crédits insuffisants pour tracer ce chemin.');
     }
     try {
-      const lm = resolveModel(model.provider, model.modelId, apiKey);
+      const lm = resolveModel(model.provider, model.modelId, apiKey, this.env);
       const anchorList = anchors
         .slice(0, 8)
         .map((a) => `- ${a.title} (déjà acquis)`)
@@ -966,8 +966,9 @@ export class CopiloteService {
         );
       }
       apiKey = key;
-      held = estimateCredits(model);
-      const ok = await this.credits.tryDebit(input.profileId, held, 'hold', input.skillId);
+      held = key === 'ollama-local' ? 0 : estimateCredits(model);
+      const ok =
+        held === 0 || (await this.credits.tryDebit(input.profileId, held, 'hold', input.skillId));
       if (!ok) {
         throw new HttpException(
           'Crédits insuffisants. Recharge ton solde ou passe en BYOK.',
@@ -981,7 +982,7 @@ export class CopiloteService {
     let inTok = 0;
     let outTok = 0;
     try {
-      const lm = resolveModel(model.provider, model.modelId, apiKey);
+      const lm = resolveModel(model.provider, model.modelId, apiKey, this.env);
       const result = await generateObject({
         model: lm,
         schema: sessionSnapshotSchema,
@@ -995,7 +996,7 @@ export class CopiloteService {
       outTok = result.usage?.completionTokens ?? 0;
     } catch (structuredErr) {
       try {
-        const lm = resolveModel(model.provider, model.modelId, apiKey);
+        const lm = resolveModel(model.provider, model.modelId, apiKey, this.env);
         const txt = await generateText({
           model: lm,
           system: `${EXTRACTION_SYSTEM} Réponds UNIQUEMENT par un objet JSON conforme, sans texte autour.`,
@@ -1297,8 +1298,8 @@ export class CopiloteService {
         );
       }
       apiKey = key;
-      held = estimateCredits(model);
-      const ok = await this.credits.tryDebit(profileId, held, 'hold', ref);
+      held = key === 'ollama-local' ? 0 : estimateCredits(model);
+      const ok = held === 0 || (await this.credits.tryDebit(profileId, held, 'hold', ref));
       if (!ok) {
         throw new HttpException(
           'Crédits insuffisants. Recharge ton solde ou passe en BYOK.',
@@ -1311,9 +1312,10 @@ export class CopiloteService {
     let inTok = 0;
     let outTok = 0;
     try {
-      const lm = resolveModel(model.provider, model.modelId, apiKey);
+      const lm = resolveModel(model.provider, model.modelId, apiKey, this.env);
       const result = await generateObject({
         model: lm,
+        mode: apiKey === 'ollama-local' ? 'json' : 'auto',
         schema: opts.schema,
         schemaName: opts.schemaName,
         system: opts.system,
@@ -1325,7 +1327,7 @@ export class CopiloteService {
       outTok = result.usage?.completionTokens ?? 0;
     } catch {
       try {
-        const lm = resolveModel(model.provider, model.modelId, apiKey);
+        const lm = resolveModel(model.provider, model.modelId, apiKey, this.env);
         const txt = await generateText({
           model: lm,
           system: `${opts.system} Réponds UNIQUEMENT par un objet JSON conforme, sans texte autour.`,
@@ -1398,8 +1400,8 @@ export class CopiloteService {
       }
       apiKey = key;
       // La boucle peut faire plusieurs allers-retours : on retient de quoi couvrir maxSteps, on réconcilie au réel.
-      held = estimateCredits(model) * maxSteps;
-      const ok = await this.credits.tryDebit(profileId, held, 'hold', ref);
+      held = key === 'ollama-local' ? 0 : estimateCredits(model) * maxSteps;
+      const ok = held === 0 || (await this.credits.tryDebit(profileId, held, 'hold', ref));
       if (!ok) {
         throw new HttpException(
           'Crédits insuffisants. Recharge ton solde ou passe en BYOK.',
@@ -1409,7 +1411,7 @@ export class CopiloteService {
     }
 
     try {
-      const lm = resolveModel(model.provider, model.modelId, apiKey);
+      const lm = resolveModel(model.provider, model.modelId, apiKey, this.env);
       const result = await generateText({
         model: lm,
         system: opts.system,
@@ -1489,6 +1491,23 @@ export class CopiloteService {
   async embed(profileId: string, texts: string[]): Promise<number[][] | null> {
     if (texts.length === 0) return [];
     const cfg = await this.resolveEmbeddingConfig(await this.settingsRow(profileId));
+    if (!cfg && this.env.OLLAMA_BASE_URL) {
+      try {
+        const response = await fetch(`${this.env.OLLAMA_BASE_URL.replace(/\/$/, '')}/api/embed`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ model: this.env.OLLAMA_EMBED_MODEL, input: texts }),
+          signal: AbortSignal.timeout(60_000),
+        });
+        if (!response.ok) return null;
+        const payload = (await response.json()) as { embeddings?: number[][] };
+        return payload.embeddings?.every((vector) => vector.length === 1024)
+          ? payload.embeddings
+          : null;
+      } catch {
+        return null;
+      }
+    }
     if (!cfg) return null;
     try {
       return await embedTexts(cfg, texts);

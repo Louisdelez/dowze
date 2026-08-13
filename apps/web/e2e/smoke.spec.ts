@@ -28,7 +28,10 @@ test('la racine de Dowze ouvre le système du compagnon', async ({ page }) => {
   await expect(page).toHaveURL(/\/compagnon$/);
 });
 
-test('une interface Académie directe revient dans le PC du compagnon', async ({ page }) => {
+test('une fonction Académie reste dans la même application', async ({ page }) => {
   await page.goto('/planning');
-  await expect(page).toHaveURL(/\/compagnon\?app=planning$/);
+  await expect(page).toHaveURL(/\/planning$/);
+  await expect(
+    page.getByRole('heading', { name: 'Connecte-toi pour voir ton planning' }),
+  ).toBeVisible();
 });

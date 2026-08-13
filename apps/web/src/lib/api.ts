@@ -1039,11 +1039,27 @@ export interface SpaceKnowledge {
 export function getSpaceKnowledge(spaceId: string): Promise<SpaceKnowledge[]> {
   return get(`/companion/spaces/${spaceId}/knowledge`);
 }
+export interface SpaceKnowledgeHit {
+  id: string;
+  title: string;
+  content: string;
+  citation: string;
+  score: number;
+}
+export function searchSpaceKnowledge(
+  spaceId: string,
+  query: string,
+  limit = 5,
+): Promise<SpaceKnowledgeHit[]> {
+  return get(
+    `/companion/spaces/${spaceId}/knowledge/search?q=${encodeURIComponent(query)}&limit=${limit}`,
+  );
+}
 export function addSpaceKnowledge(
   spaceId: string,
   title: string,
   content: string,
-): Promise<{ id: string; title: string }> {
+): Promise<{ id: string; title: string; chunks: number }> {
   return post(`/companion/spaces/${spaceId}/knowledge`, { title, content });
 }
 export function deleteSpaceKnowledge(id: string): Promise<{ ok: true }> {
