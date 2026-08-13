@@ -25,7 +25,13 @@ const DEFAULTS: CompanionVoiceSettings = {
   hasElevenlabsKey: false,
 };
 
-export function CompanionVoiceSettings() {
+export function CompanionVoiceSettings({
+  speechAutoPlay = false,
+  onSpeechAutoPlayChange,
+}: {
+  speechAutoPlay?: boolean;
+  onSpeechAutoPlayChange?: (enabled: boolean) => void;
+}) {
   const [value, setValue] = useState(DEFAULTS);
   const [openaiKey, setOpenaiKey] = useState('');
   const [elevenKey, setElevenKey] = useState('');
@@ -185,6 +191,20 @@ export function CompanionVoiceSettings() {
           ElevenLabs, OpenAI ou Kokoro local.
         </Note>
       )}
+      <label className="flex cursor-pointer items-center justify-between gap-4 rounded-xl border border-border px-4 py-3">
+        <span>
+          <span className="block text-sm font-medium">Lecture automatique</span>
+          <span className="block text-xs text-muted-foreground">
+            Passe automatiquement à la bulle suivante lorsque la voix a terminé.
+          </span>
+        </span>
+        <input
+          type="checkbox"
+          checked={speechAutoPlay}
+          onChange={(event) => onSpeechAutoPlayChange?.(event.target.checked)}
+          className="h-5 w-5 accent-accent"
+        />
+      </label>
       <div className="flex items-center gap-3">
         <Button onClick={() => void save()} disabled={saving}>
           {saving ? 'Enregistrement…' : 'Enregistrer la voix'}

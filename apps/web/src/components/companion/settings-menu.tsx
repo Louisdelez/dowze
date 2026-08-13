@@ -58,7 +58,15 @@ const SECTIONS = [
 ];
 
 /** Menu Paramètres : barre latérale de sections + page correspondante. */
-export function SettingsMenu({ onClearRoom }: { onClearRoom: () => void }) {
+export function SettingsMenu({
+  onClearRoom,
+  speechAutoPlay,
+  onSpeechAutoPlayChange,
+}: {
+  onClearRoom: () => void;
+  speechAutoPlay: boolean;
+  onSpeechAutoPlayChange: (enabled: boolean) => void;
+}) {
   const [section, setSection] = useState('apparence');
   return (
     <div className="flex h-full min-h-0 gap-4">
@@ -84,7 +92,12 @@ export function SettingsMenu({ onClearRoom }: { onClearRoom: () => void }) {
       <div className="min-w-0 flex-1 overflow-auto pr-1">
         {section === 'apparence' && <CompanionPicker />}
         {section === 'copilote' && <CopiloteSettings />}
-        {section === 'voix' && <CompanionVoiceSettings />}
+        {section === 'voix' && (
+          <CompanionVoiceSettings
+            speechAutoPlay={speechAutoPlay}
+            onSpeechAutoPlayChange={onSpeechAutoPlayChange}
+          />
+        )}
         {section === 'maison' && (
           <div className="space-y-3">
             <div className="text-sm font-medium">Ta pièce</div>

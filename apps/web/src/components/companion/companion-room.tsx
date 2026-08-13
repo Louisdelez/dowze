@@ -1365,6 +1365,9 @@ export function CompanionRoom() {
   const [speech, setSpeech] = useState<string | null>(null);
   const [speechHasNext, setSpeechHasNext] = useState(false);
   const speechPages = useRef<{ pages: string[]; index: number } | null>(null);
+  const [speechAutoPlay, setSpeechAutoPlay] = useState(false);
+  const speechAutoPlayRef = useRef(false);
+  const playSpeechPageRef = useRef<(index: number) => Promise<void>>(async () => {});
   const [autoAnim, setAutoAnim] = useState<string | null>(null); // anim autonome (dort, salue…)
   const fxId = useRef(0);
   const speechTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -2040,10 +2043,40 @@ export function CompanionRoom() {
       } else say(page, null);
       const hasNext = index + 1 < dialogue.pages.length;
       setSpeechHasNext(hasNext);
-      if (!hasNext) say(page, 3500);
+      if (hasNext && speechAutoPlayRef.current) {
+        setSpeechHasNext(false);
+        await playSpeechPageRef.current(index + 1);
+      } else if (!hasNext) say(page, 3500);
     },
     [say, voiceSettings],
   );
+  playSpeechPageRef.current = playSpeechPage;
+
+  useEffect(() => {
+    const enabled = window.localStorage.getItem('dowze-companion-speech-autoplay') === 'true';
+    speechAutoPlayRef.current = enabled;
+    setSpeechAutoPlay(enabled);
+  }, []);
+
+  const changeSpeechAutoPlay = useCallback((enabled: boolean) => {
+    speechAutoPlayRef.current = enabled;
+    setSpeechAutoPlay(enabled);
+    window.localStorage.setItem('dowze-companion-speech-autoplay', String(enabled));
+  }, []);
+
+  useEffect(() => {
+    const nextPage = (event: KeyboardEvent) => {
+      if (event.key !== 'ArrowRight' || !speechHasNext) return;
+      const target = event.target as HTMLElement | null;
+      if (target?.closest('input, textarea, select, [contenteditable="true"]')) return;
+      const dialogue = speechPages.current;
+      if (!dialogue) return;
+      event.preventDefault();
+      void playSpeechPage(dialogue.index + 1);
+    };
+    window.addEventListener('keydown', nextPage);
+    return () => window.removeEventListener('keydown', nextPage);
+  }, [playSpeechPage, speechHasNext]);
 
   const startSpeechDialogue = useCallback(
     (text: string) => {
@@ -4413,7 +4446,11 @@ export function CompanionRoom() {
             </div>
 
             <div className="min-h-0 flex-1">
-              <SettingsMenu onClearRoom={() => updateItems([])} />
+              <SettingsMenu
+                onClearRoom={() => updateItems([])}
+                speechAutoPlay={speechAutoPlay}
+                onSpeechAutoPlayChange={changeSpeechAutoPlay}
+              />
             </div>
           </div>
         </div>
