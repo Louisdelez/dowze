@@ -7,6 +7,7 @@ import {
   Inject,
   Param,
   Post,
+  Req,
   ServiceUnavailableException,
   UseGuards,
 } from '@nestjs/common';
@@ -24,6 +25,15 @@ import { ENV } from '../config/config.module';
 import type { Env } from '../config/env';
 import { CopiloteService } from './copilote.service';
 import { CreditsService } from './credits.service';
+import { LocalAiService } from './local-ai.service';
+
+interface AuthedRequest {
+  accountAuthId?: string;
+}
+
+const localResultSchema = z
+  .object({ result: z.unknown().optional(), error: z.string().max(2000).optional() })
+  .strict();
 
 const uuid = z.string().uuid();
 
@@ -43,7 +53,27 @@ export class CopiloteController {
     @Inject(ENV) private readonly env: Env,
     private readonly copilote: CopiloteService,
     private readonly credits: CreditsService,
+    private readonly localAi: LocalAiService,
   ) {}
+
+  /** Dowze Desktop récupère le prochain travail destiné à Ollama sur CETTE machine. */
+  @Get('local/jobs/next')
+  async nextLocalJob(@Req() req: AuthedRequest) {
+    if (!req.accountAuthId) throw new ForbiddenException();
+    return { job: await this.localAi.next(req.accountAuthId) };
+  }
+
+  /** Dowze Desktop remet le résultat local; aucune adresse Ollama n'est exposée au serveur. */
+  @Post('local/jobs/:id/result')
+  async completeLocalJob(
+    @Req() req: AuthedRequest,
+    @Param('id') id: string,
+    @Body() body: unknown,
+  ) {
+    if (!req.accountAuthId) throw new ForbiddenException();
+    const value = parseOr400(localResultSchema, body);
+    return this.localAi.complete(req.accountAuthId, uuid.parse(id), value.result, value.error);
+  }
 
   /** Catalogue des modèles disponibles (multi-fournisseurs). */
   @Get('models')

@@ -1374,12 +1374,13 @@ export function getCopiloteSettings(profileId: string): Promise<CopiloteSettings
 export interface UpdateCopiloteSettingsInput {
   profileId: string;
   modelId?: string;
-  billing?: 'credits' | 'byok';
+  billing?: 'credits' | 'byok' | 'ollama';
   byokProvider?: AiModel['provider'] | null;
   byokApiKey?: string | null;
   embeddingModelId?: string | null;
   embeddingApiKey?: string | null;
   lowcostModelId?: string | null;
+  ollamaModel?: string | null;
 }
 export function updateCopiloteSettings(
   input: UpdateCopiloteSettingsInput,

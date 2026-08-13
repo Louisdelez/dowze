@@ -5,11 +5,12 @@ import { FsrsModule } from '../fsrs/fsrs.module';
 import { CopiloteService } from './copilote.service';
 import { CreditsService } from './credits.service';
 import { CopiloteController } from './copilote.controller';
+import { LocalAiService } from './local-ai.service';
 
 @Module({
   imports: [ProgressionModule, CarnetModule, FsrsModule],
-  providers: [CopiloteService, CreditsService],
+  providers: [CopiloteService, CreditsService, LocalAiService],
   controllers: [CopiloteController],
-  exports: [CopiloteService, CreditsService],
+  exports: [CopiloteService, CreditsService, LocalAiService],
 })
 export class CopiloteModule {}

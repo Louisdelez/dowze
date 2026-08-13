@@ -7,6 +7,7 @@ import { DesktopFrame } from '@/components/desktop-frame';
 import { SessionHydrator } from '@/components/session-hydrator';
 import { SwUpdater } from '@/components/sw-updater';
 import { CompanionProvider } from '@/components/companion/companion-provider';
+import { LocalOllamaConnector } from '@/components/desktop/local-ollama-connector';
 
 // Inter = substitut open-source de « NotionInter » (cf. DESIGN.md).
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
@@ -33,6 +34,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       <body>
         <SwUpdater />
         <SessionHydrator />
+        <LocalOllamaConnector />
         <CompanionProvider>
           <DesktopFrame>
             <AppShell initialHost={initialHost} forceHub={desktopBuild}>

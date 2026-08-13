@@ -10,6 +10,7 @@ import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { generateObject, generateText, type ToolSet } from 'ai';
 import { jsonrepair } from 'jsonrepair';
 import { z, type ZodType } from 'zod';
+import { zodToJsonSchema } from 'zod-to-json-schema';
 import {
   aiEmbeddingModelSchema,
   aiModelSchema,
@@ -49,6 +50,7 @@ import { CacheService } from '../cache/cache.service';
 import { platformKeyFor, resolveModel } from './provider';
 import { decryptSecret, encryptSecret } from './crypto.util';
 import { cosine, embedTexts, type EmbeddingConfig } from './embedding';
+import { LocalAiService } from './local-ai.service';
 import {
   COURSE_REVIEW_SYSTEM,
   COURSE_SHEET_SYSTEM,
@@ -175,6 +177,7 @@ export class CopiloteService {
     private readonly fsrs: FsrsService,
     private readonly credits: CreditsService,
     private readonly cache: CacheService,
+    private readonly localAi: LocalAiService,
   ) {}
 
   // --- Catalogue ---
@@ -235,6 +238,7 @@ export class CopiloteService {
       embeddingModelId: row?.embeddingModelId ?? null,
       hasEmbeddingKey: Boolean(row?.embeddingKeyEnc),
       lowcostModelId: row?.lowcostModelId ?? null,
+      ollamaModel: row?.ollamaModel ?? null,
     };
   }
 
@@ -287,6 +291,7 @@ export class CopiloteService {
       embeddingProvider: embeddingProvider ?? null,
       embeddingKeyEnc: embKeyEnc ?? null,
       lowcostModelId: input.lowcostModelId ?? null,
+      ollamaModel: input.ollamaModel ?? null,
       updatedAt: now,
     };
     const updateSet: Partial<typeof copiloteSettings.$inferInsert> = { updatedAt: now };
@@ -301,6 +306,7 @@ export class CopiloteService {
       if (input.lowcostModelId) await this.requireModel(input.lowcostModelId);
       updateSet.lowcostModelId = input.lowcostModelId;
     }
+    if (input.ollamaModel !== undefined) updateSet.ollamaModel = input.ollamaModel;
 
     await this.db
       .insert(copiloteSettings)
@@ -308,6 +314,28 @@ export class CopiloteService {
       .onConflictDoUpdate({ target: copiloteSettings.profileId, set: updateSet });
 
     return this.getSettings(input.profileId);
+  }
+
+  private async localChat(
+    profileId: string,
+    model: string,
+    system: string,
+    prompt: string,
+    format?: Record<string, unknown>,
+  ): Promise<string> {
+    const raw = (await this.localAi.request(profileId, {
+      operation: 'chat',
+      model,
+      messages: [
+        { role: 'system', content: system },
+        { role: 'user', content: prompt },
+      ],
+      format,
+    })) as { message?: { content?: string }; response?: string };
+    const text = raw?.message?.content ?? raw?.response;
+    if (!text?.trim())
+      throw new ServiceUnavailableException("Ollama local n'a renvoyé aucun texte.");
+    return text.trim();
   }
 
   // --- Traduction (modèle LowCost) ---
@@ -362,7 +390,7 @@ export class CopiloteService {
           'Traduction indisponible : aucune clé configurée pour ce modèle.',
         );
       apiKey = key;
-      held = key === 'ollama-local' ? 0 : estimateCredits(model);
+      held = estimateCredits(model);
       const ok = held === 0 || (await this.credits.tryDebit(profileId, held, 'hold', 'translate'));
       if (!ok) {
         throw new HttpException(
@@ -428,7 +456,7 @@ export class CopiloteService {
     const ref = `grow:${frontier.slug}`;
     let held = 0;
     if (billing === 'credits') {
-      held = apiKey === 'ollama-local' ? 0 : estimateCredits(model) * (P + 1); // P générations + vérification
+      held = estimateCredits(model) * (P + 1); // P générations + vérification
       const ok = held === 0 || (await this.credits.tryDebit(profileId, held, 'hold', ref));
       if (!ok) throw new BadRequestException("Crédits insuffisants pour étendre l'Atlas.");
     }
@@ -547,7 +575,7 @@ export class CopiloteService {
     const ref = `goal:${goal.slice(0, 24)}`;
     let held = 0;
     if (billing === 'credits') {
-      held = apiKey === 'ollama-local' ? 0 : estimateCredits(model) * 2;
+      held = estimateCredits(model) * 2;
       const ok = held === 0 || (await this.credits.tryDebit(profileId, held, 'hold', ref));
       if (!ok) throw new BadRequestException('Crédits insuffisants pour tracer ce chemin.');
     }
@@ -966,7 +994,7 @@ export class CopiloteService {
         );
       }
       apiKey = key;
-      held = key === 'ollama-local' ? 0 : estimateCredits(model);
+      held = estimateCredits(model);
       const ok =
         held === 0 || (await this.credits.tryDebit(input.profileId, held, 'hold', input.skillId));
       if (!ok) {
@@ -1276,6 +1304,29 @@ export class CopiloteService {
     },
   ): Promise<{ object: T; creditsSpent: number }> {
     const settings = await this.settingsRow(profileId);
+    if (settings?.billing === 'ollama') {
+      const format = zodToJsonSchema(opts.schema as never, opts.schemaName) as Record<
+        string,
+        unknown
+      >;
+      let correction = '';
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        const text = await this.localChat(
+          profileId,
+          settings.ollamaModel || 'qwen2.5:3b',
+          `${opts.system}\nRéponds uniquement avec le JSON demandé, sans texte autour.${correction}`,
+          opts.prompt,
+          format,
+        );
+        try {
+          const repaired = jsonrepair(extractJsonBlock(text));
+          return { object: opts.schema.parse(JSON.parse(repaired)), creditsSpent: 0 };
+        } catch (error) {
+          correction = `\nTa réponse précédente violait le schéma (${error instanceof Error ? error.message.slice(0, 500) : 'JSON invalide'}). Corrige strictement les types et limites.`;
+        }
+      }
+      throw new ServiceUnavailableException("Ollama local n'a pas produit le JSON attendu.");
+    }
     const modelId = opts.modelId ?? settings?.modelId ?? DEFAULT_MODEL_ID;
     const model = await this.requireModel(modelId);
     const billing = settings?.billing ?? 'credits';
@@ -1298,7 +1349,7 @@ export class CopiloteService {
         );
       }
       apiKey = key;
-      held = key === 'ollama-local' ? 0 : estimateCredits(model);
+      held = estimateCredits(model);
       const ok = held === 0 || (await this.credits.tryDebit(profileId, held, 'hold', ref));
       if (!ok) {
         throw new HttpException(
@@ -1315,7 +1366,7 @@ export class CopiloteService {
       const lm = resolveModel(model.provider, model.modelId, apiKey, this.env);
       const result = await generateObject({
         model: lm,
-        mode: apiKey === 'ollama-local' ? 'json' : 'auto',
+        mode: 'auto',
         schema: opts.schema,
         schemaName: opts.schemaName,
         system: opts.system,
@@ -1376,6 +1427,15 @@ export class CopiloteService {
     },
   ): Promise<{ text: string; toolsUsed: string[]; creditsSpent: number }> {
     const settings = await this.settingsRow(profileId);
+    if (settings?.billing === 'ollama') {
+      const text = await this.localChat(
+        profileId,
+        settings.ollamaModel || 'qwen2.5:3b',
+        `${opts.system}\nTu fonctionnes localement sur la machine de l'utilisateur. Réponds directement et n'invente pas d'appel d'outil indisponible.`,
+        opts.prompt,
+      );
+      return { text, toolsUsed: [], creditsSpent: 0 };
+    }
     const modelId = opts.modelId ?? settings?.modelId ?? DEFAULT_MODEL_ID;
     const model = await this.requireModel(modelId);
     const billing = settings?.billing ?? 'credits';
@@ -1400,7 +1460,7 @@ export class CopiloteService {
       }
       apiKey = key;
       // La boucle peut faire plusieurs allers-retours : on retient de quoi couvrir maxSteps, on réconcilie au réel.
-      held = key === 'ollama-local' ? 0 : estimateCredits(model) * maxSteps;
+      held = estimateCredits(model) * maxSteps;
       const ok = held === 0 || (await this.credits.tryDebit(profileId, held, 'hold', ref));
       if (!ok) {
         throw new HttpException(
@@ -1490,24 +1550,16 @@ export class CopiloteService {
    */
   async embed(profileId: string, texts: string[]): Promise<number[][] | null> {
     if (texts.length === 0) return [];
-    const cfg = await this.resolveEmbeddingConfig(await this.settingsRow(profileId));
-    if (!cfg && this.env.OLLAMA_BASE_URL) {
-      try {
-        const response = await fetch(`${this.env.OLLAMA_BASE_URL.replace(/\/$/, '')}/api/embed`, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ model: this.env.OLLAMA_EMBED_MODEL, input: texts }),
-          signal: AbortSignal.timeout(60_000),
-        });
-        if (!response.ok) return null;
-        const payload = (await response.json()) as { embeddings?: number[][] };
-        return payload.embeddings?.every((vector) => vector.length === 1024)
-          ? payload.embeddings
-          : null;
-      } catch {
-        return null;
-      }
+    const settings = await this.settingsRow(profileId);
+    if (settings?.billing === 'ollama') {
+      const raw = (await this.localAi.request(profileId, {
+        operation: 'embed',
+        model: 'bge-m3',
+        input: texts,
+      })) as { embeddings?: number[][] };
+      return raw.embeddings?.every((vector) => vector.length === 1024) ? raw.embeddings : null;
     }
+    const cfg = await this.resolveEmbeddingConfig(settings);
     if (!cfg) return null;
     try {
       return await embedTexts(cfg, texts);

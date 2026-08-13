@@ -101,7 +101,7 @@ export const aiEmbeddingModelSchema = z.object({
 export type AiEmbeddingModel = z.infer<typeof aiEmbeddingModelSchema>;
 
 /** Mode de facturation choisi par l'élève. */
-export const billingModeSchema = z.enum(['credits', 'byok']);
+export const billingModeSchema = z.enum(['credits', 'byok', 'ollama']);
 export type BillingMode = z.infer<typeof billingModeSchema>;
 
 /** Requête : composer le prompt de séance du jour. */
@@ -133,6 +133,7 @@ export const copiloteSettingsViewSchema = z.object({
   embeddingModelId: z.string().nullable(),
   hasEmbeddingKey: z.boolean(),
   lowcostModelId: z.string().nullable(), // modèle LowCost pour la traduction (null = réutilise l'IA principale)
+  ollamaModel: z.string().nullable(),
 });
 export type CopiloteSettingsView = z.infer<typeof copiloteSettingsViewSchema>;
 
@@ -147,6 +148,7 @@ export const updateSettingsSchema = z
     embeddingModelId: z.string().nullable().optional(),
     embeddingApiKey: z.string().max(300).nullable().optional(),
     lowcostModelId: z.string().nullable().optional(),
+    ollamaModel: z.string().min(1).max(160).nullable().optional(),
   })
   .strict();
 export type UpdateSettings = z.infer<typeof updateSettingsSchema>;

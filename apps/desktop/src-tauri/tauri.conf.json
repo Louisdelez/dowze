@@ -2,10 +2,10 @@
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Dowze",
   "version": "0.1.0",
-  "identifier": "ch.dowze.academie.desktop",
+  "identifier": "ch.dowze.infra.desktop",
   "build": {
     "frontendDist": "../../web/out",
-    "devUrl": "https://academie.dowze.ch"
+    "devUrl": "https://infra.dowze.ch"
   },
   "app": {
     "withGlobalTauri": true,
@@ -30,7 +30,7 @@
     "active": true,
     "targets": "all",
     "category": "Education",
-    "shortDescription": "Dowze Académie — apprentissage sans plafond",
+    "shortDescription": "Dowze Infra — compagnon, Ruche et IA locale",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

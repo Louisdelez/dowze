@@ -818,7 +818,22 @@ export const copiloteSettings = pgTable('copilote_settings', {
   embeddingProvider: text('embedding_provider'),
   embeddingKeyEnc: text('embedding_key_enc'),
   lowcostModelId: text('lowcost_model_id'), // modèle LowCost pour la traduction (null = réutilise l'IA principale)
+  ollamaModel: text('ollama_model'),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Requêtes d'inférence remises au connecteur Dowze Desktop du propriétaire. */
+export const localAiJobs = pgTable('local_ai_jobs', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  profileId: uuid('profile_id').notNull(),
+  payload: jsonb('payload').notNull(),
+  status: text('status').notNull().default('pending'),
+  result: jsonb('result'),
+  error: text('error'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  claimedAt: timestamp('claimed_at', { withTimezone: true }),
+  completedAt: timestamp('completed_at', { withTimezone: true }),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
 });
 
 export const creditBalances = pgTable('credit_balances', {

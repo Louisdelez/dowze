@@ -31,7 +31,8 @@ export function CopiloteSettings() {
   const [erreur, setErreur] = useState(false);
 
   const [modelId, setModelId] = useState('');
-  const [billing, setBilling] = useState<'credits' | 'byok'>('credits');
+  const [billing, setBilling] = useState<'credits' | 'byok' | 'ollama'>('credits');
+  const [ollamaModel, setOllamaModel] = useState('qwen2.5:3b');
   const [keyInput, setKeyInput] = useState('');
   const [embModelId, setEmbModelId] = useState('');
   const [embKeyInput, setEmbKeyInput] = useState('');
@@ -58,6 +59,7 @@ export function CopiloteSettings() {
       setBilling(s.billing);
       setEmbModelId(s.embeddingModelId ?? '');
       setLowcostModelId(s.lowcostModelId ?? '');
+      setOllamaModel(s.ollamaModel ?? 'qwen2.5:3b');
     } catch {
       setErreur(true);
     } finally {
@@ -87,6 +89,7 @@ export function CopiloteSettings() {
         embeddingModelId: embModelId === '' ? null : embModelId,
         embeddingApiKey: embNeedsKey && embKeyInput.trim() ? embKeyInput.trim() : undefined,
         lowcostModelId: lowcostModelId === '' ? null : lowcostModelId,
+        ollamaModel: billing === 'ollama' ? ollamaModel.trim() : undefined,
       });
       setSettings(updated);
       setKeyInput('');
@@ -185,16 +188,35 @@ export function CopiloteSettings() {
             <SelectField
               label="Comment payer le Copilote"
               value={billing}
-              onChange={(e) => setBilling(e.target.value as 'credits' | 'byok')}
+              onChange={(e) => setBilling(e.target.value as 'credits' | 'byok' | 'ollama')}
               hint={
                 billing === 'credits'
                   ? 'Crédits Dowze : tu recharges, Dowze fournit l’IA. ~0,2 centime par séance.'
-                  : 'Ta propre clé API : gratuit pour Dowze, tu paies ton fournisseur directement.'
+                  : billing === 'byok'
+                    ? 'Ta propre clé API : tu paies ton fournisseur directement.'
+                    : 'Ollama tourne uniquement sur ton ordinateur via Dowze Desktop.'
               }
             >
               <option value="credits">Crédits Dowze (recharge)</option>
               <option value="byok">Ma propre clé API (BYOK)</option>
+              <option value="ollama">Ollama sur cet ordinateur</option>
             </SelectField>
+
+            {billing === 'ollama' && (
+              <div className="space-y-3 rounded-md border border-border bg-muted/40 p-4">
+                <TextField
+                  label="Modèle Ollama local"
+                  value={ollamaModel}
+                  onChange={(e) => setOllamaModel(e.target.value)}
+                  placeholder="qwen2.5:3b"
+                  hint="Ollama doit tourner sur 127.0.0.1:11434 et Dowze Desktop doit rester ouvert. Aucun modèle ne tourne sur le serveur Dowze."
+                />
+                <Note>
+                  Installe le modèle avec <code>ollama pull {ollamaModel || 'qwen2.5:3b'}</code>,
+                  puis laisse l’application Dowze ouverte sur ton compte.
+                </Note>
+              </div>
+            )}
 
             {billing === 'byok' && (
               <div className="space-y-2 rounded-md border border-border bg-muted/40 p-4">

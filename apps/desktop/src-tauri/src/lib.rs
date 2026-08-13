@@ -1,4 +1,4 @@
-//! Dowze Académie — coque de bureau (Tauri v2).
+//! Dowze Infra — application de bureau (Tauri v2).
 //!
 //! Le frontend est l'application Dowze existante (identique au web) ; cette coque ajoute des
 //! **outils locaux** (voir `tools.rs`) que le web ne peut pas offrir, exposés via `invoke(...)`.
@@ -231,12 +231,44 @@ fn ai_inject(app: tauri::AppHandle, text: String) -> Result<(), String> {
 #[tauri::command]
 fn desktop_info() -> serde_json::Value {
     serde_json::json!({
-        "app": "Dowze Académie Desktop",
+        "app": "Dowze Infra Desktop",
         "version": env!("CARGO_PKG_VERSION"),
         "os": std::env::consts::OS,
         "searxng": std::env::var("DOWZE_SEARXNG_URL").ok(),
-        "tools": ["web_search", "wikipedia_search"],
+        "tools": ["web_search", "wikipedia_search", "ollama_request"],
     })
+}
+
+/// Appelle exclusivement Ollama sur la boucle locale du poste client.
+/// L'URL n'est volontairement pas configurable depuis le web : aucun SSRF ni Ollama distant.
+#[tauri::command]
+async fn ollama_request(payload: serde_json::Value) -> Result<serde_json::Value, String> {
+    let operation = payload
+        .get("operation")
+        .and_then(|value| value.as_str())
+        .ok_or("opération Ollama absente")?;
+    let path = match operation {
+        "chat" => "chat",
+        "embed" => "embed",
+        _ => return Err("opération Ollama non autorisée".into()),
+    };
+    let mut body = payload.as_object().cloned().ok_or("charge utile invalide")?;
+    body.remove("operation");
+    if operation == "chat" {
+        body.insert("stream".into(), serde_json::Value::Bool(false));
+    }
+    reqwest::Client::new()
+        .post(format!("http://127.0.0.1:11434/api/{path}"))
+        .json(&body)
+        .timeout(std::time::Duration::from_secs(120))
+        .send()
+        .await
+        .map_err(|_| "Ollama n'est pas joignable sur cette machine (127.0.0.1:11434).".to_string())?
+        .error_for_status()
+        .map_err(|error| format!("Ollama a refusé la requête : {error}"))?
+        .json()
+        .await
+        .map_err(|error| format!("Réponse Ollama invalide : {error}"))
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -251,9 +283,10 @@ pub fn run() {
             ai_inject,
             tools::web_search,
             tools::wikipedia_search,
+            ollama_request,
         ])
         .build(tauri::generate_context!())
-        .expect("erreur au démarrage de Dowze Académie Desktop");
+        .expect("erreur au démarrage de Dowze Infra Desktop");
 
     // Pont IA : la webview `ai` (ChatGPT/Claude) émet `dowze://ai-capture` (core event, permis par la
     // capability ai-panel) quand la conversation change. On l'écoute côté Rust et on la relaie à la webview
