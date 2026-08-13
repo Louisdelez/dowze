@@ -7,6 +7,16 @@ import { invoke, isDesktop } from '@/lib/desktop';
 
 let playing: HTMLAudioElement | null = null;
 let playingUrl: string | null = null;
+let audioContext: AudioContext | null = null;
+let playingSource: AudioBufferSourceNode | null = null;
+
+/** À appeler pendant le clic/la touche utilisateur, avant que la génération distante ou locale ne
+ * commence. Chrome conserve alors un contexte audio autorisé pour lire la réponse différée. */
+export function unlockCompanionVoice(): void {
+  if (typeof window === 'undefined') return;
+  audioContext ??= new AudioContext();
+  if (audioContext.state === 'suspended') void audioContext.resume();
+}
 
 function cleanSpeech(text: string): string {
   return text
@@ -34,6 +44,14 @@ function base64Blob(encoded: string, mime: string): Blob {
 
 export function stopCompanionVoice(): void {
   window.speechSynthesis?.cancel();
+  if (playingSource) {
+    try {
+      playingSource.stop();
+    } catch {
+      // La source peut déjà être terminée ; elle est tout de même détachée ci-dessous.
+    }
+    playingSource = null;
+  }
   if (playing) {
     playing.pause();
     playing.src = '';
@@ -128,6 +146,20 @@ export async function speakCompanionNaturally(
     }
   } else {
     blob = await synthesizeCompanionVoice(clean);
+  }
+  unlockCompanionVoice();
+  if (audioContext) {
+    if (audioContext.state === 'suspended') await audioContext.resume();
+    const buffer = await audioContext.decodeAudioData(await blob.arrayBuffer());
+    const source = audioContext.createBufferSource();
+    source.buffer = buffer;
+    source.connect(audioContext.destination);
+    source.onended = () => {
+      if (playingSource === source) playingSource = null;
+    };
+    playingSource = source;
+    source.start();
+    return;
   }
   playingUrl = URL.createObjectURL(blob);
   playing = new Audio(playingUrl);

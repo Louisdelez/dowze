@@ -60,6 +60,7 @@ import {
   speakCompanionNaturally,
   stopCompanionVoice,
   transcribeRecordedVoice,
+  unlockCompanionVoice,
 } from '@/lib/companion-voice';
 import { useProfile } from '@/lib/use-profile';
 import { blockStyle, fmtHour, DAY_FULL, MONTH_FULL, ymd } from '@/lib/calendar';
@@ -2037,6 +2038,7 @@ export function CompanionRoom() {
 
   // Chat direct : parle à tous les compagnons de la pièce (ou à un seul avec « /nom … »).
   const sendChat = useCallback((voiceText?: string) => {
+    unlockCompanionVoice();
     const raw = (voiceText ?? chatText).trim();
     if (!raw) return;
     setChatText('');
@@ -2167,6 +2169,7 @@ export function CompanionRoom() {
   }, [chatText, family, secs, name, say, isHome, saySec, spaces, activeSpace, voiceSettings]);
 
   const toggleVoiceInput = useCallback(async () => {
+    unlockCompanionVoice();
     if (listening) {
       recorderRef.current?.stop();
       return;
