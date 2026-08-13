@@ -9,6 +9,7 @@ let playing: HTMLAudioElement | null = null;
 let playingUrl: string | null = null;
 let audioContext: AudioContext | null = null;
 let playingSource: AudioBufferSourceNode | null = null;
+let voiceGeneration = 0;
 
 /** À appeler pendant le clic/la touche utilisateur, avant que la génération distante ou locale ne
  * commence. Chrome conserve alors un contexte audio autorisé pour lire la réponse différée. */
@@ -42,7 +43,56 @@ function base64Blob(encoded: string, mime: string): Blob {
   return new Blob([bytes], { type: mime });
 }
 
+function speechChunks(text: string): string[] {
+  const clauses = text.match(/[^,.!?;:]+[,.!?;:]?/g)?.map((part) => part.trim()).filter(Boolean) ?? [text];
+  const chunks: string[] = [];
+  for (const clause of clauses) {
+    const words = clause.split(/\s+/);
+    while (words.length) chunks.push(words.splice(0, 7).join(' '));
+  }
+  return chunks;
+}
+
+async function playAudioBlob(blob: Blob, generation: number): Promise<void> {
+  if (generation !== voiceGeneration) return;
+  unlockCompanionVoice();
+  if (audioContext) {
+    if (audioContext.state === 'suspended') await audioContext.resume();
+    const buffer = await audioContext.decodeAudioData(await blob.arrayBuffer());
+    if (generation !== voiceGeneration) return;
+    await new Promise<void>((resolve) => {
+      const source = audioContext!.createBufferSource();
+      source.buffer = buffer;
+      source.connect(audioContext!.destination);
+      source.onended = () => {
+        if (playingSource === source) playingSource = null;
+        resolve();
+      };
+      playingSource = source;
+      source.start();
+    });
+    return;
+  }
+  await new Promise<void>((resolve, reject) => {
+    playingUrl = URL.createObjectURL(blob);
+    playing = new Audio(playingUrl);
+    playing.onended = () => resolve();
+    playing.onerror = () => reject(new Error('Lecture audio impossible'));
+    void playing.play().catch(reject);
+  });
+}
+
+async function fetchPocketSpeech(text: string, voice: string): Promise<Blob> {
+  const form = new FormData();
+  form.append('text', text);
+  form.append('voice_url', voice || 'estelle');
+  const response = await fetch('https://localhost:8443/pocket/tts', { method: 'POST', body: form });
+  if (!response.ok) throw new Error(`Pocket TTS local : ${response.status}`);
+  return response.blob();
+}
+
 export function stopCompanionVoice(): void {
+  voiceGeneration += 1;
   window.speechSynthesis?.cancel();
   if (playingSource) {
     try {
@@ -97,6 +147,7 @@ export async function speakCompanionNaturally(
   browserPitch = 1,
 ): Promise<void> {
   stopCompanionVoice();
+  const generation = voiceGeneration;
   const clean = cleanSpeech(text);
   if (settings.ttsProvider === 'browser') {
     const utterance = new SpeechSynthesisUtterance(clean);
@@ -120,50 +171,35 @@ export async function speakCompanionNaturally(
       blob = base64Blob(result.audioBase64, result.mime ?? 'audio/mpeg');
     } else {
       const pocket = settings.localTtsModel.startsWith('pocket-tts');
-      const pocketForm = new FormData();
-      pocketForm.append('text', clean);
-      pocketForm.append('voice_url', settings.localVoiceId || 'estelle');
-      const response = await fetch(
-        pocket
-          ? 'https://localhost:8443/pocket/tts'
-          : 'https://localhost:8443/v1/audio/speech',
-        pocket
-          ? { method: 'POST', body: pocketForm }
-          : {
-              method: 'POST',
-              headers: { 'content-type': 'application/json' },
-              body: JSON.stringify({
-                model: settings.localTtsModel,
-                voice: settings.localVoiceId,
-                input: clean,
-                response_format: 'mp3',
-                speed: 1,
-              }),
-            },
-      );
+      if (pocket) {
+        const chunks = speechChunks(clean);
+        let next = fetchPocketSpeech(chunks[0]!, settings.localVoiceId);
+        for (let index = 0; index < chunks.length; index += 1) {
+          const audio = await next;
+          if (generation !== voiceGeneration) return;
+          if (index + 1 < chunks.length) {
+            next = fetchPocketSpeech(chunks[index + 1]!, settings.localVoiceId);
+          }
+          await playAudioBlob(audio, generation);
+        }
+        return;
+      }
+      const response = await fetch('https://localhost:8443/v1/audio/speech', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          model: settings.localTtsModel,
+          voice: settings.localVoiceId,
+          input: clean,
+          response_format: 'mp3',
+          speed: 1,
+        }),
+      });
       if (!response.ok) throw new Error(`Speaches TTS local : ${response.status}`);
       blob = await response.blob();
     }
   } else {
     blob = await synthesizeCompanionVoice(clean);
   }
-  unlockCompanionVoice();
-  if (audioContext) {
-    if (audioContext.state === 'suspended') await audioContext.resume();
-    const buffer = await audioContext.decodeAudioData(await blob.arrayBuffer());
-    const source = audioContext.createBufferSource();
-    source.buffer = buffer;
-    source.connect(audioContext.destination);
-    source.onended = () => {
-      if (playingSource === source) playingSource = null;
-    };
-    playingSource = source;
-    source.start();
-    return;
-  }
-  playingUrl = URL.createObjectURL(blob);
-  playing = new Audio(playingUrl);
-  playing.onended = () => stopCompanionVoice();
-  playing.onerror = () => stopCompanionVoice();
-  await playing.play();
+  await playAudioBlob(blob, generation);
 }
