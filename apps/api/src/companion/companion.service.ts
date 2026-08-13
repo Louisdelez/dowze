@@ -2584,26 +2584,29 @@ export class CompanionService {
         return { id: top.id, name: top.name, role: top.role ?? null }; // cosinus > 0.82
     }
     // 2) Repli lexical (trigram sur rôle/nom).
-    const rows2 = await this.db
-      .select({
-        id: companionAgents.id,
-        name: companionAgents.name,
-        role: companionAgents.role,
-        s: sql<number>`greatest(similarity(coalesce(${companionAgents.role}, ''), ${t}), similarity(${companionAgents.name}, ${t}))`,
-      })
-      .from(companionAgents)
-      .where(
-        and(
-          eq(companionAgents.profileId, profileId),
-          eq(companionAgents.mode, 'agent'),
-          eq(companionAgents.status, 'active'),
-          ne(companionAgents.space, 'home'),
-        ),
-      )
-      .orderBy(sql`s desc`)
-      .limit(1);
+    // La requête SQL explicite évite que Drizzle transforme l'alias calculé `s` en une
+    // référence de colonne lors du ORDER BY sur certaines versions de PostgreSQL.
+    const rows2 = (await this.db.execute(sql`
+      select id, name, role,
+        greatest(
+          similarity(coalesce(role, ''), ${t}::text),
+          similarity(name, ${t}::text)
+        ) as score
+      from companion_agents
+      where profile_id = ${profileId}
+        and mode = 'agent'
+        and status = 'active'
+        and space <> 'home'
+      order by greatest(
+        similarity(coalesce(role, ''), ${t}::text),
+        similarity(name, ${t}::text)
+      ) desc
+      limit 1
+    `)) as unknown as { id: string; name: string; role: string | null; score: number }[];
     const top2 = rows2[0];
-    return top2 && Number(top2.s) >= 0.6 ? { id: top2.id, name: top2.name, role: top2.role } : null;
+    return top2 && Number(top2.score) >= 0.6
+      ? { id: top2.id, name: top2.name, role: top2.role }
+      : null;
   }
 
   private dedupeRules(rules: string[]): string[] {
