@@ -67,12 +67,7 @@ import { blockStyle, fmtHour, DAY_FULL, MONTH_FULL, ymd } from '@/lib/calendar';
 import type { ScheduleView } from '@dowze/schemas';
 import { useCompanionPet, CURATED_PETS, curatedSheetUrl } from '@/lib/companion-pet';
 import { useLocalWeather, wmoIcon, wmoLabel, type WeatherCategory } from '@/lib/use-local-weather';
-import {
-  decideAction,
-  pickReaction,
-  pickWanderTarget,
-  type BrainCtx,
-} from '@/lib/companion-brain';
+import { decideAction, pickReaction, pickWanderTarget, type BrainCtx } from '@/lib/companion-brain';
 import { FLOOR_MATS, WALL_MATS, MAT_PRICES } from '@/components/companion/materials.generated';
 import {
   FURNITURE,
@@ -1368,6 +1363,8 @@ export function CompanionRoom() {
   const [reaction, setReaction] = useState<string | null>(null);
   const [fx, setFx] = useState<{ text: string; id: number } | null>(null);
   const [speech, setSpeech] = useState<string | null>(null);
+  const [speechHasNext, setSpeechHasNext] = useState(false);
+  const speechPages = useRef<{ pages: string[]; index: number } | null>(null);
   const [autoAnim, setAutoAnim] = useState<string | null>(null); // anim autonome (dort, salue…)
   const fxId = useRef(0);
   const speechTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -1476,7 +1473,9 @@ export function CompanionRoom() {
       .catch(() => {});
   }, []);
   useEffect(() => {
-    getCompanionVoiceSettings().then(setVoiceSettings).catch(() => setVoiceSettings(null));
+    getCompanionVoiceSettings()
+      .then(setVoiceSettings)
+      .catch(() => setVoiceSettings(null));
     return () => {
       recorderRef.current?.stop();
       voiceStreamRef.current?.getTracks().forEach((track) => track.stop());
@@ -1731,15 +1730,12 @@ export function CompanionRoom() {
   }, []);
 
   // Clic gauche sur un compagnon → le sélectionne (il te suit) ; re-clic → désélectionne.
-  const toggleFollow = useCallback(
-    (id: string) => {
-      setFollowId((cur) => {
-        if (cur === id) return null;
-        return id;
-      });
-    },
-    [],
-  );
+  const toggleFollow = useCallback((id: string) => {
+    setFollowId((cur) => {
+      if (cur === id) return null;
+      return id;
+    });
+  }, []);
   // Nettoyage : si le suivi disparaît (supprimé / changement d'espace), on désélectionne.
   // Le compagnon PRINCIPAL n'est jamais dans `secs` (c'est le pet) → on le garde, sinon sa fiche clignote.
   useEffect(() => {
@@ -1979,6 +1975,57 @@ export function CompanionRoom() {
     }
   }, []);
 
+  const dialoguePages = useCallback((raw: string): string[] => {
+    const natural = raw
+      .replace(/\b(\d+)\s*c\.\s*à\s*soupe\b/gi, '$1 cuillère à soupe')
+      .replace(/\b(\d+)\s*c\.\s*à\s*café\b/gi, '$1 cuillère à café')
+      .replace(/\b1\s*c\.\b/gi, 'une cuillère')
+      .replace(/\b(\d+)\s*c\.\b/gi, '$1 cuillères')
+      .replace(/\b(\d+)\s*g\b/gi, '$1 grammes')
+      .replace(/\b(\d+)\s*ml\b/gi, '$1 millilitres')
+      .replace(/\s+/g, ' ')
+      .trim();
+    const sentences = natural
+      .match(/[^.!?]+[.!?]?/g)
+      ?.map((part) => part.trim())
+      .filter(Boolean) ?? [natural];
+    const pages: string[] = [];
+    for (const sentence of sentences) {
+      const words = sentence.split(/\s+/);
+      while (words.length) pages.push(words.splice(0, 18).join(' '));
+    }
+    return pages.filter(Boolean);
+  }, []);
+
+  const playSpeechPage = useCallback(
+    async (index: number) => {
+      const dialogue = speechPages.current;
+      const page = dialogue?.pages[index];
+      if (!dialogue || !page) return;
+      dialogue.index = index;
+      setSpeechHasNext(false);
+      say('…', null);
+      if (voiceSettings) {
+        await speakCompanionNaturally(page, voiceSettings, 1, 1, () => say(page, null)).catch(() =>
+          say(page, null),
+        );
+      } else say(page, null);
+      const hasNext = index + 1 < dialogue.pages.length;
+      setSpeechHasNext(hasNext);
+      if (!hasNext) say(page, 3500);
+    },
+    [say, voiceSettings],
+  );
+
+  const startSpeechDialogue = useCallback(
+    (text: string) => {
+      const pages = dialoguePages(text);
+      speechPages.current = { pages, index: 0 };
+      void playSpeechPage(0);
+    },
+    [dialoguePages, playSpeechPage],
+  );
+
   function talk() {
     // Réveille + laisse la main à l'utilisateur un instant avant que l'autonomie reprenne.
     setAutoAnim(null);
@@ -1986,143 +2033,153 @@ export function CompanionRoom() {
   }
 
   // Chat direct : parle à tous les compagnons de la pièce (ou à un seul avec « /nom … »).
-  const sendChat = useCallback((voiceText?: string) => {
-    unlockCompanionVoice();
-    const raw = (voiceText ?? chatText).trim();
-    if (!raw) return;
-    setChatText('');
-    let targetName: string | null = null;
-    let msg = raw;
-    const mt = raw.match(/^\/(\S+)\s*([\s\S]*)$/);
-    if (mt) {
-      targetName = mt[1]!.toLowerCase();
-      msg = (mt[2] || '').trim();
-    }
-    // ORGANISATION (open-space école/entreprise) + message NON ciblé → le LEADER délègue au bon rôle.
-    const activeSpaceType = spaces.find((s) => s.id === activeSpace)?.type;
-    if (
-      !isHome &&
-      !targetName &&
-      activeSpaceType &&
-      ['school', 'company', 'saas'].includes(activeSpaceType)
-    ) {
-      // Indicateur « … » sur le leader (1er membre seedé = Directeur/CEO) pendant qu'il réfléchit.
-      const leadGuess = secs[0];
-      if (leadGuess) saySec(leadGuess.id, '…', 15000);
-      orchestrateSpace(activeSpace, msg || raw)
-        .then((r) => {
-          // Believabilité : le leader et les membres mobilisés se rassemblent (le hand-off se voit).
-          const involved = [
-            ...new Set([...r.delegates.map((d) => d.id), ...(r.qa ? [r.qa.id] : [])]),
-          ];
-          if (involved.length) {
-            setGather({ leaderId: r.leadId, memberIds: involved });
-            if (gatherTimer.current) window.clearTimeout(gatherTimer.current);
-          }
-          r.delegates.forEach((d, i) =>
-            window.setTimeout(() => saySec(d.id, d.said, 7000), i * 300),
-          );
-          let t = r.delegates.length * 300 + 200;
-          // L'Évaluateur (QA) affiche son verdict entre l'équipe et la synthèse du leader.
-          if (r.qa) {
-            const note = r.qa.ok ? r.qa.note || 'Validé.' : `À corriger : ${r.qa.note}`;
-            window.setTimeout(() => saySec(r.qa!.id, note, 7000), t);
-            t += 900;
-          }
-          window.setTimeout(() => saySec(r.leadId, r.reply, 9000), t);
-          // Fin de réunion → chacun repart (après la synthèse du leader).
-          if (involved.length)
-            gatherTimer.current = window.setTimeout(() => setGather(null), t + 9000);
-        })
-        .catch(() => {
-          const lead = secs[0];
-          if (lead) saySec(lead.id, 'Configure une clé IA pour que l’équipe réponde');
-        });
-      return;
-    }
-    const primaryAgent = family.find((a) => a.isPrimary);
-    const modeOf = (id: string) => family.find((a) => a.id === id)?.mode;
-    const speakers: {
-      id: string;
-      name: string;
-      personality: AgentPersonality | null;
-      mode?: string;
-    }[] = [
-      ...(isHome
-        ? [
-            {
-              id: 'primary',
-              name: primaryAgent?.name || name || 'Dowze',
-              personality: primaryAgent?.personality ?? null,
-              mode: 'pnj',
-            },
-          ]
-        : []),
-      ...secs.map((s) => ({
-        id: s.id,
-        name: s.name,
-        personality: secPhysRef.current[s.id]?.personality ?? null,
-        mode: modeOf(s.id),
-      })),
-    ];
-    const matched = targetName
-      ? speakers.filter((s) => s.name.toLowerCase().startsWith(targetName!))
-      : speakers;
-    // Dans la Maison, un message non ciblé s'adresse au compagnon principal. Les autres membres ne
-    // doivent pas répondre tous en même temps avec des répliques génériques.
-    const list =
-      isHome && !targetName
-        ? speakers.filter((speaker) => speaker.id === 'primary')
-        : matched.length
-          ? matched
-          : speakers;
-    list.forEach((sp) => {
-      if (sp.id === 'primary') {
-        say('…');
-        const request = msg || raw;
-        const needsHive =
-          /\b(d[eé]l[eè]gue|d[eé]l[eé]guer|mobilise|abeille|ruche|sp[eé]cialiste|open[- ]space)\b/i.test(
-            request,
-          );
-        const replyPromise =
-          needsHive || !primaryAgent?.id
-            ? orchestrateCompanion(request, undefined, {
-                service: 'infra',
-                route: window.location.pathname,
-                page: document.title,
-              }).then((result) => result.reply)
-            : chatCompanionAgent(primaryAgent.id, request).then((result) => result.reply);
-        replyPromise
-          .then(async (reply) => {
-            if (voiceSettings) {
-              await speakCompanionNaturally(reply, voiceSettings, 1, 1, () => say(reply, null)).catch(
-                () => say(reply),
-              );
-              say(reply, 1800);
-            } else say(reply);
+  const sendChat = useCallback(
+    (voiceText?: string) => {
+      unlockCompanionVoice();
+      const raw = (voiceText ?? chatText).trim();
+      if (!raw) return;
+      setChatText('');
+      let targetName: string | null = null;
+      let msg = raw;
+      const mt = raw.match(/^\/(\S+)\s*([\s\S]*)$/);
+      if (mt) {
+        targetName = mt[1]!.toLowerCase();
+        msg = (mt[2] || '').trim();
+      }
+      // ORGANISATION (open-space école/entreprise) + message NON ciblé → le LEADER délègue au bon rôle.
+      const activeSpaceType = spaces.find((s) => s.id === activeSpace)?.type;
+      if (
+        !isHome &&
+        !targetName &&
+        activeSpaceType &&
+        ['school', 'company', 'saas'].includes(activeSpaceType)
+      ) {
+        // Indicateur « … » sur le leader (1er membre seedé = Directeur/CEO) pendant qu'il réfléchit.
+        const leadGuess = secs[0];
+        if (leadGuess) saySec(leadGuess.id, '…', 15000);
+        orchestrateSpace(activeSpace, msg || raw)
+          .then((r) => {
+            // Believabilité : le leader et les membres mobilisés se rassemblent (le hand-off se voit).
+            const involved = [
+              ...new Set([...r.delegates.map((d) => d.id), ...(r.qa ? [r.qa.id] : [])]),
+            ];
+            if (involved.length) {
+              setGather({ leaderId: r.leadId, memberIds: involved });
+              if (gatherTimer.current) window.clearTimeout(gatherTimer.current);
+            }
+            r.delegates.forEach((d, i) =>
+              window.setTimeout(() => saySec(d.id, d.said, 7000), i * 300),
+            );
+            let t = r.delegates.length * 300 + 200;
+            // L'Évaluateur (QA) affiche son verdict entre l'équipe et la synthèse du leader.
+            if (r.qa) {
+              const note = r.qa.ok ? r.qa.note || 'Validé.' : `À corriger : ${r.qa.note}`;
+              window.setTimeout(() => saySec(r.qa!.id, note, 7000), t);
+              t += 900;
+            }
+            window.setTimeout(() => saySec(r.leadId, r.reply, 9000), t);
+            // Fin de réunion → chacun repart (après la synthèse du leader).
+            if (involved.length)
+              gatherTimer.current = window.setTimeout(() => setGather(null), t + 9000);
           })
-          .catch(() => say('Configure une clé IA dans le Copilote pour que je puisse réfléchir.'));
+          .catch(() => {
+            const lead = secs[0];
+            if (lead) saySec(lead.id, 'Configure une clé IA pour que l’équipe réponde');
+          });
         return;
       }
-      // Compagnon-AGENT : vraie réponse IA (bulle « … » pendant la réflexion), comme dans le téléphone.
-      if (sp.mode === 'agent') {
-        saySec(sp.id, '…', 30000);
-        chatCompanionAgent(sp.id, msg || raw)
-          .then(async (r) => {
-            if (voiceSettings) {
-              await speakCompanionNaturally(r.reply, voiceSettings, 1, 1, () =>
-                saySec(sp.id, r.reply, Number.POSITIVE_INFINITY),
-              ).catch(() => saySec(sp.id, r.reply, 9000));
-              saySec(sp.id, r.reply, 1800);
-            } else saySec(sp.id, r.reply, 9000);
-          })
-          .catch(() => saySec(sp.id, 'Configure une clé IA pour que je réfléchisse 🙂'));
-        return;
-      }
-      // Un PNJ sans moteur IA ne fabrique aucune réponse. Il faut le convertir en compagnon IA
-      // pour qu'il puisse réellement converser.
-    });
-  }, [chatText, family, secs, name, say, isHome, saySec, spaces, activeSpace, voiceSettings]);
+      const primaryAgent = family.find((a) => a.isPrimary);
+      const modeOf = (id: string) => family.find((a) => a.id === id)?.mode;
+      const speakers: {
+        id: string;
+        name: string;
+        personality: AgentPersonality | null;
+        mode?: string;
+      }[] = [
+        ...(isHome
+          ? [
+              {
+                id: 'primary',
+                name: primaryAgent?.name || name || 'Dowze',
+                personality: primaryAgent?.personality ?? null,
+                mode: 'pnj',
+              },
+            ]
+          : []),
+        ...secs.map((s) => ({
+          id: s.id,
+          name: s.name,
+          personality: secPhysRef.current[s.id]?.personality ?? null,
+          mode: modeOf(s.id),
+        })),
+      ];
+      const matched = targetName
+        ? speakers.filter((s) => s.name.toLowerCase().startsWith(targetName!))
+        : speakers;
+      // Dans la Maison, un message non ciblé s'adresse au compagnon principal. Les autres membres ne
+      // doivent pas répondre tous en même temps avec des répliques génériques.
+      const list =
+        isHome && !targetName
+          ? speakers.filter((speaker) => speaker.id === 'primary')
+          : matched.length
+            ? matched
+            : speakers;
+      list.forEach((sp) => {
+        if (sp.id === 'primary') {
+          say('…');
+          const request = msg || raw;
+          const needsHive =
+            /\b(d[eé]l[eè]gue|d[eé]l[eé]guer|mobilise|abeille|ruche|sp[eé]cialiste|open[- ]space)\b/i.test(
+              request,
+            );
+          const replyPromise =
+            needsHive || !primaryAgent?.id
+              ? orchestrateCompanion(request, undefined, {
+                  service: 'infra',
+                  route: window.location.pathname,
+                  page: document.title,
+                }).then((result) => result.reply)
+              : chatCompanionAgent(primaryAgent.id, request).then((result) => result.reply);
+          replyPromise
+            .then((reply) => startSpeechDialogue(reply))
+            .catch(() =>
+              say('Configure une clé IA dans le Copilote pour que je puisse réfléchir.'),
+            );
+          return;
+        }
+        // Compagnon-AGENT : vraie réponse IA (bulle « … » pendant la réflexion), comme dans le téléphone.
+        if (sp.mode === 'agent') {
+          saySec(sp.id, '…', 30000);
+          chatCompanionAgent(sp.id, msg || raw)
+            .then(async (r) => {
+              if (voiceSettings) {
+                await speakCompanionNaturally(r.reply, voiceSettings, 1, 1, () =>
+                  saySec(sp.id, r.reply, Number.POSITIVE_INFINITY),
+                ).catch(() => saySec(sp.id, r.reply, 9000));
+                saySec(sp.id, r.reply, 1800);
+              } else saySec(sp.id, r.reply, 9000);
+            })
+            .catch(() => saySec(sp.id, 'Configure une clé IA pour que je réfléchisse 🙂'));
+          return;
+        }
+        // Un PNJ sans moteur IA ne fabrique aucune réponse. Il faut le convertir en compagnon IA
+        // pour qu'il puisse réellement converser.
+      });
+    },
+    [
+      chatText,
+      family,
+      secs,
+      name,
+      say,
+      isHome,
+      saySec,
+      spaces,
+      activeSpace,
+      voiceSettings,
+      startSpeechDialogue,
+    ],
+  );
 
   const toggleVoiceInput = useCallback(async () => {
     unlockCompanionVoice();
@@ -2307,7 +2364,6 @@ export function CompanionRoom() {
         // idle : petite mimique de temps en temps
         setAutoAnim(Math.random() < 0.5 ? (Math.random() < 0.5 ? 'waving' : 'jumping') : null);
       }
-
     };
     const id = window.setInterval(tick, 900);
     return () => window.clearInterval(id);
@@ -3000,8 +3056,22 @@ export function CompanionRoom() {
                   >
                     <div className="relative flex h-24 w-24 flex-col items-center">
                       {speech && (
-                        <div className="absolute bottom-full left-1/2 mb-1 -translate-x-1/2 whitespace-nowrap rounded-2xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-lg">
-                          {speech}
+                        <div className="pointer-events-auto absolute bottom-full left-1/2 mb-1 w-56 max-w-[min(14rem,70vw)] -translate-x-1/2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium leading-relaxed text-slate-700 shadow-lg">
+                          <span>{speech}</span>
+                          {speechHasNext && (
+                            <button
+                              type="button"
+                              aria-label="Afficher la suite"
+                              title="Suite"
+                              onClick={() => {
+                                const dialogue = speechPages.current;
+                                if (dialogue) void playSpeechPage(dialogue.index + 1);
+                              }}
+                              className="absolute bottom-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-accent text-accent-foreground shadow transition hover:bg-accent-active"
+                            >
+                              <Ico k="chevronRight" size={12} />
+                            </button>
+                          )}
                           <span className="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 border-b border-r border-slate-200 bg-white" />
                         </div>
                       )}
