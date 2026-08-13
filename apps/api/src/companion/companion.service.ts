@@ -1710,14 +1710,36 @@ export class CompanionService {
         },
       ];
     }
-    if (specializedLearningRequest && dels.length === 0) {
+    // Le planificateur n'a pas le droit d'envoyer un cours de maths à un évaluateur ou à un
+    // autre rôle scolaire. On remplace son choix par le professeur de maths durable de la Ruche.
+    if (specializedLearningRequest && (dels.length === 0 || mathematicsLearningRequest)) {
       const isMath = mathematicsLearningRequest;
       const subjectWords = isMath
-        ? /math|fonction|alg[eè]bre|g[eé]om[eé]tr|calcul/i
+        ? /prof(?:esseur|esseure)?\s+de\s+math|math[eé]matic/i
         : /enseign|prof|p[eé]dagog|fran[cç]ais|anglais|histoire|g[eé]ographie|science|physique|chimie|biologie/i;
-      const existingIndex = specialists.findIndex((specialist) =>
+      let existingIndex = specialists.findIndex((specialist) =>
         subjectWords.test(`${specialist.name} ${specialist.role ?? ''}`),
       );
+      if (isMath && existingIndex < 0) {
+        const [mathTeacher] = await this.db
+          .select({ id: companionAgents.id, name: companionAgents.name, role: companionAgents.role })
+          .from(companionAgents)
+          .where(
+            and(
+              baseWhere,
+              or(
+                ilike(companionAgents.role, '%mathémat%'),
+                ilike(companionAgents.role, '%mathemat%'),
+              ),
+            ),
+          )
+          .orderBy(desc(companionAgents.updatedAt))
+          .limit(1);
+        if (mathTeacher) {
+          specialists.push(mathTeacher);
+          existingIndex = specialists.length - 1;
+        }
+      }
       dels = [{
         existing: existingIndex >= 0 ? existingIndex + 1 : 0,
         create: existingIndex >= 0
