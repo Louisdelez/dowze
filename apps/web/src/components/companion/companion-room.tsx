@@ -42,6 +42,7 @@ import {
   actAgentCare,
   recordHiveEvent,
   getHiveCompanionStates,
+  getCompanionVoiceSettings,
   type HiveMaintainReport,
   type PetCareState,
   type PetMood,
@@ -53,7 +54,13 @@ import {
   type SpaceKnowledge,
   type ProjectResult,
   type HiveCompanionState,
+  type CompanionVoiceSettings,
 } from '@/lib/api';
+import {
+  speakCompanionNaturally,
+  stopCompanionVoice,
+  transcribeRecordedVoice,
+} from '@/lib/companion-voice';
 import { useProfile } from '@/lib/use-profile';
 import { blockStyle, fmtHour, DAY_FULL, MONTH_FULL, ymd } from '@/lib/calendar';
 import type { ScheduleView } from '@dowze/schemas';
@@ -383,6 +390,12 @@ const ICON: Record<string, ReactNode> = {
       <path d="M8 14s1.5 2 4 2 4-2 4-2" />
       <path d="M9 9h.01" />
       <path d="M15 9h.01" />
+    </>
+  ),
+  mic: (
+    <>
+      <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+      <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3M8 22h8" />
     </>
   ),
   zap: <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />,
@@ -1420,6 +1433,10 @@ export function CompanionRoom() {
   const [iaBusy, setIaBusy] = useState(false);
   const [iaErr, setIaErr] = useState<string | null>(null);
   const [chatText, setChatText] = useState('');
+  const [voiceSettings, setVoiceSettings] = useState<CompanionVoiceSettings | null>(null);
+  const [listening, setListening] = useState(false);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const voiceStreamRef = useRef<MediaStream | null>(null);
   const [spaces, setSpaces] = useState<CompanionSpace[]>([]);
   const [activeSpace, setActiveSpace] = useState('home'); // 'home' (Maison) | id d'open-space
   const [spacesMenuOpen, setSpacesMenuOpen] = useState(false);
@@ -1500,6 +1517,14 @@ export function CompanionRoom() {
         setRoomsMap(r.rooms ?? {});
       })
       .catch(() => {});
+  }, []);
+  useEffect(() => {
+    getCompanionVoiceSettings().then(setVoiceSettings).catch(() => setVoiceSettings(null));
+    return () => {
+      recorderRef.current?.stop();
+      voiceStreamRef.current?.getTracks().forEach((track) => track.stop());
+      stopCompanionVoice();
+    };
   }, []);
   // Au changement d'espace, on se place dans la salle par défaut : Maison → chambre ; open-space → 1er workspace.
   useEffect(() => {
@@ -2011,8 +2036,8 @@ export function CompanionRoom() {
   }
 
   // Chat direct : parle à tous les compagnons de la pièce (ou à un seul avec « /nom … »).
-  const sendChat = useCallback(() => {
-    const raw = chatText.trim();
+  const sendChat = useCallback((voiceText?: string) => {
+    const raw = (voiceText ?? chatText).trim();
     if (!raw) return;
     setChatText('');
     let targetName: string | null = null;
@@ -2098,7 +2123,10 @@ export function CompanionRoom() {
       if (sp.mode === 'agent' && sp.id !== 'primary') {
         saySec(sp.id, '…', 30000);
         chatCompanionAgent(sp.id, msg || raw)
-          .then((r) => saySec(sp.id, r.reply, 6000))
+          .then((r) => {
+            saySec(sp.id, r.reply, 6000);
+            if (voiceSettings) void speakCompanionNaturally(r.reply, voiceSettings).catch(() => {});
+          })
           .catch(() => saySec(sp.id, 'Configure une clé IA pour que je réfléchisse 🙂'));
         return;
       }
@@ -2132,10 +2160,50 @@ export function CompanionRoom() {
           setAutoAnim(null);
           autoNextAt.current = Date.now() + 4000;
           say(line);
+          if (voiceSettings) void speakCompanionNaturally(line, voiceSettings).catch(() => {});
         } else saySec(sp.id, line);
       }, i * 420);
     });
-  }, [chatText, family, secs, name, say, isHome, saySec, spaces, activeSpace]);
+  }, [chatText, family, secs, name, say, isHome, saySec, spaces, activeSpace, voiceSettings]);
+
+  const toggleVoiceInput = useCallback(async () => {
+    if (listening) {
+      recorderRef.current?.stop();
+      return;
+    }
+    if (!voiceSettings) return;
+    try {
+      stopCompanionVoice();
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      voiceStreamRef.current = stream;
+      const chunks: BlobPart[] = [];
+      const recorder = new MediaRecorder(stream);
+      recorderRef.current = recorder;
+      recorder.ondataavailable = (event) => {
+        if (event.data.size) chunks.push(event.data);
+      };
+      recorder.onstop = () => {
+        const audio = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
+        stream.getTracks().forEach((track) => track.stop());
+        voiceStreamRef.current = null;
+        recorderRef.current = null;
+        setListening(false);
+        void transcribeRecordedVoice(audio, voiceSettings)
+          .then((text) => {
+            if (text) sendChat(text);
+          })
+          .catch(() => {});
+      };
+      recorder.onerror = () => {
+        stream.getTracks().forEach((track) => track.stop());
+        setListening(false);
+      };
+      recorder.start();
+      setListening(true);
+    } catch {
+      setListening(false);
+    }
+  }, [listening, sendChat, voiceSettings]);
 
   async function doAction(a: (typeof ACTIONS)[number]) {
     // Cible = compagnon sélectionné (popup) ; sinon le principal. Principal → API réelle ; autre → deltas de session.
@@ -3704,7 +3772,21 @@ export function CompanionRoom() {
               className="min-w-0 flex-1 bg-transparent px-2 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none"
             />
             <button
-              onClick={sendChat}
+              type="button"
+              onClick={() => void toggleVoiceInput()}
+              disabled={!voiceSettings}
+              aria-label={listening ? 'Arrêter et envoyer' : 'Parler à mon compagnon'}
+              title={listening ? 'Arrêter et envoyer' : 'Parler à mon compagnon'}
+              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition disabled:opacity-40 ${
+                listening
+                  ? 'animate-pulse bg-red-500 text-white'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              <Ico k="mic" size={16} />
+            </button>
+            <button
+              onClick={() => sendChat()}
               disabled={!chatText.trim()}
               aria-label="Envoyer"
               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground transition hover:bg-accent-active disabled:opacity-40"
