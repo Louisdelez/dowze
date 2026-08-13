@@ -1,6 +1,11 @@
 https://localhost:8443 {
   tls /certs/localhost.pem /certs/localhost-key.pem
   handle_path /pocket/* {
+    header Access-Control-Allow-Origin "https://infra.dowze.ch"
+    header Access-Control-Allow-Methods "GET, POST, OPTIONS"
+    header Access-Control-Allow-Headers "Content-Type"
+    header Access-Control-Allow-Private-Network "true"
+    header Vary "Origin"
     reverse_proxy host.docker.internal:8001
   }
   handle {
