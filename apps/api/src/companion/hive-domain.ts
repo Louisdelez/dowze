@@ -354,7 +354,13 @@ export function renderForChannel(channel: HiveChannel, context: ChannelContext):
       : (context.affinity ?? 0) >= 0.75
         ? 'À bientôt,'
         : 'Bien à vous,';
-    return `${greeting}\n\n${content}\n\n${closing}\n${context.companionName}`;
+    const withGreeting = /^(bonjour|salut)[,!\s]/i.test(content)
+      ? content
+      : `${greeting}\n\n${content}`;
+    const withClosing = /(bien à vous|à bientôt|chaleureusement|cordialement),?\s*\n[^\n]+$/i.test(content)
+      ? withGreeting
+      : `${withGreeting}\n\n${closing}\n${context.companionName}`;
+    return withClosing;
   }
   if (channel === 'push') return atMostSentences(compactHumanText(content), 1, 140);
   if (channel === 'direct')

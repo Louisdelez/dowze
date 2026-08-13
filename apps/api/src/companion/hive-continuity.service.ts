@@ -1089,7 +1089,7 @@ export class HiveContinuityService {
       familiarity: relationship?.familiarity ?? null,
       affinity: relationship?.affinity ?? null,
     });
-    const delivered = ['direct', 'messages', 'voice', 'system'].includes(input.channel);
+    const delivered = ['direct', 'messages', 'email', 'voice', 'system'].includes(input.channel);
     const row = (
       await this.db
         .insert(hiveDeliveries)

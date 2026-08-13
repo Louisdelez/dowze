@@ -390,6 +390,7 @@ export function CompanionDevice({
 
   useEffect(() => {
     if (app !== 'email') return;
+    setSel(null);
     const load = () => getHiveDeliveries('email').then(setDeliveredEmails).catch(() => {});
     void load();
     const timer = window.setInterval(load, 5000);
