@@ -1008,7 +1008,9 @@ function Thread({
     voiceSettings &&
       (voiceSettings.sttProvider === 'browser'
         ? recognitionConstructor() !== null
-        : typeof navigator !== 'undefined' && navigator.mediaDevices?.getUserMedia),
+        : voiceSettings.sttProvider !== 'local' || isDesktop()) &&
+      (voiceSettings.sttProvider === 'browser' ||
+        (typeof navigator !== 'undefined' && navigator.mediaDevices?.getUserMedia)),
   );
 
   async function listen() {
