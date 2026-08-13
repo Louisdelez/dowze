@@ -185,7 +185,7 @@ export class VoiceService {
           model: row.ttsModel,
           voice: row.voiceId,
           input: clean,
-          format: 'mp3',
+          response_format: 'mp3',
           instructions: 'Voix française naturelle, chaleureuse et humaine. Conversation intime, rythme vivant, jamais voix de robot ni voix publicitaire.',
         }),
         signal: AbortSignal.timeout(120_000),
