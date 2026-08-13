@@ -95,6 +95,7 @@ export async function speakCompanionNaturally(
   settings: CompanionVoiceSettings,
   browserRate = 1,
   browserPitch = 1,
+  onStart?: () => void,
 ): Promise<void> {
   stopCompanionVoice();
   const clean = cleanSpeech(text);
@@ -106,6 +107,7 @@ export async function speakCompanionNaturally(
     await new Promise<void>((resolve, reject) => {
       utterance.onend = () => resolve();
       utterance.onerror = () => reject(new Error('Synthèse vocale du navigateur impossible'));
+      utterance.onstart = () => onStart?.();
       window.speechSynthesis.speak(utterance);
     });
     return;
@@ -164,6 +166,7 @@ export async function speakCompanionNaturally(
         resolve();
       };
       playingSource = source;
+      onStart?.();
       source.start();
     });
     return;
@@ -179,6 +182,9 @@ export async function speakCompanionNaturally(
       stopCompanionVoice();
       reject(new Error('Lecture audio impossible'));
     };
-    void playing!.play().catch(reject);
+    void playing!
+      .play()
+      .then(() => onStart?.())
+      .catch(reject);
   });
 }

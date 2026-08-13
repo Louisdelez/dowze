@@ -2094,11 +2094,12 @@ export function CompanionRoom() {
             : chatCompanionAgent(primaryAgent.id, request).then((result) => result.reply);
         replyPromise
           .then(async (reply) => {
-            say(reply, voiceSettings ? null : undefined);
             if (voiceSettings) {
-              await speakCompanionNaturally(reply, voiceSettings).catch(() => {});
+              await speakCompanionNaturally(reply, voiceSettings, 1, 1, () => say(reply, null)).catch(
+                () => say(reply),
+              );
               say(reply, 1800);
-            }
+            } else say(reply);
           })
           .catch(() => say('Configure une clé IA dans le Copilote pour que je puisse réfléchir.'));
         return;
@@ -2108,11 +2109,12 @@ export function CompanionRoom() {
         saySec(sp.id, '…', 30000);
         chatCompanionAgent(sp.id, msg || raw)
           .then(async (r) => {
-            saySec(sp.id, r.reply, voiceSettings ? Number.POSITIVE_INFINITY : 9000);
             if (voiceSettings) {
-              await speakCompanionNaturally(r.reply, voiceSettings).catch(() => {});
+              await speakCompanionNaturally(r.reply, voiceSettings, 1, 1, () =>
+                saySec(sp.id, r.reply, Number.POSITIVE_INFINITY),
+              ).catch(() => saySec(sp.id, r.reply, 9000));
               saySec(sp.id, r.reply, 1800);
-            }
+            } else saySec(sp.id, r.reply, 9000);
           })
           .catch(() => saySec(sp.id, 'Configure une clé IA pour que je réfléchisse 🙂'));
         return;
