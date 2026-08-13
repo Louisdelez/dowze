@@ -11,6 +11,18 @@ import { Card, CardTitle, CardDescription } from '@/components/ui/card';
 import { TextField } from '@/components/ui/field';
 import { Note } from '@/components/ui/note';
 
+/** Âge en années révolues, ou null si la date est vide/invalide. */
+function ageFromBirthDate(birthDate: string): number | null {
+  if (!birthDate) return null;
+  const born = new Date(birthDate);
+  if (Number.isNaN(born.getTime())) return null;
+  const now = new Date();
+  let age = now.getFullYear() - born.getFullYear();
+  const m = now.getMonth() - born.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < born.getDate())) age -= 1;
+  return age;
+}
+
 export default function InscriptionPage() {
   const router = useRouter();
   const setSession = useSession((s) => s.setSession);
@@ -18,10 +30,29 @@ export default function InscriptionPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
-  const [isMinor, setIsMinor] = useState(false);
+  const [birthDate, setBirthDate] = useState('');
   const [guardianEmail, setGuardianEmail] = useState('');
   const [erreur, setErreur] = useState('');
   const [enCours, setEnCours] = useState(false);
+
+  // Le statut mineur se déduit de la date de naissance (plus de case à cocher).
+  const age = ageFromBirthDate(birthDate);
+  const tier: 'enfant' | 'mineur' | 'majeur' | null =
+    age === null ? null : age <= 12 ? 'enfant' : age < 18 ? 'mineur' : 'majeur';
+  const guardianRequired = age !== null && age < 18; // email parent obligatoire pour tout mineur
+  const showGuardian = age !== null; // champ affiché pour tout le monde (optionnel pour les majeurs)
+
+  // Libellé + aide selon le palier (wording issu de la recherche : « contact de confiance » pour les majeurs).
+  const guardianLabel =
+    tier === 'majeur'
+      ? 'E-mail d’un contact de confiance (facultatif)'
+      : 'E-mail d’un parent / responsable';
+  const guardianHint =
+    tier === 'enfant'
+      ? 'Obligatoire en dessous de 13 ans. Ton parent recevra un e-mail et devra valider ton compte avant que tu puisses tout utiliser.'
+      : tier === 'mineur'
+        ? 'Obligatoire. Ton parent sera informé par e-mail. Il pourra, s’il le souhaite, suivre tes progrès et veiller sur tes échanges.'
+        : 'Facultatif. Ajoute un proche qui pourra suivre ta progression et être alerté en cas de souci (harcèlement…). Il n’aura jamais accès à ton compte, et tu peux le retirer quand tu veux.';
 
   async function inscrire() {
     setErreur('');
@@ -33,14 +64,15 @@ export default function InscriptionPage() {
       const res = await registerAccount({
         email,
         authUserId: data.user?.id ?? null,
-        isMinor,
+        isMinor: age !== null && age < 18,
         displayName,
         locale: 'fr',
         timezone: tz,
-        guardianEmail: isMinor ? guardianEmail : null,
+        birthDate: birthDate || null,
+        guardianEmail: guardianEmail.trim() || null,
       });
       setSession({ accountId: res.account.id, profileId: res.profile.id, displayName });
-      router.push('/dashboard');
+      router.push('/presentation');
     } catch (e) {
       setErreur(String(e instanceof Error ? e.message : e));
     } finally {
@@ -77,23 +109,32 @@ export default function InscriptionPage() {
           onChange={(e) => setPassword(e.target.value)}
           placeholder="Au moins 8 caractères"
         />
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={isMinor} onChange={(e) => setIsMinor(e.target.checked)} />
-          Je suis mineur·e
-        </label>
-        {isMinor && (
+        <TextField
+          label="Date de naissance"
+          type="date"
+          value={birthDate}
+          onChange={(e) => setBirthDate(e.target.value)}
+          hint="Elle nous sert à adapter ton parcours à ton âge — et rien de plus."
+        />
+        {showGuardian && (
           <TextField
-            label="Email du responsable légal"
+            label={guardianLabel}
             type="email"
             value={guardianEmail}
             onChange={(e) => setGuardianEmail(e.target.value)}
-            hint="Il recevra un bilan bienveillant, jamais le contenu privé de tes échanges."
+            hint={guardianHint}
             placeholder="parent@exemple.com"
           />
         )}
         <Button
           onClick={inscrire}
-          disabled={enCours || !email || !password || !displayName}
+          disabled={
+            enCours ||
+            !email ||
+            !password ||
+            !displayName ||
+            (guardianRequired && !guardianEmail.trim())
+          }
           className="w-full"
         >
           {enCours ? 'Création…' : 'Créer mon compte'}

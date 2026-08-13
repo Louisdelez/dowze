@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, type OnModuleInit } from '@nestjs/common';
 import { Queue } from 'bullmq';
 import { ENV } from '../config/config.module';
 import type { Env } from '../config/env';
@@ -7,6 +7,7 @@ import { redisConnectionFromUrl } from './connection';
 
 export const QUEUE_DIGEST = 'parental-digest';
 export const QUEUE_PEER_NOTIFY = 'peer-notify';
+export const QUEUE_HIVE_MAINTAIN = 'hive-maintain';
 
 const JOB_OPTS = {
   removeOnComplete: true,
@@ -19,14 +20,29 @@ const JOB_OPTS = {
  * jobId idempotent → pas de doublon.
  */
 @Injectable()
-export class JobsService {
+export class JobsService implements OnModuleInit {
   private readonly digestQueue: Queue;
   private readonly peerQueue: Queue;
+  private readonly hiveQueue: Queue;
 
   constructor(@Inject(ENV) env: Env) {
     const connection = redisConnectionFromUrl(env.REDIS_URL ?? 'redis://127.0.0.1:6379');
     this.digestQueue = new Queue(QUEUE_DIGEST, { connection });
     this.peerQueue = new Queue(QUEUE_PEER_NOTIFY, { connection });
+    this.hiveQueue = new Queue(QUEUE_HIVE_MAINTAIN, { connection });
+  }
+
+  /** Programme la maintenance nocturne de la ruche (répétable, ~3 h du matin). Idempotent. */
+  async onModuleInit(): Promise<void> {
+    try {
+      await this.hiveQueue.add(
+        'nightly',
+        {},
+        { repeat: { pattern: '23 3 * * *' }, jobId: 'hive-nightly', removeOnComplete: true },
+      );
+    } catch {
+      /* Redis indisponible : la planification reprendra au prochain boot */
+    }
   }
 
   enqueueDigest(minorAccountId: string, periodIso: string) {

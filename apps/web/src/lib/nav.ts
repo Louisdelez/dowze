@@ -6,10 +6,16 @@ import {
   IconChart,
   IconCalendar,
   IconUsers,
+  IconMessage,
+  IconUserPlus,
   IconNotebook,
   IconBadgeCheck,
-  IconPlug,
   IconHeart,
+  IconZap,
+  IconTarget,
+  IconLanguages,
+  IconStar,
+  IconGrid,
 } from '@/components/ui/icons';
 
 export interface NavItem {
@@ -33,15 +39,24 @@ export const NAV_GROUPS: NavGroup[] = [
     title: 'Apprendre',
     items: [
       { href: '/dashboard', label: "Aujourd'hui", icon: IconToday },
+      { href: '/langues', label: 'Cours de langue', icon: IconLanguages },
       { href: '/seance', label: 'Ma séance', icon: IconSparkles },
       { href: '/expeditions', label: 'Expéditions', icon: IconCompass },
-      { href: '/progression', label: 'Progression', icon: IconChart },
+      { href: '/tests', label: 'Tests', icon: IconBadgeCheck },
+      { href: '/resultats', label: 'Mes résultats', icon: IconChart },
+      { href: '/specialisation', label: 'Ma spécialisation', icon: IconTarget },
+      { href: '/passion', label: 'Ma passion', icon: IconStar },
+      { href: '/saut', label: 'Saut de Rang', icon: IconZap },
       { href: '/planning', label: 'Planning', icon: IconCalendar },
     ],
   },
   {
     title: 'Échanger',
-    items: [{ href: '/communaute', label: 'Ma classe', icon: IconUsers }],
+    items: [
+      { href: '/communaute', label: 'Ma classe', icon: IconUsers },
+      { href: '/amis', label: 'Mes amis', icon: IconUserPlus },
+      { href: '/messages', label: 'Messages', icon: IconMessage },
+    ],
   },
   {
     title: 'Mes outils',
@@ -52,10 +67,11 @@ export const NAV_GROUPS: NavGroup[] = [
   },
 ];
 
-/** Liens de bas de barre (discrets) : espace responsable + outil avancé. */
+/** Liens de bas de barre (discrets) : réglages IA + espace responsable. */
 export const NAV_SECONDARY: NavItem[] = [
+  { href: '/compagnon', label: 'Mon compagnon', icon: IconHeart },
+  { href: 'https://infra.dowze.ch', label: 'Mes apps', icon: IconGrid },
   { href: '/parent', label: 'Espace responsable', icon: IconHeart },
-  { href: '/bridge', label: 'Pont .json', icon: IconPlug },
 ];
 
 /** Chemins « publics » : chrome minimale (pas de barre latérale d'app). */

@@ -34,7 +34,18 @@ export const skillSchema = z.object({
   depth: z.number().int().nonnegative(),
   /** Prérequis directs (ids de compétences). Vide pour une racine. */
   prerequisites: z.array(uuidSchema).default([]),
+  /**
+   * Ordre de cursus : à profondeur égale, quelle compétence prescrire d'abord
+   * (progression pédagogique voulue). Plus petit = plus tôt. Optionnel.
+   */
+  order: z.number().int().optional(),
   isRoot: z.boolean().default(false),
+  /**
+   * Rang universel Dowze (1 Fer → 10 Dowzer Suprême), calé sur ISCED/UNESCO. Explicite et
+   * autoritatif : quand il est renseigné il PRIME sur la déduction par regex de la description.
+   * `null` = à déduire (repli hérité). Voir `rankOfSkill`.
+   */
+  rank: z.number().int().min(1).max(10).nullish(),
   epistemicStatus: epistemicStatusSchema.default('etabli'),
   /** Demi-vie du savoir en années (null = stable). Sert à programmer la révision. */
   halfLifeYears: z.number().positive().nullable().default(null),

@@ -71,12 +71,25 @@ Référence complète : [juridique & conformité](../06-GOUVERNANCE-ECONOMIE/03-
 
 ## Sécurité technique
 
-- **Pont `.json`, pas d'API** : aucune clé IA stockée, aucune connexion à un fournisseur → surface
-  d'attaque minimale. Avantage de sécurité et de vie privée réel.
-- **Import du `.json` retour** : valider strictement le schéma (Ajv, `additionalProperties:false`), réparer
-  (`jsonrepair`) mais **ne jamais exécuter** le contenu ; vérifier types/bornes ; signer les payloads émis
-  par l'intra (HMAC, secret **côté serveur**). Détail : [pont `.json`](10-pont-json.md).
-- **Injection de prompt** : filtrer tout contenu élève réinjecté dans un template.
+> ⭐ **RÉVISION 2026.** L'ancien argument « pont `.json`, pas d'API → aucune clé stockée, rien ne transite »
+> est **caduc** : l'IA interne (le [Copilote](15-copilote-orchestrateur.md)) **appelle des LLM par API** et
+> **fait transiter** des données pédagogiques. La sécurité change de nature.
+
+- **Clés API chiffrées au repos** : les clés BYOK des élèves sont stockées **chiffrées** (`copilote_settings.
+  byokKeyEnc`, AES-256-GCM, secret serveur `COPILOTE_SECRET_KEY`) ; les clés plateforme vivent en variables
+  d'env serveur. Jamais renvoyées en clair au client.
+- **Transit de données vers des fournisseurs LLM** — le point de conformité central : les **résumés de
+  séance**, le **texte de présentation** (dossier) et les réponses de placement **transitent** vers le
+  fournisseur choisi. ⚠️ **DeepSeek s'appelle hors UE** → non conforme pour des mineurs. À traiter :
+  privilégier des **endpoints UE** (Mistral, Azure/Bedrock UE), **minimiser le contexte** envoyé,
+  contractualiser **non-entraînement + zéro-rétention**, tenir un **registre des sous-traitants** (chaque
+  fournisseur = un sous-traitant). Détail : [L'IA de Dowze §6](23-ia-de-dowze-le-moteur.md).
+- **Facturation** : ledger de crédits en Postgres (débit atomique) ; Stripe à venir.
+- **Sorties LLM** : jamais exécutées ; validées par schéma **Zod** strict (`generateObject` + filet
+  `jsonrepair`) ; l'app **recalcule** la maîtrise (jamais un score du LLM).
+- **Injection de prompt** : le contexte élève injecté est marqué « données, pas des consignes » ; filtrer.
+- **Le pont `.json`** (outil d'auteur / repli) garde sa validation stricte (schéma, `jsonrepair`, jamais
+  d'exécution). Détail : [pont `.json`](10-pont-json.md).
 
 ---
 
@@ -86,8 +99,9 @@ Référence complète : [juridique & conformité](../06-GOUVERNANCE-ECONOMIE/03-
 |-------|-----|---------------|
 | Stack | Next.js + Supabase + Vercel | — |
 | BDD | PostgreSQL (relationnel) | base graphe si besoin réel |
-| Lien intra ↔ IA | **pont `.json`** à la main (zéro API, zéro clé) | — (l'API reste écartée) |
-| Validation | auto-validation + file de pairs (Ajv pour l'import) | endossement expert |
+| IA de tutorat | **BYO-AI** : l'élève colle un prompt lisible dans son IA | — |
+| IA interne (Copilote) | **API multi-fournisseurs + crédits/BYOK** (clés chiffrées) ✅ fait | résidence UE forcée, gateway repli, Stripe |
+| Validation | auto-validation + file de pairs | endossement expert |
 | Mobile | PWA installable + cache lecture | sync offline en écriture |
 | Public | adultes d'abord | mineurs (dispositif complet) |
 | Données | région UE, minimisation, DPA | — |

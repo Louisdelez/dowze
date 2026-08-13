@@ -1,8 +1,13 @@
 # Backend — architecture de production
 
 > *Le backend complet : maintenable, scalable, optimisé, **fichiers courts**. Base de données **Supabase**
-> (local d'abord), logique métier en **NestJS modulaire**. Aucun appel LLM côté serveur (l'IA est externe,
-> échange par [`.json`](10-pont-json.md)). Vue d'ensemble : [stack de production](12-stack-production.md).*
+> (local d'abord), logique métier en **NestJS modulaire**. Vue d'ensemble : [stack de production](12-stack-production.md).*
+>
+> ⭐ **RÉVISION 2026.** L'ancien « aucun appel LLM côté serveur » est **caduc** : le backend **appelle des
+> LLM** via le module `copilote` (`generateStructured`, `provider.ts` multi-fournisseurs, ledger de crédits,
+> chiffrement BYOK). Modules réels ajoutés depuis : `copilote`, `onboarding`, `placement`, `exercises`,
+> `tests`, `expeditions`, `results`, `fsrs` (+ mémoire des erreurs/embeddings). Le `.json`/`bridge` reste
+> pour l'authoring (École générative). Voir [L'IA de Dowze](23-ia-de-dowze-le-moteur.md).
 
 ---
 

@@ -78,7 +78,7 @@ export function LiveClasse({
       <div className="max-h-56 space-y-2 overflow-auto">
         {messages.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            Aucun message pour l’instant. Lance la discussion 👋
+            Aucun message pour l’instant. Lance la discussion.
           </p>
         ) : (
           messages.map((m, i) => (

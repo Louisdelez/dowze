@@ -33,6 +33,10 @@ const SYSTEM_PROMPTS: Record<BridgeOperation, string> = {
     'Rédige une leçon avec objectifs explicites et exemples résolus (réduire la charge cognitive).',
   'generer-plan':
     'Propose des entrées de planning réalistes et bienveillantes pour la période demandée.',
+  'rapport-seance':
+    "Tu viens de faire travailler l'élève sur une compétence. Produis un bilan HONNÊTE : " +
+    "`outcome` = `reussi` s'il sait vraiment faire, `a-revoir` sinon ; " +
+    "`note` = une phrase concise pour son carnet (ce qu'il a appris, ou ce qui reste à retravailler).",
 };
 
 export function promptFor(
@@ -105,6 +109,13 @@ export function exampleFor(op: BridgeOperation): unknown {
           grandeQuestion: 'Pourquoi… ?',
           fils: ['fondations'],
           durationWeeks: 3,
+        },
+      };
+    case 'rapport-seance':
+      return {
+        report: {
+          outcome: 'reussi',
+          note: 'A su comparer deux quantités et ranger une liste dans l’ordre croissant.',
         },
       };
   }

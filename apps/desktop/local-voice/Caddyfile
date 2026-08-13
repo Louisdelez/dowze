@@ -1,0 +1,19 @@
+https://localhost:8443 {
+  tls /certs/localhost.pem /certs/localhost-key.pem
+  handle_path /pocket/* {
+    header Access-Control-Allow-Origin "https://infra.dowze.ch"
+    header Access-Control-Allow-Methods "GET, POST, OPTIONS"
+    header Access-Control-Allow-Headers "Content-Type"
+    header Access-Control-Allow-Private-Network "true"
+    header Vary "Origin"
+    reverse_proxy host.docker.internal:8001
+  }
+  # Mode haute performance : serveur streaming Kyutai TTS utilisé par Unmute.
+  # La route reste disponible même sur une machine légère ; l'interface revient alors sur Pocket.
+  handle_path /kyutai/* {
+    reverse_proxy host.docker.internal:8089
+  }
+  handle {
+    reverse_proxy dowze-speaches:8000
+  }
+}

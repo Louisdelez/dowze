@@ -21,6 +21,9 @@ build/
 .turbo/
 *.tsbuildinfo
 
+# Binaires de distribution (publies comme assets de release GitHub)
+apps/site/public/download/*.AppImage
+
 # Service worker généré (Serwist)
 apps/web/public/sw.js
 apps/web/public/sw.js.map

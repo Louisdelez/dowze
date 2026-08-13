@@ -14,9 +14,19 @@ Non. C'est un **commun** : un protocole ouvert, gouverné collectivement, que pe
 web). Voir [gouvernance](../06-GOUVERNANCE-ECONOMIE/01-gouvernance-commun.md).
 
 **C'est gratuit ?**
-Oui, **gratuit à l'usage, à vie**. Financé par réorientation des budgets éducatifs publics, philanthropie,
-et une redevance d'infrastructure. Pas de publicité, pas de revente de données. Voir
-[modèle économique](../06-GOUVERNANCE-ECONOMIE/02-modele-economique.md).
+Le **cœur** l'est (graphe, suivi, carnet, validation par les pairs, et l'apprentissage avec **ton propre**
+abonnement IA de tutorat). Depuis 2026, une **IA interne** (le Copilote) offre plus de confort (dossier,
+placement, exercices, tests générés) — elle a un **coût d'inférence réel**, payé en **crédits** *ou* **gratuit
+si tu mets ta propre clé (BYOK)**. Pas de publicité, pas de revente de données. Voir
+[modèle économique](../06-GOUVERNANCE-ECONOMIE/02-modele-economique.md) et
+[L'IA de Dowze](../10-APP-WEB/23-ia-de-dowze-le-moteur.md).
+
+**Dowze a-t-il sa propre IA ?**
+Oui — **deux IA**. L'**IA de tutorat** est la tienne (Claude/ChatGPT) : elle tient la conversation. L'**IA de
+Dowze** (« le Copilote », interne, multi-fournisseurs) est le **moteur** : elle bâtit ton dossier, mène le
+placement, structure tes bilans, génère exercices et tests. C'est un **système tutoriel intelligent** ancré
+sur le graphe de compétences (le « RAG Dowze »), pas un chatbot. Voir
+[L'IA de Dowze, le moteur](../10-APP-WEB/23-ia-de-dowze-le-moteur.md).
 
 **Ça remplace les professeurs ?**
 Non, ça **transforme** leur rôle : accompagnateur, animateur de Foyer, maître de Guilde, concepteur de

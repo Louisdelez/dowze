@@ -25,6 +25,8 @@ export * from './sm2/sm2';
 // Planning
 export * from './planning/planning';
 export * from './planning/timer';
+export * from './planning/daily-budget';
+export * from './planning/weekly-schedule';
 
 // Pont .json
 export * from './bridge/prototype-guard';
@@ -33,6 +35,9 @@ export * from './bridge/build';
 
 // Validation par paliers
 export * from './validation/tier';
+
+// Correction des exercices (réponse courte, cloze)
+export * from './exercises/grade';
 
 // Utilitaires
 export * from './util/math';

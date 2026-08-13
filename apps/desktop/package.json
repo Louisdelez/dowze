@@ -1,0 +1,11 @@
+{
+  "name": "@dowze/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Dowze Académie — application de bureau (Tauri) avec outils locaux",
+  "scripts": {
+    "dev": "cargo tauri dev",
+    "build": "cargo tauri build",
+    "tauri": "cargo tauri"
+  }
+}

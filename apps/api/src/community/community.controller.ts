@@ -1,6 +1,7 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { z } from 'zod';
 import { parseOr400 } from '../common/validate-body';
+import { SupabaseAuthGuard } from '../auth/supabase-auth.guard';
 import { CommunityService } from './community.service';
 import { formClasses, type Candidate } from './matching';
 
@@ -35,6 +36,7 @@ const formClassesBody = z.object({
 });
 
 @Controller('community')
+@UseGuards(SupabaseAuthGuard)
 export class CommunityController {
   constructor(private readonly service: CommunityService) {}
 

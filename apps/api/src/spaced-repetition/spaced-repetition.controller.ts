@@ -1,6 +1,7 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Post, UseGuards } from '@nestjs/common';
 import { z } from 'zod';
 import { parseOr400 } from '../common/validate-body';
+import { SupabaseAuthGuard } from '../auth/supabase-auth.guard';
 import { SpacedRepetitionService } from './spaced-repetition.service';
 
 const reviewBody = z.object({
@@ -10,6 +11,7 @@ const reviewBody = z.object({
 });
 
 @Controller('reviews')
+@UseGuards(SupabaseAuthGuard)
 export class SpacedRepetitionController {
   constructor(private readonly service: SpacedRepetitionService) {}
 

@@ -67,6 +67,22 @@
 
 ---
 
+## Risques liés à l'IA interne (le Copilote) — RÉVISION 2026
+
+Depuis que l'app exploite une IA interne (voir [L'IA de Dowze](../10-APP-WEB/23-ia-de-dowze-le-moteur.md)),
+de nouveaux risques réels apparaissent — l'ancien argument « rien ne transite / pas de fournisseur » est
+caduc.
+
+| # | Risque | Prob. | Grav. | Mitigation | Statut |
+|---|--------|-------|-------|-----------|--------|
+| IA1 | **Transit de données de mineurs hors UE** (résumés, présentation → fournisseur LLM ; DeepSeek en Chine) | Élevée | Élevée | Forcer endpoints **UE** (Mistral, Azure/Bedrock UE), minimiser le contexte, **non-entraînement + zéro-rétention** contractualisés, registre des sous-traitants | **À traiter** |
+| IA2 | **Dépendance à l'IA (point de défaillance unique)** : plus d'IA → app inerte | Moyenne | Élevée | **Gateway** multi-fournisseurs avec **repli automatique + circuit-breaker**, cache de secours, dégradation gracieuse | **À traiter** |
+| IA3 | **Hallucination / dévaluation** : le LLM invente ou sur-simplifie le contenu | Élevée | Moyenne | **Ancrage** sur le graphe, sorties structurées, **scoring de fidélité + rubrique + revue humaine** (le prompt « sois rigoureux » est prouvé insuffisant) | Partiellement traité |
+| IA4 | **Dérive des coûts** (crédits, fallback vers modèle premium) | Moyenne | Moyenne | Suivi coût/requête, budgets, alertes P95 | À suivre |
+| IA5 | **EU AI Act** (éducation = haut risque probable) : logging, supervision humaine | Moyenne | Élevée | Journalisation, human-in-the-loop, préparation conformité (applicable 08/2026) | À anticiper |
+
+---
+
 ## Les trois risques les plus graves (à surveiller en priorité)
 
 1. **S1 — Danger pour les mineurs** (gravité très élevée) → [chapitre dédié](03-securite-mineurs.md).

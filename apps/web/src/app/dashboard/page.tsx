@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { getProgression, getNextSkill } from '@/lib/api';
+import { getProgression, getNextSkill, ensureServiceOrg } from '@/lib/api';
 import { useProfile } from '@/lib/use-profile';
 import { Button } from '@/components/ui/button';
 import { Card, CardTitle, CardDescription } from '@/components/ui/card';
@@ -10,6 +10,7 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Note } from '@/components/ui/note';
 import { Skeleton } from '@/components/ui/skeleton';
+import { DailyBudgetCard } from '@/components/daily-budget-card';
 import { IconArrowRight, IconSparkles } from '@/components/ui/icons';
 
 // Aperçu montré aux visiteurs non connectés (clairement étiqueté « exemple »).
@@ -30,6 +31,13 @@ export default function DashboardPage() {
   const [vue, setVue] = useState<Vue | null>(null);
   const [charge, setCharge] = useState(false);
   const [erreur, setErreur] = useState(false);
+
+  // Entrer dans l'Académie provisionne (idempotent) l'ÉCOLE de l'élève : open-space de service
+  // peuplé d'un directeur + un prof par matière + un évaluateur, calibrés sur son rang.
+  useEffect(() => {
+    if (!signedIn || !profileId) return;
+    ensureServiceOrg('academie').catch(() => {});
+  }, [signedIn, profileId]);
 
   useEffect(() => {
     if (!signedIn || !profileId) return;
@@ -75,10 +83,13 @@ export default function DashboardPage() {
       )}
 
       {signedIn ? (
-        <section className="grid gap-4 sm:grid-cols-2">
-          <StatCard charge={charge} value={vue?.mastered} label="compétences maîtrisées" />
-          <StatCard charge={charge} value={vue?.inProgress} label="en cours d’acquisition" />
-        </section>
+        <>
+          <section className="grid gap-4 sm:grid-cols-2">
+            <StatCard charge={charge} value={vue?.mastered} label="compétences maîtrisées" />
+            <StatCard charge={charge} value={vue?.inProgress} label="en cours d’acquisition" />
+          </section>
+          {profileId && <DailyBudgetCard profileId={profileId} />}
+        </>
       ) : (
         <section className="space-y-3">
           <div className="flex items-center gap-2">
@@ -112,7 +123,7 @@ function ContinuerCard({
   next?: { title: string };
 }) {
   let titre = 'Crée ton compte pour commencer';
-  let desc = 'Un court diagnostic te place sur le parcours, puis l’IA t’accompagne pas à pas.';
+  let desc = 'Un test d’entrée te place au bon niveau, puis l’IA t’accompagne pas à pas.';
   let href = '/inscription';
   let cta = 'Commencer';
 
@@ -123,10 +134,10 @@ function ContinuerCard({
       href = '/seance';
       cta = 'Continuer';
     } else {
-      titre = 'Fais ton diagnostic';
-      desc = 'On place l’élève sur le Cursus, puis l’IA prescrit la première compétence.';
-      href = '/demarrer';
-      cta = 'Démarrer';
+      titre = 'Situe ton niveau';
+      desc = 'Passe ton test d’évaluation d’entrée : l’IA te place au bon endroit du parcours.';
+      href = '/placement';
+      cta = 'Commencer';
     }
   }
 

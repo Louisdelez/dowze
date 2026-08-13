@@ -18,14 +18,16 @@ export function learnableSkills(
 
 /**
  * La prochaine compétence prescrite : la plus « basse » dans le graphe
- * (profondeur minimale, puis ordre de slug pour le déterminisme).
+ * (profondeur minimale), puis l'**ordre de cursus** voulu (progression
+ * pédagogique), puis le slug pour le déterminisme.
  */
 export function nextPrescribedSkill(
   skills: readonly Skill[],
   masteredIds: ReadonlySet<string>,
 ): Skill | null {
+  const ord = (s: Skill) => s.order ?? Number.MAX_SAFE_INTEGER;
   const candidates = learnableSkills(skills, masteredIds).sort(
-    (a, b) => a.depth - b.depth || a.slug.localeCompare(b.slug),
+    (a, b) => a.depth - b.depth || ord(a) - ord(b) || a.slug.localeCompare(b.slug),
   );
   return candidates[0] ?? null;
 }

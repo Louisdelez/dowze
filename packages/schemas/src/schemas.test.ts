@@ -15,7 +15,7 @@ const UUID2 = '22222222-2222-4222-8222-222222222222';
 
 describe('@dowze/schemas', () => {
   it('expose une version', () => {
-    expect(SCHEMAS_VERSION).toBe('2.19.0');
+    expect(SCHEMAS_VERSION).toBe('2.47.0');
   });
 
   it('parse une compétence valide et applique les valeurs par défaut', () => {

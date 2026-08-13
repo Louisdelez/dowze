@@ -10,13 +10,19 @@ export default defineConfig({
   fullyParallel: true,
   reporter: 'list',
   use: {
-    baseURL: process.env.E2E_BASE_URL ?? 'http://127.0.0.1:3000',
+    baseURL: process.env.E2E_BASE_URL ?? 'http://127.0.0.1:3100',
     trace: 'on-first-retry',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  // Le canal `chrome` pilote le Google Chrome installé sur la machine, pas le Chromium embarqué.
+  projects: [
+    {
+      name: 'google-chrome',
+      use: { ...devices['Desktop Chrome'], channel: 'chrome' },
+    },
+  ],
   webServer: {
-    command: 'npm run start',
-    url: 'http://127.0.0.1:3000',
+    command: 'npm run start -- --port 3100',
+    url: 'http://127.0.0.1:3100',
     reuseExistingServer: true,
     timeout: 120_000,
   },

@@ -2,6 +2,11 @@
 
 > *Par quoi commencer, quoi différer. Principe : **prouver d'abord, étendre ensuite** — fonctionner à
 > 1 utilisateur, ajouter la complexité seulement quand elle est justifiée.*
+>
+> ⭐ **RÉVISION 2026.** Ce doc décrivait « l'API écartée par conception ». **Ce n'est plus vrai** : l'**IA
+> interne de Dowze (le Copilote)** est **implémentée et centrale** (par API, multi-fournisseurs). FSRS,
+> placement, exercices, tests, expéditions, résultats sont **livrés**. Voir
+> [L'IA de Dowze, le moteur](23-ia-de-dowze-le-moteur.md).
 
 ---
 
@@ -32,8 +37,8 @@ aucune requise au départ — l'auto-validation débloque, la validation par les
 
 | Différé | Pourquoi |
 |---------|----------|
-| Intégration **API** | **Écartée par conception** — le pont reste le fichier `.json` (zéro API, zéro clé) |
-| **Deep Knowledge Tracing**, IRT, FSRS | Sur-ingénierie ; BKT + SM-2 + CAT structurel suffisent |
+| ~~Intégration **API**~~ | ✅ **FAIT** — le Copilote interne (API, multi-fournisseurs, crédits/BYOK) est le moteur ([15](15-copilote-orchestrateur.md), [23](23-ia-de-dowze-le-moteur.md)) |
+| ~~**FSRS**~~ | ✅ **FAIT** (`fsrs_cards`, remplace SM-2). **DKT / IRT calibré** restent différés (sur-ingénierie) |
 | **Communauté riche** (forums, guildes) | Émergente ; commencer par le binôme quand n ≥ 2 |
 | **Ouverture aux mineurs** | Exige le dispositif de sûreté complet |
 | **Multidomaine, multilingue** | Après preuve sur un domaine |

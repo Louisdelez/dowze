@@ -26,6 +26,7 @@ export const bridgeOperationSchema = z.enum([
   'generer-grille',
   'generer-cours',
   'generer-plan',
+  'rapport-seance',
 ]);
 export type BridgeOperation = z.infer<typeof bridgeOperationSchema>;
 
@@ -91,6 +92,23 @@ export const planPayloadSchema = z.object({ entries: z.array(planningEntrySchema
 export type PlanPayload = z.infer<typeof planPayloadSchema>;
 
 /**
+ * `rapport-seance` : le bilan produit par l'IA-tuteur à la fin d'une séance.
+ * `outcome` pilote la mise à jour de maîtrise (BKT) ; `note` alimente le carnet.
+ * `.strict()` : tout champ inventé est rejeté (anti-triche au niveau du schéma).
+ */
+export const rapportPayloadSchema = z
+  .object({
+    report: z
+      .object({
+        outcome: z.enum(['reussi', 'a-revoir']),
+        note: z.string().min(1).max(2000),
+      })
+      .strict(),
+  })
+  .strict();
+export type RapportPayload = z.infer<typeof rapportPayloadSchema>;
+
+/**
  * Registre : opération → schéma du payload attendu.
  * @dowze/core l'utilise pour valider `payload` après le wrapper.
  */
@@ -101,4 +119,5 @@ export const bridgePayloadSchemaByOperation = {
   'generer-grille': grillePayloadSchema,
   'generer-cours': coursPayloadSchema,
   'generer-plan': planPayloadSchema,
+  'rapport-seance': rapportPayloadSchema,
 } as const satisfies Record<BridgeOperation, z.ZodTypeAny>;

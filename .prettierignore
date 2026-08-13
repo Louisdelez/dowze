@@ -4,6 +4,8 @@
 **/.turbo/**
 **/coverage/**
 **/node_modules/**
+**/target/**
+**/src-tauri/gen/**
 
 # La documentation est mise en forme à la main — ne pas reformater
 docs/**

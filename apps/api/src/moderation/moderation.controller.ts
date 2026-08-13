@@ -1,6 +1,7 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { z } from 'zod';
 import { parseOr400 } from '../common/validate-body';
+import { SupabaseAuthGuard } from '../auth/supabase-auth.guard';
 import { ModerationService } from './moderation.service';
 
 const reportBody = z.object({
@@ -18,6 +19,7 @@ const actBody = z.object({
 });
 
 @Controller('moderation')
+@UseGuards(SupabaseAuthGuard)
 export class ModerationController {
   constructor(private readonly service: ModerationService) {}
 

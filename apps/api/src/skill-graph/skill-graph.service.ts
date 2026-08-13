@@ -19,6 +19,7 @@ function toRow(s: Skill) {
     kind: s.kind,
     depth: s.depth,
     isRoot: s.isRoot,
+    rank: s.rank,
     epistemicStatus: s.epistemicStatus,
     halfLifeYears: s.halfLifeYears,
     masteryThreshold: s.masteryThreshold,
@@ -26,7 +27,25 @@ function toRow(s: Skill) {
   };
 }
 
-type SkillRow = typeof skillsTable.$inferSelect;
+/** Projection SANS `embedding` : le vecteur (~8 Ko/ligne) est inutile au graphe et ce chemin est le plus
+ *  chaud de l'API (chaque compose/cours recharge le graphe) — audit perf 08-2026. */
+const GRAPH_COLUMNS = {
+  id: skillsTable.id,
+  slug: skillsTable.slug,
+  title: skillsTable.title,
+  description: skillsTable.description,
+  kind: skillsTable.kind,
+  depth: skillsTable.depth,
+  curriculumOrder: skillsTable.curriculumOrder,
+  isRoot: skillsTable.isRoot,
+  rank: skillsTable.rank,
+  epistemicStatus: skillsTable.epistemicStatus,
+  halfLifeYears: skillsTable.halfLifeYears,
+  masteryThreshold: skillsTable.masteryThreshold,
+  sources: skillsTable.sources,
+} as const;
+
+type SkillRow = { [K in keyof typeof GRAPH_COLUMNS]: (typeof skillsTable.$inferSelect)[K] };
 type PrereqRow = typeof prereqTable.$inferSelect;
 
 function toSkill(row: SkillRow, edges: readonly PrereqRow[]): Skill {
@@ -37,8 +56,10 @@ function toSkill(row: SkillRow, edges: readonly PrereqRow[]): Skill {
     description: row.description,
     kind: row.kind as Skill['kind'],
     depth: row.depth,
+    order: row.curriculumOrder ?? undefined,
     prerequisites: edges.filter((e) => e.skillId === row.id).map((e) => e.prerequisiteId),
     isRoot: row.isRoot,
+    rank: row.rank ?? null,
     epistemicStatus: row.epistemicStatus as Skill['epistemicStatus'],
     halfLifeYears: row.halfLifeYears,
     masteryThreshold: row.masteryThreshold,
@@ -50,10 +71,10 @@ function toSkill(row: SkillRow, edges: readonly PrereqRow[]): Skill {
 export class SkillGraphService {
   constructor(@Inject(DB) private readonly db: Database) {}
 
-  /** Charge tout le graphe (compétences + prérequis) sous forme de domaine. */
+  /** Charge tout le graphe (compétences + prérequis) sous forme de domaine — sans les embeddings. */
   async loadGraph(): Promise<Skill[]> {
     const [rows, edges] = await Promise.all([
-      this.db.select().from(skillsTable),
+      this.db.select(GRAPH_COLUMNS).from(skillsTable),
       this.db.select().from(prereqTable),
     ]);
     return rows.map((r) => toSkill(r, edges));

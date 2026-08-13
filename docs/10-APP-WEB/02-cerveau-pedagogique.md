@@ -151,8 +151,11 @@ La maîtrise (§2) n'inclut pas l'oubli. On reprogramme les compétences maîtri
 - **MVP : SM-2** (l'algo historique d'Anki) — déterministe, ~30 lignes, aucune donnée d'entraînement.
   Qualité de rappel `q ∈ {0..5}` ; `EF ← EF + (0.1 − (5−q)(0.08 + (5−q)0.02))`, plancher `EF = 1.3` ;
   intervalles `1 j, 6 j, puis I·EF` ; échec (`q<3`) → on recommence (`I=1`) mais on garde l'EF.
-- **Plus tard : FSRS** (défaut d'Anki depuis 2023) — meilleur, mais ~19 paramètres à optimiser sur des logs
-  → inutile tant qu'on n'a pas de volume.
+- **Cible : FSRS** (défaut d'Anki depuis 2023) — modélise Difficulté/Stabilité/Rétrievabilité, vise une
+  **rétention cible** (défaut 90 %) et fait **−20 à −30 % de révisions** à rétention égale (benchmark
+  >500 M révisions). Migrer la planification vers **`ts-fsrs`** dès qu'il y a de l'historique : **ses
+  paramètres par défaut battent déjà SM-2**, sans attendre l'optimisation par élève. Répartition des rôles :
+  **BKT** = maîtrise *intra-séance* (avancer ?), **FSRS** = calendrier *inter-séances* (quand réviser ?).
 - **Intégration** : table `review_schedule(student_id, skill_id, due_date, …)` ; au séquencement (§3),
   injecter en priorité les éléments **dus** avant d'ouvrir de nouvelles compétences.
 
