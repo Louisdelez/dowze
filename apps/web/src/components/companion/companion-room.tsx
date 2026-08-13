@@ -1977,12 +1977,26 @@ export function CompanionRoom() {
 
   const dialoguePages = useCallback((raw: string): string[] => {
     const natural = raw
+      .replace(/```[\s\S]*?```/g, ' un extrait de code ')
+      .replace(/[*_#`>•▪◦●◆►▶→←↑↓✓✔✗✘]/g, ' ')
+      .replace(/[\p{Extended_Pictographic}\p{Emoji_Presentation}\uFE0F]/gu, '')
+      .replace(/^\s*[-–—]\s+/gm, '')
+      .replace(/\b(\d+)\s*\/\s*(\d+)\b/g, '$1 sur $2')
       .replace(/\b(\d+)\s*c\.\s*à\s*soupe\b/gi, '$1 cuillère à soupe')
       .replace(/\b(\d+)\s*c\.\s*à\s*café\b/gi, '$1 cuillère à café')
+      .replace(/\b(\d+)\s*c\.\s*à\s*s\.?\b/gi, '$1 cuillère à soupe')
+      .replace(/\b(\d+)\s*c\.\s*à\s*c\.?\b/gi, '$1 cuillère à café')
       .replace(/\b1\s*c\.\b/gi, 'une cuillère')
       .replace(/\b(\d+)\s*c\.\b/gi, '$1 cuillères')
+      .replace(/\b1\s*kg\b/gi, 'un kilogramme')
+      .replace(/\b(\d+)\s*kg\b/gi, '$1 kilogrammes')
       .replace(/\b(\d+)\s*g\b/gi, '$1 grammes')
       .replace(/\b(\d+)\s*ml\b/gi, '$1 millilitres')
+      .replace(/\b(\d+)\s*cl\b/gi, '$1 centilitres')
+      .replace(/\b(\d+)\s*l\b/gi, '$1 litres')
+      .replace(/(\d+)\s*°\s*C\b/gi, '$1 degrés')
+      .replace(/\s*[:;]\s*/g, ', ')
+      .replace(/\s*\n+\s*/g, '. ')
       .replace(/\s+/g, ' ')
       .trim();
     const allWords = natural.split(/\s+/).filter(Boolean);
