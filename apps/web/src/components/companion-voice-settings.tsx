@@ -25,6 +25,22 @@ const DEFAULTS: CompanionVoiceSettings = {
   hasElevenlabsKey: false,
 };
 
+const POCKET_FRENCH_VOICES = [
+  { value: 'estelle', label: 'Estelle — française native' },
+  ...[
+    'alba', 'anna', 'azelma', 'bill_boerst', 'caro_davy', 'charles', 'cosette',
+    'eponine', 'eve', 'fantine', 'george', 'jane', 'jean', 'javert', 'marius', 'mary',
+    'michael', 'paul', 'peter_yearsley', 'stuart_bell', 'vera', 'giovanni', 'lola',
+    'juergen', 'rafael',
+  ].map((voice) => ({
+    value: voice,
+    label: voice
+      .split('_')
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(' '),
+  })),
+];
+
 export function CompanionVoiceSettings({
   speechAutoPlay = false,
   onSpeechAutoPlayChange,
@@ -156,7 +172,19 @@ export function CompanionVoiceSettings({
           {value.ttsProvider === 'local' && (
             <>
               <TextField label="Modèle Kokoro" value={value.localTtsModel} onChange={(e) => set('localTtsModel', e.target.value)} />
-              <TextField label="Voix locale" value={value.localVoiceId} onChange={(e) => set('localVoiceId', e.target.value)} />
+              <SelectField
+                label="Voix française"
+                value={value.localVoiceId}
+                onChange={(event) => set('localVoiceId', event.target.value)}
+              >
+                {value.localTtsModel.startsWith('pocket-tts') ? (
+                  POCKET_FRENCH_VOICES.map((voice) => (
+                    <option key={voice.value} value={voice.value}>{voice.label}</option>
+                  ))
+                ) : (
+                  <option value="ff_siwis">Siwis — française Kokoro</option>
+                )}
+              </SelectField>
             </>
           )}
         </div>
