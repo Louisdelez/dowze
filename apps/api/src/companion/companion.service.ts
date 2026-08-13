@@ -1854,6 +1854,27 @@ export class CompanionService {
           .set({
             name: teacherName,
             role: teacherRole,
+            roleContract: {
+              responsibilities: [
+                'Donner directement des cours de mathématiques',
+                'Expliquer les notions et accompagner les exercices',
+              ],
+              capabilities: [
+                'mathématiques',
+                'cours de maths',
+                'fonctions',
+                'analyse',
+                'algèbre',
+                'géométrie',
+                'calcul',
+                'trigonométrie',
+                'probabilités',
+              ],
+              limitations: [],
+              delegatesTo: [],
+              escalationPath: ['primary'],
+              allowedTools: ['calculatrice', 'chercher_connaissances', 'recherche_web'],
+            },
             personality: teacherPersonality,
             updatedAt: new Date(),
           })
