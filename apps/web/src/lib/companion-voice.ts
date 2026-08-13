@@ -62,7 +62,7 @@ export async function transcribeRecordedVoice(
     const form = new FormData();
     form.append('file', audio, 'voice.webm');
     form.append('model', settings.localSttModel);
-    const response = await fetch('http://127.0.0.1:8000/v1/audio/transcriptions', {
+    const response = await fetch('https://localhost:8443/v1/audio/transcriptions', {
       method: 'POST',
       body: form,
     });
@@ -101,7 +101,7 @@ export async function speakCompanionNaturally(
       });
       blob = base64Blob(result.audioBase64, result.mime ?? 'audio/mpeg');
     } else {
-      const response = await fetch('http://127.0.0.1:8000/v1/audio/speech', {
+      const response = await fetch('https://localhost:8443/v1/audio/speech', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({

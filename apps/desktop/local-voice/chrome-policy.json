@@ -1,0 +1,5 @@
+{
+  "LoopbackNetworkAllowedForUrls": [
+    "https://infra.dowze.ch"
+  ]
+}
