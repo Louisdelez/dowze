@@ -1,4 +1,9 @@
 https://localhost:8443 {
   tls /certs/localhost.pem /certs/localhost-key.pem
-  reverse_proxy dowze-speaches:8000
+  handle_path /pocket/* {
+    reverse_proxy host.docker.internal:8001
+  }
+  handle {
+    reverse_proxy dowze-speaches:8000
+  }
 }

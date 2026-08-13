@@ -101,17 +101,28 @@ export async function speakCompanionNaturally(
       });
       blob = base64Blob(result.audioBase64, result.mime ?? 'audio/mpeg');
     } else {
-      const response = await fetch('https://localhost:8443/v1/audio/speech', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          model: settings.localTtsModel,
-          voice: settings.localVoiceId,
-          input: clean,
-          response_format: 'mp3',
-          speed: 1,
-        }),
-      });
+      const pocket = settings.localTtsModel.startsWith('pocket-tts');
+      const pocketForm = new FormData();
+      pocketForm.append('text', clean);
+      pocketForm.append('voice_url', settings.localVoiceId || 'estelle');
+      const response = await fetch(
+        pocket
+          ? 'https://localhost:8443/pocket/tts'
+          : 'https://localhost:8443/v1/audio/speech',
+        pocket
+          ? { method: 'POST', body: pocketForm }
+          : {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({
+                model: settings.localTtsModel,
+                voice: settings.localVoiceId,
+                input: clean,
+                response_format: 'mp3',
+                speed: 1,
+              }),
+            },
+      );
       if (!response.ok) throw new Error(`Speaches TTS local : ${response.status}`);
       blob = await response.blob();
     }

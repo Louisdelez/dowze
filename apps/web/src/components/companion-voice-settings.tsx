@@ -175,8 +175,8 @@ export function CompanionVoiceSettings() {
       )}
       {(value.sttProvider === 'local' || value.ttsProvider === 'local') && (
         <Note>
-          Speaches tourne localement via <code>https://localhost:8443</code>. Chrome y accède directement depuis cette
-          machine : l’audio ne traverse jamais le serveur Dowze. faster-whisper écoute, Kokoro parle.
+          Les moteurs vocaux tournent localement via <code>https://localhost:8443</code>. Chrome y accède directement depuis cette
+          machine : l’audio ne traverse jamais le serveur Dowze. faster-whisper écoute, Pocket TTS ou Kokoro parle.
         </Note>
       )}
       {(value.sttProvider === 'browser' || value.ttsProvider === 'browser') && (
