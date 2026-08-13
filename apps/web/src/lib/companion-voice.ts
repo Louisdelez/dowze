@@ -48,16 +48,26 @@ export async function transcribeRecordedVoice(
   settings: CompanionVoiceSettings,
 ): Promise<string> {
   if (settings.sttProvider === 'local') {
-    if (!isDesktop()) throw new Error('Le moteur vocal local exige Dowze Desktop.');
-    const result = await invoke<{ text?: string }>('voice_request', {
-      payload: {
-        operation: 'transcribe',
-        audioBase64: await blobBase64(audio),
-        mime: audio.type || 'audio/webm',
-        model: settings.localSttModel,
-      },
+    if (isDesktop()) {
+      const result = await invoke<{ text?: string }>('voice_request', {
+        payload: {
+          operation: 'transcribe',
+          audioBase64: await blobBase64(audio),
+          mime: audio.type || 'audio/webm',
+          model: settings.localSttModel,
+        },
+      });
+      return result.text?.trim() ?? '';
+    }
+    const form = new FormData();
+    form.append('file', audio, 'voice.webm');
+    form.append('model', settings.localSttModel);
+    const response = await fetch('http://127.0.0.1:8000/v1/audio/transcriptions', {
+      method: 'POST',
+      body: form,
     });
-    return result.text?.trim() ?? '';
+    if (!response.ok) throw new Error(`Speaches STT local : ${response.status}`);
+    return ((await response.json()) as { text?: string }).text?.trim() ?? '';
   }
   return transcribeCompanionVoice(audio);
 }
@@ -80,16 +90,31 @@ export async function speakCompanionNaturally(
   }
   let blob: Blob;
   if (settings.ttsProvider === 'local') {
-    if (!isDesktop()) throw new Error('Le moteur vocal local exige Dowze Desktop.');
-    const result = await invoke<{ audioBase64: string; mime?: string }>('voice_request', {
-      payload: {
-        operation: 'synthesize',
-        text: clean,
-        model: settings.localTtsModel,
-        voice: settings.localVoiceId,
-      },
-    });
-    blob = base64Blob(result.audioBase64, result.mime ?? 'audio/mpeg');
+    if (isDesktop()) {
+      const result = await invoke<{ audioBase64: string; mime?: string }>('voice_request', {
+        payload: {
+          operation: 'synthesize',
+          text: clean,
+          model: settings.localTtsModel,
+          voice: settings.localVoiceId,
+        },
+      });
+      blob = base64Blob(result.audioBase64, result.mime ?? 'audio/mpeg');
+    } else {
+      const response = await fetch('http://127.0.0.1:8000/v1/audio/speech', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          model: settings.localTtsModel,
+          voice: settings.localVoiceId,
+          input: clean,
+          response_format: 'mp3',
+          speed: 1,
+        }),
+      });
+      if (!response.ok) throw new Error(`Speaches TTS local : ${response.status}`);
+      blob = await response.blob();
+    }
   } else {
     blob = await synthesizeCompanionVoice(clean);
   }

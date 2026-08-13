@@ -111,7 +111,7 @@ export function CompanionVoiceSettings() {
           >
             <option value="openai">OpenAI — transcription naturelle</option>
             <option value="elevenlabs">ElevenLabs Scribe</option>
-            <option value="local">Local — faster-whisper (Desktop)</option>
+            <option value="local">Local — faster-whisper (cet ordinateur)</option>
             <option value="browser">Navigateur — secours gratuit</option>
           </SelectField>
           {value.sttProvider === 'openai' && (
@@ -132,7 +132,7 @@ export function CompanionVoiceSettings() {
           >
             <option value="elevenlabs">ElevenLabs — voix très humaine</option>
             <option value="openai">OpenAI — voix naturelle</option>
-            <option value="local">Local — Kokoro (Desktop)</option>
+            <option value="local">Local — Kokoro (cet ordinateur)</option>
             <option value="browser">Navigateur — secours robotique</option>
           </SelectField>
           {value.ttsProvider === 'openai' && (
@@ -175,8 +175,8 @@ export function CompanionVoiceSettings() {
       )}
       {(value.sttProvider === 'local' || value.ttsProvider === 'local') && (
         <Note>
-          Lance Speaches sur <code>127.0.0.1:8000</code> et garde Dowze Desktop ouvert. L’audio ne
-          traverse alors jamais le serveur Dowze. faster-whisper écoute, Kokoro parle.
+          Speaches tourne sur <code>127.0.0.1:8000</code>. Chrome y accède directement depuis cette
+          machine : l’audio ne traverse jamais le serveur Dowze. faster-whisper écoute, Kokoro parle.
         </Note>
       )}
       {(value.sttProvider === 'browser' || value.ttsProvider === 'browser') && (
