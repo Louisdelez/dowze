@@ -1647,6 +1647,12 @@ export function CompanionRoom() {
     for (const [id, state] of Object.entries(operationalStates)) {
       const physical = secPhysRef.current[id];
       if (!physical || state.availability !== 'busy') continue;
+      // Pendant une rencontre orchestrée, aucun autre membre de la Ruche ne parasite la scène
+      // avec une bulle d'activité. Seule l'abeille déléguée prend la parole.
+      if (speechSpeakerId.current && id !== speechSpeakerId.current) {
+        physical.speech = null;
+        continue;
+      }
       physical.tc = null;
       physical.tr = null;
       physical.speech = state.activity;
@@ -2247,6 +2253,7 @@ export function CompanionRoom() {
                 startSpeechDialogue(text);
                 return;
               }
+              speechSpeakerId.current = specialist.id;
               // Rencontre visible avec l'abeille mobilisée : on rejoint son open-space, elle entre
               // dans la pièce, marche vers le centre, puis prend elle-même la parole.
               say(`${specialist.name} a accepté. Je t’emmène le voir.`, 2200);
