@@ -41,7 +41,6 @@ import {
   runSpaceProject,
   getSpaceCare,
   actAgentCare,
-  recordHiveEvent,
   getHiveCompanionStates,
   getCompanionVoiceSettings,
   type HiveMaintainReport,
@@ -70,7 +69,6 @@ import { useCompanionPet, CURATED_PETS, curatedSheetUrl } from '@/lib/companion-
 import { useLocalWeather, wmoIcon, wmoLabel, type WeatherCategory } from '@/lib/use-local-weather';
 import {
   decideAction,
-  pickLine,
   pickReaction,
   pickWanderTarget,
   type BrainCtx,
@@ -135,49 +133,6 @@ type SecRender = {
 /** Traits proposés à la création (pilotent les répliques PNJ). */
 const TRAIT_CHIPS = ['curieux', 'taquin', 'calme', 'énergique', 'gourmand', 'timide'];
 
-/** Réplique PNJ courte, teintée par la personnalité (aucune IA). */
-function personaLine(p: AgentPersonality | null | undefined, nm: string): string {
-  const traits = (p?.traits ?? []).map((t) => t.toLowerCase());
-  const has = (...ks: string[]) => ks.some((k) => traits.some((t) => t.includes(k)));
-  const bank = [
-    'Coucou !',
-    `C'est ${nm}.`,
-    'Je passais par là.',
-    'Tout roule ?',
-    'Hé, salut !',
-    'On fait quoi ?',
-  ];
-  if (p?.tone) bank.push(`${p.tone.charAt(0).toUpperCase()}${p.tone.slice(1)}, comme toujours.`);
-  if (has('curieu')) bank.push('Il se passe quoi d’intéressant ?', 'Oh, c’est quoi ça ?');
-  if (has('taquin', 'malicieu', 'espiègle'))
-    bank.push('Héhé, tu m’as vu ?', 'Attrape-moi si tu peux !');
-  if (has('calme', 'zen', 'posé')) bank.push('On souffle un peu.', 'Tranquille…');
-  if (has('énergi', 'sporti', 'vif')) bank.push('On bouge, on bouge !', 'Allez, on y va !');
-  if (has('gourmand')) bank.push('Y a un truc à grignoter ?');
-  if (has('timide')) bank.push('…salut.');
-  return bank[Math.floor(Math.random() * bank.length)]!;
-}
-
-/** Réponse PNJ courte à un message du joueur (mots-clés simples + teinte personnalité, zéro IA). */
-function replyLine(p: AgentPersonality | null | undefined, nm: string, msg: string): string {
-  const pick = (a: string[]) => a[Math.floor(Math.random() * a.length)]!;
-  const m = msg.toLowerCase();
-  if (/\b(bonjour|salut|coucou|hello|hey|yo)\b/.test(m))
-    return pick(['Coucou !', 'Salut à toi !', `Hé, c'est ${nm} !`]);
-  if (/(ça va|ca va|comment vas|tu vas|la forme)/.test(m))
-    return pick(['Ça va super, et toi ?', 'Au top !', 'Nickel, merci !']);
-  if (/\bmerci\b/.test(m)) return pick(['De rien !', 'Avec plaisir !', 'Quand tu veux !']);
-  if (/(bravo|super|génial|genial|trop bien|cool|bien jou)/.test(m))
-    return pick(['Merci !', 'Héhé, merci !', 'Ça fait plaisir !']);
-  if (/(dodo|dors|fatigu|sieste|repos)/.test(m))
-    return pick(['On fait une sieste ?', 'Un peu de repos, oui…', 'Bonne idée, je baille déjà.']);
-  if (/(jou|jeu|amuse)/.test(m)) return pick(['On joue ?!', 'Oui oui oui, on joue !', 'Chiche !']);
-  if (/(mange|faim|goûter|gouter|repas)/.test(m))
-    return pick(['Y a un truc à grignoter ?', 'J’ai un petit creux…', 'Miam, où ça ?']);
-  if (msg.trim().endsWith('?'))
-    return pick(['Bonne question !', 'Hmm, je sais pas trop…', 'Peut-être bien !', 'À ton avis ?']);
-  return personaLine(p, nm);
-}
 const DOOR = { c: COLS - 1, r: ROWS - 1 }; // « porte » au premier plan (coin avant)
 const REST = { c: 3, r: 4 }; // case de repos au centre
 
@@ -1748,12 +1703,6 @@ export function CompanionRoom() {
             changed = true;
           }
         }
-        if (!s.speech && t >= s.sayAt) {
-          s.speech = personaLine(s.personality, s.name);
-          s.speechUntil = t + 3500;
-          s.sayAt = t + 14000 + Math.random() * 14000;
-          changed = true;
-        }
       }
       if (changed)
         setSecs((prev) =>
@@ -1786,12 +1735,10 @@ export function CompanionRoom() {
     (id: string) => {
       setFollowId((cur) => {
         if (cur === id) return null;
-        const s = secPhysRef.current[id];
-        if (s) saySec(id, personaLine(s.personality, s.name), 2500); // petit salut à la sélection
         return id;
       });
     },
-    [saySec],
+    [],
   );
   // Nettoyage : si le suivi disparaît (supprimé / changement d'espace), on désélectionne.
   // Le compagnon PRINCIPAL n'est jamais dans `secs` (c'est le pet) → on le garde, sinon sa fiche clignote.
@@ -2022,19 +1969,20 @@ export function CompanionRoom() {
 
   // Le compagnon parle (au clic) : une réplique selon son état, sinon aléatoire.
   // Affiche une bulle (réplique instantanée, sans IA). Utilisé au clic ET en autonomie.
-  const say = useCallback((line: string) => {
+  const say = useCallback((line: string, holdMs?: number | null) => {
     lastLine.current = [line, ...lastLine.current].slice(0, 6);
     setSpeech(line);
     if (speechTimer.current) clearTimeout(speechTimer.current);
-    speechTimer.current = setTimeout(() => setSpeech(null), 3500);
+    if (holdMs !== null) {
+      const duration = holdMs ?? Math.max(6000, Math.min(18000, line.split(/\s+/).length * 550));
+      speechTimer.current = setTimeout(() => setSpeech(null), duration);
+    }
   }, []);
 
   function talk() {
     // Réveille + laisse la main à l'utilisateur un instant avant que l'autonomie reprenne.
     setAutoAnim(null);
     autoNextAt.current = Date.now() + 4000;
-    const ctx = brainRef.current.ctx;
-    say(ctx ? pickLine(ctx, lastLine.current) : 'Coucou !');
   }
 
   // Chat direct : parle à tous les compagnons de la pièce (ou à un seul avec « /nom … »).
@@ -2128,7 +2076,7 @@ export function CompanionRoom() {
         : matched.length
           ? matched
           : speakers;
-    list.forEach((sp, i) => {
+    list.forEach((sp) => {
       if (sp.id === 'primary') {
         say('…');
         const request = msg || raw;
@@ -2145,10 +2093,11 @@ export function CompanionRoom() {
               }).then((result) => result.reply)
             : chatCompanionAgent(primaryAgent.id, request).then((result) => result.reply);
         replyPromise
-          .then((reply) => {
-            say(reply);
+          .then(async (reply) => {
+            say(reply, voiceSettings ? null : undefined);
             if (voiceSettings) {
-              void speakCompanionNaturally(reply, voiceSettings).catch(() => {});
+              await speakCompanionNaturally(reply, voiceSettings).catch(() => {});
+              say(reply, 1800);
             }
           })
           .catch(() => say('Configure une clé IA dans le Copilote pour que je puisse réfléchir.'));
@@ -2158,46 +2107,18 @@ export function CompanionRoom() {
       if (sp.mode === 'agent') {
         saySec(sp.id, '…', 30000);
         chatCompanionAgent(sp.id, msg || raw)
-          .then((r) => {
-            saySec(sp.id, r.reply, 6000);
-            if (voiceSettings) void speakCompanionNaturally(r.reply, voiceSettings).catch(() => {});
+          .then(async (r) => {
+            saySec(sp.id, r.reply, voiceSettings ? Number.POSITIVE_INFINITY : 9000);
+            if (voiceSettings) {
+              await speakCompanionNaturally(r.reply, voiceSettings).catch(() => {});
+              saySec(sp.id, r.reply, 1800);
+            }
           })
           .catch(() => saySec(sp.id, 'Configure une clé IA pour que je réfléchisse 🙂'));
         return;
       }
-      // Compagnon PNJ secondaire : réplique scriptée instantanée.
-      const line = replyLine(sp.personality, sp.name, msg || raw);
-      const persistedId = sp.id === 'primary' ? primaryAgent?.id : sp.id;
-      void recordHiveEvent({
-        kind: 'message.received',
-        content: msg || raw,
-        channel: 'direct',
-        subjectAgentId: persistedId,
-        space: activeSpace,
-        importance: 0.45,
-        metadata: { scripted: true },
-      })
-        .then((source) =>
-          recordHiveEvent({
-            kind: 'message.sent',
-            content: line,
-            channel: 'direct',
-            actorAgentId: persistedId,
-            space: activeSpace,
-            importance: 0.4,
-            sourceEventIds: [source.id],
-            metadata: { scripted: true },
-          }),
-        )
-        .catch(() => undefined);
-      window.setTimeout(() => {
-        if (sp.id === 'primary') {
-          setAutoAnim(null);
-          autoNextAt.current = Date.now() + 4000;
-          say(line);
-          if (voiceSettings) void speakCompanionNaturally(line, voiceSettings).catch(() => {});
-        } else saySec(sp.id, line);
-      }, i * 420);
+      // Un PNJ sans moteur IA ne fabrique aucune réponse. Il faut le convertir en compagnon IA
+      // pour qu'il puisse réellement converser.
     });
   }, [chatText, family, secs, name, say, isHome, saySec, spaces, activeSpace, voiceSettings]);
 
@@ -2385,11 +2306,10 @@ export function CompanionRoom() {
         setAutoAnim(Math.random() < 0.5 ? (Math.random() < 0.5 ? 'waving' : 'jumping') : null);
       }
 
-      if (act.say) say(pickLine(ctx, lastLine.current));
     };
     const id = window.setInterval(tick, 900);
     return () => window.clearInterval(id);
-  }, [say]);
+  }, []);
 
   const curType = roomType(room);
   const preset = isHome

@@ -103,7 +103,11 @@ export async function speakCompanionNaturally(
     utterance.lang = 'fr-FR';
     utterance.rate = browserRate;
     utterance.pitch = browserPitch;
-    window.speechSynthesis.speak(utterance);
+    await new Promise<void>((resolve, reject) => {
+      utterance.onend = () => resolve();
+      utterance.onerror = () => reject(new Error('Synthèse vocale du navigateur impossible'));
+      window.speechSynthesis.speak(utterance);
+    });
     return;
   }
   let blob: Blob;
@@ -154,16 +158,27 @@ export async function speakCompanionNaturally(
     const source = audioContext.createBufferSource();
     source.buffer = buffer;
     source.connect(audioContext.destination);
-    source.onended = () => {
-      if (playingSource === source) playingSource = null;
-    };
-    playingSource = source;
-    source.start();
+    await new Promise<void>((resolve) => {
+      source.onended = () => {
+        if (playingSource === source) playingSource = null;
+        resolve();
+      };
+      playingSource = source;
+      source.start();
+    });
     return;
   }
   playingUrl = URL.createObjectURL(blob);
   playing = new Audio(playingUrl);
-  playing.onended = () => stopCompanionVoice();
-  playing.onerror = () => stopCompanionVoice();
-  await playing.play();
+  await new Promise<void>((resolve, reject) => {
+    playing!.onended = () => {
+      stopCompanionVoice();
+      resolve();
+    };
+    playing!.onerror = () => {
+      stopCompanionVoice();
+      reject(new Error('Lecture audio impossible'));
+    };
+    void playing!.play().catch(reject);
+  });
 }
