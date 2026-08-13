@@ -365,6 +365,7 @@ export function CompanionDevice({
   const [voiceMode, setVoiceMode] = useState(false);
   const [voiceSettings, setVoiceSettings] = useState<CompanionVoiceSettings | null>(null);
   const [deliveredEmails, setDeliveredEmails] = useState<HiveDelivery[]>([]);
+  const [deliveredMessages, setDeliveredMessages] = useState<HiveDelivery[]>([]);
   const midRef = useState(() => ({ n: 1 }))[0];
 
   useEffect(() => {
@@ -397,25 +398,34 @@ export function CompanionDevice({
     return () => window.clearInterval(timer);
   }, [app]);
 
-  // Conversations : chaque compagnon a un message d'accueil.
   useEffect(() => {
-    if (!agents.length) return;
-    setConvs((prev) => {
-      const next = { ...prev };
-      for (const a of agents) {
-        if (!next[a.id]) {
-          const traits = a.personality?.traits ?? [];
-          const intro =
-            a.mode === 'relay'
-              ? 'Connecte ton Claude Code / Codex (bouton « Relais » dans Ma famille) et je t’afficherai son avancement ici — et tu pourras lui répondre.'
-              : a.personality?.greeting || deviceReply(traits, a.name, 'bonjour');
-          next[a.id] = [{ id: midRef.n++, from: 'them', text: intro, at: Date.now() - 3600_000 }];
-        }
+    if (app !== 'messages') return;
+    setSel(null);
+    const load = () => getHiveDeliveries('messages').then(setDeliveredMessages).catch(() => {});
+    void load();
+    const timer = window.setInterval(load, 5000);
+    return () => window.clearInterval(timer);
+  }, [app]);
+
+  useEffect(() => {
+    if (!deliveredMessages.length) return;
+    setConvs((current) => {
+      const next = { ...current };
+      for (const agent of agents) {
+        const channelMessages = deliveredMessages
+          .filter((delivery) => delivery.companionId === agent.id)
+          .reverse()
+          .map((delivery, index) => ({
+            id: index + 1,
+            from: 'them' as const,
+            text: delivery.content,
+            at: new Date(delivery.createdAt).getTime(),
+          }));
+        if (channelMessages.length) next[agent.id] = channelMessages;
       }
       return next;
     });
-    if (!sel && agents[0]) setSel(agents[0].id);
-  }, [agents]);
+  }, [agents, deliveredMessages]);
 
   const send = useCallback(
     (voiceText?: string) => {
@@ -502,13 +512,14 @@ export function CompanionDevice({
     [draft, sel, agents, midRef, convs, voiceMode, voiceSettings],
   );
 
-  // Charge l'historique PERSISTANT quand on ouvre la conversation d'un compagnon-agent OU du relais (mémoire).
+  // La conversation directe (bulle + voix) a sa propre mémoire côté compagnon. Elle ne doit jamais
+  // être recopiée dans l'application Messages, qui est un canal persistant distinct.
   const loadedRef = useState(() => new Set<string>())[0];
   useEffect(() => {
     if (!sel) return;
     const a = agents.find((x) => x.id === sel);
-    // Historique persistant : abeilles IA, relais, et compagnons de la Maison (leaders, sauf le principal qui n'a pas de mémoire).
-    const hasMemory = a && (a.mode === 'agent' || a.mode === 'relay' || a.space === 'home');
+    // Seul le relais conserve son fil technique ici. Les dialogues IA restent dans le canal direct.
+    const hasMemory = a?.mode === 'relay';
     if (!a || !hasMemory || loadedRef.has(sel)) return;
     loadedRef.add(sel);
     getCompanionAgentMessages(sel)
@@ -569,6 +580,10 @@ export function CompanionDevice({
     if (sent.length) return sent;
     return agents.map((a) => ({ a, id: a.id, ...seedEmail(a.name, a.personality?.traits ?? []), at: 'maint.' }));
   }, [agents, deliveredEmails]);
+  const messageAgents = useMemo(
+    () => agents.filter((agent) => deliveredMessages.some((item) => item.companionId === agent.id)),
+    [agents, deliveredMessages],
+  );
 
   const frame = pc
     ? 'h-[88vh] max-h-[900px] w-[96vw] max-w-6xl rounded-[16px] p-2'
@@ -699,7 +714,7 @@ export function CompanionDevice({
                     className={`flex flex-col ${tablet ? 'w-64 shrink-0 border-r border-slate-200' : 'hidden'}`}
                   >
                     <ConvHeader onHome={() => setApp('home')} title="Messages" />
-                    <ConvList agents={agents} convs={convs} sel={sel} onSel={setSel} />
+                    <ConvList agents={messageAgents} convs={convs} sel={sel} onSel={setSel} />
                   </div>
                 )}
                 {/* Fil actif */}
@@ -708,7 +723,7 @@ export function CompanionDevice({
                     (!sel ? (
                       <>
                         <ConvHeader onHome={() => setApp('home')} title="Messages" />
-                        <ConvList agents={agents} convs={convs} sel={sel} onSel={setSel} />
+                        <ConvList agents={messageAgents} convs={convs} sel={sel} onSel={setSel} />
                       </>
                     ) : (
                       <Thread
@@ -976,7 +991,9 @@ function ConvList({
   return (
     <div className="min-h-0 flex-1 overflow-y-auto">
       {agents.length === 0 && (
-        <p className="p-6 text-center text-sm text-slate-400">Aucun compagnon.</p>
+        <p className="p-6 text-center text-sm text-slate-400">
+          Aucun message. Demande à ton compagnon de t’envoyer un contenu ici.
+        </p>
       )}
       {agents.map((a) => {
         const last = (convs[a.id] ?? [])[(convs[a.id]?.length ?? 1) - 1];

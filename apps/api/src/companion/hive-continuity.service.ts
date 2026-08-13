@@ -10,7 +10,6 @@ import {
   accounts,
   profiles,
   companionAgents,
-  companionMessages,
   companionSpaces,
   hiveEvents,
   hiveHandoffs,
@@ -1141,14 +1140,6 @@ export class HiveContinuityService {
         state: delivered ? 'completed' : 'ready',
       })
       .catch(() => undefined);
-    if (input.channel === 'messages' && input.companionId) {
-      await this.db.insert(companionMessages).values({
-        profileId,
-        agentId: input.companionId!,
-        sender: 'agent',
-        text: renderedContent,
-      });
-    }
     return row;
   }
 
