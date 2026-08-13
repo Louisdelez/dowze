@@ -1985,14 +1985,28 @@ export function CompanionRoom() {
       .replace(/\b(\d+)\s*ml\b/gi, '$1 millilitres')
       .replace(/\s+/g, ' ')
       .trim();
+    const allWords = natural.split(/\s+/).filter(Boolean);
+    // Une réponse courte ou normale reste entière. La pagination est réservée aux réponses qui
+    // déborderaient réellement d'une bulle de jeu lisible.
+    if (allWords.length <= 30 && natural.length <= 190) return [natural];
     const sentences = natural
       .match(/[^.!?]+[.!?]?/g)
       ?.map((part) => part.trim())
       .filter(Boolean) ?? [natural];
     const pages: string[] = [];
     for (const sentence of sentences) {
-      const words = sentence.split(/\s+/);
-      while (words.length) pages.push(words.splice(0, 18).join(' '));
+      const words = sentence.split(/\s+/).filter(Boolean);
+      while (words.length) {
+        const next = words.splice(0, 26).join(' ');
+        const current = pages.at(-1);
+        if (
+          current &&
+          `${current} ${next}`.split(/\s+/).length <= 30 &&
+          `${current} ${next}`.length <= 190
+        ) {
+          pages[pages.length - 1] = `${current} ${next}`;
+        } else pages.push(next);
+      }
     }
     return pages.filter(Boolean);
   }, []);
