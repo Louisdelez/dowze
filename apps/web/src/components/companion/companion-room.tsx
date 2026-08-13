@@ -2082,7 +2082,15 @@ export function CompanionRoom() {
         } else say(page, null);
       };
       if (voiceSettings) {
-        await speakCompanionNaturally(page, voiceSettings, 1, 1, showPage).catch(showPage);
+        await speakCompanionNaturally(page, voiceSettings, 1, 1, showPage).catch(async () => {
+          await speakCompanionNaturally(
+            page,
+            { ...voiceSettings, ttsProvider: 'browser' },
+            1,
+            1,
+            showPage,
+          ).catch(showPage);
+        });
       } else showPage();
       const hasNext = index + 1 < dialogue.pages.length;
       setSpeechHasNext(hasNext);

@@ -74,7 +74,7 @@ async function speakWithKyutai(
     const timeout = window.setTimeout(() => {
       socket.close();
       reject(new Error('Kyutai Unmute local ne répond pas'));
-    }, 15_000);
+    }, 6_000);
     socket.onopen = () => {
       window.clearTimeout(timeout);
       socket.send(encode({ type: 'Text', text }));
@@ -214,9 +214,10 @@ export async function speakCompanionNaturally(
           ? 'https://localhost:8443/pocket/tts'
           : 'https://localhost:8443/v1/audio/speech',
         pocket
-          ? { method: 'POST', body: pocketForm }
+          ? { method: 'POST', body: pocketForm, signal: AbortSignal.timeout(8_000) }
           : {
               method: 'POST',
+              signal: AbortSignal.timeout(8_000),
               headers: { 'content-type': 'application/json' },
               body: JSON.stringify({
                 model: settings.localTtsModel,

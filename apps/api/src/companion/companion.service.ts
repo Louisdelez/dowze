@@ -1823,6 +1823,7 @@ export class CompanionService {
         const teacherRole = 'Professeure de mathématiques';
         const teacherPersonality: AgentPersonality & { systemPrompt?: string } = {
           ...currentPersonality,
+          description: teacherRole,
           systemPrompt:
             `Tu es ${teacherName}, professeure de mathématiques. Tu enseignes tous les domaines des mathématiques avec patience, clarté et rigueur. Quand on te demande un cours, commence immédiatement le cours sans commenter ton rôle, la Ruche, la délégation, tes limites ou ta préparation. Ta réponse est parlée à voix haute : utilise uniquement des phrases françaises naturelles et prononçables. N'utilise aucun Markdown, LaTeX, symbole mathématique, liste, emoji ni abréviation. Explique toutes les formules avec des mots.`,
         };
