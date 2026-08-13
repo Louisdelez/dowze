@@ -23,6 +23,7 @@ import {
   deleteCompanionAgent,
   buildCompanionAgent,
   chatCompanionAgent,
+  orchestrateCompanion,
   createRelayToken,
   maintainHive,
   retrainCompanionAgent,
@@ -2119,10 +2120,33 @@ export function CompanionRoom() {
     const matched = targetName
       ? speakers.filter((s) => s.name.toLowerCase().startsWith(targetName!))
       : speakers;
-    const list = matched.length ? matched : speakers;
+    // Dans la Maison, un message non ciblé s'adresse au compagnon principal. Les autres membres ne
+    // doivent pas répondre tous en même temps avec des répliques génériques.
+    const list =
+      isHome && !targetName
+        ? speakers.filter((speaker) => speaker.id === 'primary')
+        : matched.length
+          ? matched
+          : speakers;
     list.forEach((sp, i) => {
+      if (sp.id === 'primary') {
+        say('…');
+        orchestrateCompanion(msg || raw, undefined, {
+          service: 'infra',
+          route: window.location.pathname,
+          page: document.title,
+        })
+          .then((result) => {
+            say(result.reply);
+            if (voiceSettings) {
+              void speakCompanionNaturally(result.reply, voiceSettings).catch(() => {});
+            }
+          })
+          .catch(() => say('Configure une clé IA dans le Copilote pour que je puisse réfléchir.'));
+        return;
+      }
       // Compagnon-AGENT : vraie réponse IA (bulle « … » pendant la réflexion), comme dans le téléphone.
-      if (sp.mode === 'agent' && sp.id !== 'primary') {
+      if (sp.mode === 'agent') {
         saySec(sp.id, '…', 30000);
         chatCompanionAgent(sp.id, msg || raw)
           .then((r) => {
@@ -2132,7 +2156,7 @@ export function CompanionRoom() {
           .catch(() => saySec(sp.id, 'Configure une clé IA pour que je réfléchisse 🙂'));
         return;
       }
-      // Compagnon PNJ (principal inclus) : réplique scriptée instantanée.
+      // Compagnon PNJ secondaire : réplique scriptée instantanée.
       const line = replyLine(sp.personality, sp.name, msg || raw);
       const persistedId = sp.id === 'primary' ? primaryAgent?.id : sp.id;
       void recordHiveEvent({
