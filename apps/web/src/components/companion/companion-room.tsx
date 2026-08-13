@@ -35,7 +35,6 @@ import {
   deleteCompanionSpace,
   getOrgTemplates,
   ensureServiceOrg,
-  orchestrateSpace,
   addSpaceKnowledge,
   deleteSpaceKnowledge,
   runSpaceProject,
@@ -1417,8 +1416,6 @@ export function CompanionRoom() {
   const [projBusy, setProjBusy] = useState(false);
   const [projResult, setProjResult] = useState<ProjectResult | null>(null);
   // Believabilité : rassemblement des membres autour du leader pendant un échange d'organisation.
-  const [gather, setGather] = useState<{ leaderId: string; memberIds: string[] } | null>(null);
-  const gatherTimer = useRef<number | null>(null);
   const [device, setDevice] = useState<'phone' | 'tablet' | 'desktop' | null>(null);
   const [initialDeviceApp, setInitialDeviceApp] = useState<string | undefined>();
   useEffect(() => {
@@ -2163,46 +2160,39 @@ export function CompanionRoom() {
         targetName = mt[1]!.toLowerCase();
         msg = (mt[2] || '').trim();
       }
-      // ORGANISATION (open-space école/entreprise) + message NON ciblé → le LEADER délègue au bon rôle.
-      const activeSpaceType = spaces.find((s) => s.id === activeSpace)?.type;
-      if (
-        !isHome &&
-        !targetName &&
-        activeSpaceType &&
-        ['school', 'company', 'saas'].includes(activeSpaceType)
-      ) {
-        // Indicateur « … » sur le leader (1er membre seedé = Directeur/CEO) pendant qu'il réfléchit.
-        const leadGuess = secs[0];
-        if (leadGuess) saySec(leadGuess.id, '…', 15000);
-        orchestrateSpace(activeSpace, msg || raw)
-          .then((r) => {
-            // Believabilité : le leader et les membres mobilisés se rassemblent (le hand-off se voit).
-            const involved = [
-              ...new Set([...r.delegates.map((d) => d.id), ...(r.qa ? [r.qa.id] : [])]),
-            ];
-            if (involved.length) {
-              setGather({ leaderId: r.leadId, memberIds: involved });
-              if (gatherTimer.current) window.clearTimeout(gatherTimer.current);
+      // Où que l'utilisateur se trouve, une demande non ciblée retourne toujours à Dowze,
+      // porte d'entrée unique de la Ruche globale. Un open-space ne remplace jamais la Ruche.
+      if (!isHome && !targetName) {
+        const request = msg || raw;
+        saySec(followId || secs[0]?.id || '', '…', 30000);
+        orchestrateCompanion(request, undefined, {
+          service: 'infra',
+          route: window.location.pathname,
+          page: document.title,
+        })
+          .then((result) => {
+            const specialist = result.delegates.at(-1);
+            const text = specialist?.said || result.reply;
+            if (!specialist?.id || !specialist.space) {
+              startSpeechDialogue(text);
+              return;
             }
-            r.delegates.forEach((d, i) =>
-              window.setTimeout(() => saySec(d.id, d.said, 7000), i * 300),
-            );
-            let t = r.delegates.length * 300 + 200;
-            // L'Évaluateur (QA) affiche son verdict entre l'équipe et la synthèse du leader.
-            if (r.qa) {
-              const note = r.qa.ok ? r.qa.note || 'Validé.' : `À corriger : ${r.qa.note}`;
-              window.setTimeout(() => saySec(r.qa!.id, note, 7000), t);
-              t += 900;
-            }
-            window.setTimeout(() => saySec(r.leadId, r.reply, 9000), t);
-            // Fin de réunion → chacun repart (après la synthèse du leader).
-            if (involved.length)
-              gatherTimer.current = window.setTimeout(() => setGather(null), t + 9000);
+            speechSpeakerId.current = specialist.id;
+            setFade(true);
+            window.setTimeout(() => {
+              setActiveSpace(specialist.space!);
+              setFade(false);
+              window.setTimeout(() => {
+                setRoom(specialist.room || 'travail:0');
+                setFollowId(specialist.id);
+                window.setTimeout(
+                  () => startSpeechDialogue(text, specialist.name, specialist.id),
+                  1200,
+                );
+              }, 700);
+            }, 500);
           })
-          .catch(() => {
-            const lead = secs[0];
-            if (lead) saySec(lead.id, 'Configure une clé IA pour que l’équipe réponde');
-          });
+          .catch(() => saySec(followId || secs[0]?.id || '', 'Configure une clé IA.', 5000));
         return;
       }
       const primaryAgent = family.find((a) => a.isPrimary);
@@ -3298,7 +3288,7 @@ export function CompanionRoom() {
             .filter((i) => !i.item.startsWith('~'))
             .map((i) => ({ id: i.item, c: i.c, r: i.r }))}
           editing={edit}
-          gather={gather}
+          gather={null}
           onPlaceTile={(c, r) => {
             if (erasing) eraseTile(c, r);
             else if (brushKind === 'furniture') placeFurniture(c, r);
