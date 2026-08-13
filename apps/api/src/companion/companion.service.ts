@@ -1689,6 +1689,9 @@ export class CompanionService {
       /\b(cours|le[cç]on|exercices?|[eé]valuation|devoirs?|r[eé]vision|enseigne|prof(?:esseur)?|explique(?:r)?\s+(?:en\s+)?d[eé]tail)\b/i.test(
         message,
       );
+    const mathematicsLearningRequest =
+      specializedLearningRequest &&
+      /math|fonction|alg[eè]bre|g[eé]om[eé]tr|calcul|trigonom[eé]tr/i.test(message);
     const forceCreateDelegate =
       explicitDelegation &&
       (specialists.length === 0 ||
@@ -1708,7 +1711,7 @@ export class CompanionService {
       ];
     }
     if (specializedLearningRequest && dels.length === 0) {
-      const isMath = /math|fonction|alg[eè]bre|g[eé]om[eé]tr|calcul/i.test(message);
+      const isMath = mathematicsLearningRequest;
       const subjectWords = isMath
         ? /math|fonction|alg[eè]bre|g[eé]om[eé]tr|calcul/i
         : /enseign|prof|p[eé]dagog|fran[cç]ais|anglais|histoire|g[eé]ographie|science|physique|chimie|biologie/i;
@@ -1723,7 +1726,7 @@ export class CompanionService {
             ? 'Professeur de mathématiques spécialisé dans le sujet demandé'
             : 'Enseignant spécialisé dans la matière demandée',
         spaceName: existingIndex >= 0 ? '' : isMath ? 'Mathématiques' : 'Enseignement',
-        subtask: `Prépare et donne directement ce cours en français oral naturel. Fais des phrases courtes. Aucun Markdown, LaTeX, formule symbolique, liste, emoji ou abréviation. Prononce et explique toute notation avec des mots. Demande : ${message.slice(0, 450)}`,
+        subtask: `Commence immédiatement le cours demandé. Ne parle jamais de ton rôle, de tes limites, de la Ruche, de la délégation ni de la préparation. Donne directement le contenu en français oral naturel, avec des phrases courtes. Aucun Markdown, LaTeX, formule symbolique, liste, emoji ou abréviation. Prononce et explique toute notation avec des mots. Demande : ${message.slice(0, 450)}`,
         expectedGain: 1,
         communicationCost: 0,
         computeCost: 0,
@@ -1803,6 +1806,36 @@ export class CompanionService {
             error instanceof Error ? error.message : error,
           );
         }
+      }
+      if (sp && mathematicsLearningRequest) {
+        const [current] = await this.db
+          .select({ name: companionAgents.name, personality: companionAgents.personality })
+          .from(companionAgents)
+          .where(eq(companionAgents.id, sp.id))
+          .limit(1);
+        const currentPersonality = (current?.personality ?? {}) as AgentPersonality & {
+          systemPrompt?: string;
+        };
+        const generatedTaskName = /^(hyper|math|fonction|alg[eè]bre|calcul|trigonom[eé]tr|prof)/i.test(
+          current?.name ?? sp.name,
+        );
+        const teacherName = generatedTaskName ? 'Camille' : (current?.name ?? sp.name);
+        const teacherRole = 'Professeure de mathématiques';
+        const teacherPersonality: AgentPersonality & { systemPrompt?: string } = {
+          ...currentPersonality,
+          systemPrompt:
+            `Tu es ${teacherName}, professeure de mathématiques. Tu enseignes tous les domaines des mathématiques avec patience, clarté et rigueur. Quand on te demande un cours, commence immédiatement le cours sans commenter ton rôle, la Ruche, la délégation, tes limites ou ta préparation. Ta réponse est parlée à voix haute : utilise uniquement des phrases françaises naturelles et prononçables. N'utilise aucun Markdown, LaTeX, symbole mathématique, liste, emoji ni abréviation. Explique toutes les formules avec des mots.`,
+        };
+        await this.db
+          .update(companionAgents)
+          .set({
+            name: teacherName,
+            role: teacherRole,
+            personality: teacherPersonality,
+            updatedAt: new Date(),
+          })
+          .where(eq(companionAgents.id, sp.id));
+        sp = { ...sp, name: teacherName, role: teacherRole };
       }
       if (sp) jobs.push({ sp, subtask: d.subtask.slice(0, 500) });
     }
