@@ -1607,7 +1607,7 @@ export class CompanionService {
     const planResult = await this.copilote.generateStructured(profileId, {
       schema: ORCH_PLAN_SCHEMA,
       schemaName: 'OrchestrationPlan',
-      system: `${ASSISTANT}\n\nTu diriges une RUCHE d'abeilles, chacune spécialiste TRÈS PRÉCISE d'une tâche précise. Logique : décompose la demande en sous-tâches précises (MAXIMUM 3, seulement les utiles). Si l'utilisateur demande explicitement de déléguer, tu dois créer au moins une délégation exploitable. Sinon, ne délègue que si expectedGain > communicationCost + computeCost + coordinationCost ; pour une question triviale, réponds directement. Pour CHAQUE sous-tâche, choisis une abeille EXISTANTE si elle correspond vraiment précisément (mets son numéro dans "existing") ; sinon crée-en une neuve et très ciblée (existing=0 + "create" = son domaine exact + "spaceName" = son open-space métier). Ne crée une abeille que si aucune existante ne convient précisément. Les abeilles créées sont rangées dans des OPEN-SPACES par métier (JAMAIS dans la Maison). Open-spaces métier existants : ${spaceList} — réutilise-en un si la compétence correspond, sinon nomme-en un nouveau. Si la demande relève de TA propre spécialité ou que tu peux répondre toi-même sans abeille, remplis "direct" et ne délègue pas. Abeilles actuelles :\n${roster}`,
+      system: `${ASSISTANT}\n\nTu diriges une RUCHE d'abeilles, chacune spécialiste TRÈS PRÉCISE d'une tâche précise. Logique : décompose la demande en sous-tâches précises (MAXIMUM 3, seulement les utiles). Une demande de cours, leçon, exercice, évaluation, devoir, révision ou explication approfondie dans une matière DOIT être confiée à une abeille enseignante spécialisée dans cette matière. Si l'utilisateur demande explicitement de déléguer, tu dois aussi créer au moins une délégation exploitable. Sinon, ne délègue que si expectedGain > communicationCost + computeCost + coordinationCost ; pour une question triviale, réponds directement. Pour CHAQUE sous-tâche, choisis une abeille EXISTANTE si elle correspond vraiment précisément (mets son numéro dans "existing") ; sinon crée-en une neuve et très ciblée (existing=0 + "create" = son domaine exact + "spaceName" = son open-space métier). Ne crée une abeille que si aucune existante ne convient précisément. Les abeilles créées sont rangées dans des OPEN-SPACES par métier (JAMAIS dans la Maison). Open-spaces métier existants : ${spaceList} — réutilise-en un si la compétence correspond, sinon nomme-en un nouveau. Abeilles actuelles :\n${roster}`,
       prompt: `Demande de l'utilisateur : ${contextualMessage.slice(0, 1200)}`,
       temperature: 0.4,
     });
@@ -1677,6 +1677,10 @@ export class CompanionService {
       /\b(d[eé]l[eè]gue|d[eé]l[eé]guer|mobilise|confie\s+(?:ce|cette|la|le)\s+(?:travail|t[aâ]che|v[eé]rification))\b/i.test(
         message,
       );
+    const specializedLearningRequest =
+      /\b(cours|le[cç]on|exercices?|[eé]valuation|devoirs?|r[eé]vision|enseigne|prof(?:esseur)?|explique(?:r)?\s+(?:en\s+)?d[eé]tail)\b/i.test(
+        message,
+      );
     const forceCreateDelegate =
       explicitDelegation &&
       (specialists.length === 0 ||
@@ -1694,6 +1698,29 @@ export class CompanionService {
           coordinationCost: 0,
         },
       ];
+    }
+    if (specializedLearningRequest && dels.length === 0) {
+      const isMath = /math|fonction|alg[eè]bre|g[eé]om[eé]tr|calcul/i.test(message);
+      const subjectWords = isMath
+        ? /math|fonction|alg[eè]bre|g[eé]om[eé]tr|calcul/i
+        : /enseign|prof|p[eé]dagog|fran[cç]ais|anglais|histoire|g[eé]ographie|science|physique|chimie|biologie/i;
+      const existingIndex = specialists.findIndex((specialist) =>
+        subjectWords.test(`${specialist.name} ${specialist.role ?? ''}`),
+      );
+      dels = [{
+        existing: existingIndex >= 0 ? existingIndex + 1 : 0,
+        create: existingIndex >= 0
+          ? ''
+          : isMath
+            ? 'Professeur de mathématiques spécialisé dans le sujet demandé'
+            : 'Enseignant spécialisé dans la matière demandée',
+        spaceName: existingIndex >= 0 ? '' : isMath ? 'Mathématiques' : 'Enseignement',
+        subtask: `Prépare et donne directement ce cours à l'utilisateur : ${message.slice(0, 450)}`,
+        expectedGain: 1,
+        communicationCost: 0,
+        computeCost: 0,
+        coordinationCost: 0,
+      }];
     }
     if (dels.length === 0) {
       const reply = await directReply();

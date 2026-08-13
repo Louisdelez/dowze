@@ -2189,18 +2189,13 @@ export function CompanionRoom() {
         if (sp.id === 'primary') {
           say('…');
           const request = msg || raw;
-          const needsHive =
-            /\b(d[eé]l[eè]gue|d[eé]l[eé]guer|mobilise|abeille|ruche|sp[eé]cialiste|open[- ]space)\b/i.test(
-              request,
-            );
-          const replyPromise =
-            needsHive || !primaryAgent?.id
-              ? orchestrateCompanion(request, undefined, {
-                  service: 'infra',
-                  route: window.location.pathname,
-                  page: document.title,
-                }).then((result) => result.reply)
-              : chatCompanionAgent(primaryAgent.id, request).then((result) => result.reply);
+          // Le compagnon principal est toujours la porte d'entrée de la Ruche. L'orchestrateur
+          // décide ensuite s'il répond lui-même ou s'il mobilise une abeille persistante.
+          const replyPromise = orchestrateCompanion(request, undefined, {
+            service: 'infra',
+            route: window.location.pathname,
+            page: document.title,
+          }).then((result) => result.delegates.at(-1)?.said || result.reply);
           replyPromise
             .then((reply) => startSpeechDialogue(reply))
             .catch(() =>
