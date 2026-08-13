@@ -1363,6 +1363,7 @@ export function CompanionRoom() {
   const [reaction, setReaction] = useState<string | null>(null);
   const [fx, setFx] = useState<{ text: string; id: number } | null>(null);
   const [speech, setSpeech] = useState<string | null>(null);
+  const [speechSpeaker, setSpeechSpeaker] = useState<string | null>(null);
   const [speechHasNext, setSpeechHasNext] = useState(false);
   const speechPages = useRef<{ pages: string[]; index: number } | null>(null);
   const [speechAutoPlay, setSpeechAutoPlay] = useState(false);
@@ -1981,6 +1982,33 @@ export function CompanionRoom() {
   const dialoguePages = useCallback((raw: string): string[] => {
     const natural = raw
       .replace(/```[\s\S]*?```/g, ' un extrait de code ')
+      .replace(/\\frac\s*\{([^{}]+)\}\s*\{([^{}]+)\}/g, '$1 divisé par $2')
+      .replace(/\\sqrt\s*\{([^{}]+)\}/g, 'la racine carrée de $1')
+      .replace(/\\(?:left|right|mathrm|operatorname|text)\b/g, ' ')
+      .replace(/\\(?:cdot|times)\b/g, ' multiplié par ')
+      .replace(/\\(?:leq|le)\b/g, ' inférieur ou égal à ')
+      .replace(/\\(?:geq|ge)\b/g, ' supérieur ou égal à ')
+      .replace(/\\neq\b/g, ' différent de ')
+      .replace(/\\infty\b/g, ' l’infini ')
+      .replace(/\bcosh\b/gi, 'cosinus hyperbolique')
+      .replace(/\bsinh\b/gi, 'sinus hyperbolique')
+      .replace(/\btanh\b/gi, 'tangente hyperbolique')
+      .replace(/[αα]/g, ' alpha ')
+      .replace(/[ββ]/g, ' bêta ')
+      .replace(/[ππ]/g, ' pi ')
+      .replace(/[∞]/g, ' l’infini ')
+      .replace(/[≤]/g, ' inférieur ou égal à ')
+      .replace(/[≥]/g, ' supérieur ou égal à ')
+      .replace(/[≠]/g, ' différent de ')
+      .replace(/[=]/g, ' est égal à ')
+      .replace(/[+]/g, ' plus ')
+      .replace(/(?<=\s|\d)-(?!\s)/g, ' moins ')
+      .replace(/[×*]/g, ' multiplié par ')
+      .replace(/[÷]/g, ' divisé par ')
+      .replace(/\^\s*2\b/g, ' au carré ')
+      .replace(/\^\s*3\b/g, ' au cube ')
+      .replace(/\^\s*\{?([^\s{}]+)\}?/g, ' à la puissance $1 ')
+      .replace(/[${}\\|~]/g, ' ')
       .replace(/[*_#`>•▪◦●◆►▶→←↑↓✓✔✗✘]/g, ' ')
       .replace(/[\p{Extended_Pictographic}\p{Emoji_Presentation}\uFE0F]/gu, '')
       .replace(/^\s*[-–—]\s+/gm, '')
@@ -2079,7 +2107,8 @@ export function CompanionRoom() {
   }, [playSpeechPage, speechHasNext]);
 
   const startSpeechDialogue = useCallback(
-    (text: string) => {
+    (text: string, speaker?: string) => {
+      setSpeechSpeaker(speaker || null);
       const pages = dialoguePages(text);
       speechPages.current = { pages, index: 0 };
       void playSpeechPage(0);
@@ -2195,9 +2224,12 @@ export function CompanionRoom() {
             service: 'infra',
             route: window.location.pathname,
             page: document.title,
-          }).then((result) => result.delegates.at(-1)?.said || result.reply);
+          }).then((result) => {
+            const specialist = result.delegates.at(-1);
+            return { text: specialist?.said || result.reply, speaker: specialist?.name };
+          });
           replyPromise
-            .then((reply) => startSpeechDialogue(reply))
+            .then(({ text, speaker }) => startSpeechDialogue(text, speaker))
             .catch(() =>
               say('Configure une clé IA dans le Copilote pour que je puisse réfléchir.'),
             );
@@ -3113,6 +3145,11 @@ export function CompanionRoom() {
                     <div className="relative flex h-24 w-24 flex-col items-center">
                       {speech && (
                         <div className="pointer-events-auto absolute bottom-full left-1/2 mb-1 w-56 max-w-[min(14rem,70vw)] -translate-x-1/2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium leading-relaxed text-slate-700 shadow-lg">
+                          {speechSpeaker && (
+                            <span className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-accent">
+                              {speechSpeaker}
+                            </span>
+                          )}
                           <span>{speech}</span>
                           {speechHasNext && (
                             <button
