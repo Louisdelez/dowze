@@ -1909,7 +1909,7 @@ export class CompanionService {
             authId,
             j.sp.id,
             j.subtask,
-            hiveRun && j.taskId
+            hiveRun && j.taskId && !mathematicsLearningRequest
               ? {
                   runId: hiveRun.id,
                   parentTaskId: j.taskId,
