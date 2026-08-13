@@ -7,22 +7,16 @@ import { invoke, isDesktop } from '@/lib/desktop';
 
 let playing: HTMLAudioElement | null = null;
 let playingUrl: string | null = null;
+let audioContext: AudioContext | null = null;
+let playingSource: AudioBufferSourceNode | null = null;
 let voiceGeneration = 0;
-let audioPrimed = false;
 
 /** À appeler pendant le clic/la touche utilisateur, avant que la génération distante ou locale ne
  * commence. Chrome conserve alors un contexte audio autorisé pour lire la réponse différée. */
 export function unlockCompanionVoice(): void {
   if (typeof window === 'undefined') return;
-  playing ??= new Audio();
-  playing.volume = 1;
-  // WAV PCM mono de quelques millisecondes : associe ce lecteur au geste utilisateur sans bruit.
-  if (!audioPrimed) {
-    audioPrimed = true;
-    playing.src =
-      'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=';
-    void playing.play().catch(() => {});
-  }
+  audioContext ??= new AudioContext();
+  if (audioContext.state === 'suspended') void audioContext.resume();
 }
 
 function cleanSpeech(text: string): string {
@@ -62,12 +56,26 @@ function speechChunks(text: string): string[] {
 async function playAudioBlob(blob: Blob, generation: number): Promise<void> {
   if (generation !== voiceGeneration) return;
   unlockCompanionVoice();
+  if (audioContext) {
+    if (audioContext.state === 'suspended') await audioContext.resume();
+    const buffer = await audioContext.decodeAudioData(await blob.arrayBuffer());
+    if (generation !== voiceGeneration) return;
+    await new Promise<void>((resolve) => {
+      const source = audioContext!.createBufferSource();
+      source.buffer = buffer;
+      source.connect(audioContext!.destination);
+      source.onended = () => {
+        if (playingSource === source) playingSource = null;
+        resolve();
+      };
+      playingSource = source;
+      source.start();
+    });
+    return;
+  }
   await new Promise<void>((resolve, reject) => {
-    if (playingUrl) URL.revokeObjectURL(playingUrl);
     playingUrl = URL.createObjectURL(blob);
-    playing ??= new Audio();
-    playing.src = playingUrl;
-    playing.volume = 1;
+    playing = new Audio(playingUrl);
     playing.onended = () => resolve();
     playing.onerror = () => reject(new Error('Lecture audio impossible'));
     void playing.play().catch(reject);
@@ -86,10 +94,18 @@ async function fetchPocketSpeech(text: string, voice: string): Promise<Blob> {
 export function stopCompanionVoice(): void {
   voiceGeneration += 1;
   window.speechSynthesis?.cancel();
+  if (playingSource) {
+    try {
+      playingSource.stop();
+    } catch {
+      // La source peut déjà être terminée ; elle est tout de même détachée ci-dessous.
+    }
+    playingSource = null;
+  }
   if (playing) {
     playing.pause();
-    playing.removeAttribute('src');
-    playing.load();
+    playing.src = '';
+    playing = null;
   }
   if (playingUrl) URL.revokeObjectURL(playingUrl);
   playingUrl = null;
