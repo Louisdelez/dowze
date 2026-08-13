@@ -8,6 +8,11 @@ https://localhost:8443 {
     header Vary "Origin"
     reverse_proxy host.docker.internal:8001
   }
+  # Mode haute performance : serveur streaming Kyutai TTS utilisé par Unmute.
+  # La route reste disponible même sur une machine légère ; l'interface revient alors sur Pocket.
+  handle_path /kyutai/* {
+    reverse_proxy host.docker.internal:8089
+  }
   handle {
     reverse_proxy dowze-speaches:8000
   }

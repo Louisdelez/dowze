@@ -4,6 +4,7 @@ import {
   type CompanionVoiceSettings,
 } from '@/lib/api';
 import { invoke, isDesktop } from '@/lib/desktop';
+import { decode, encode } from '@msgpack/msgpack';
 
 let playing: HTMLAudioElement | null = null;
 let playingUrl: string | null = null;
@@ -40,6 +41,70 @@ function base64Blob(encoded: string, mime: string): Blob {
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
   return new Blob([bytes], { type: mime });
+}
+
+type KyutaiMessage =
+  | { type: 'Audio'; pcm: number[] | Float32Array }
+  | { type: 'Error'; message: string }
+  | { type: 'Ready' | 'Text' };
+
+async function speakWithKyutai(
+  text: string,
+  voice: string,
+  onStart?: () => void,
+): Promise<void> {
+  unlockCompanionVoice();
+  if (!audioContext) throw new Error('Contexte audio indisponible');
+  if (audioContext.state === 'suspended') await audioContext.resume();
+  const context = audioContext;
+  const endpoint = 'wss://localhost:8443/kyutai/api/tts_streaming';
+  const url = `${endpoint}?format=PcmMessagePack&auth_id=public_token&cfg_alpha=1.5&voice=${encodeURIComponent(voice)}`;
+  await new Promise<void>((resolve, reject) => {
+    const socket = new WebSocket(url);
+    socket.binaryType = 'arraybuffer';
+    let nextStart = context.currentTime;
+    let started = false;
+    let completed = false;
+    const finish = () => {
+      if (completed) return;
+      completed = true;
+      const remaining = Math.max(0, nextStart - context.currentTime);
+      window.setTimeout(resolve, remaining * 1000);
+    };
+    const timeout = window.setTimeout(() => {
+      socket.close();
+      reject(new Error('Kyutai Unmute local ne répond pas'));
+    }, 15_000);
+    socket.onopen = () => {
+      window.clearTimeout(timeout);
+      socket.send(encode({ type: 'Text', text }));
+      socket.send(encode({ type: 'Eos' }));
+    };
+    socket.onmessage = (event) => {
+      const message = decode(new Uint8Array(event.data as ArrayBuffer)) as KyutaiMessage;
+      if (message.type === 'Error') {
+        socket.close();
+        reject(new Error(message.message));
+        return;
+      }
+      if (message.type !== 'Audio' || !message.pcm.length) return;
+      const pcm = message.pcm instanceof Float32Array ? message.pcm : new Float32Array(message.pcm);
+      const buffer = context.createBuffer(1, pcm.length, 24_000);
+      buffer.getChannelData(0).set(pcm);
+      const source = context.createBufferSource();
+      source.buffer = buffer;
+      source.connect(context.destination);
+      if (!started) {
+        started = true;
+        onStart?.();
+        nextStart = context.currentTime + 0.04;
+      }
+      source.start(nextStart);
+      nextStart += buffer.duration;
+    };
+    socket.onerror = () => reject(new Error('Connexion Kyutai Unmute impossible'));
+    socket.onclose = finish;
+  });
 }
 
 export function stopCompanionVoice(): void {
@@ -114,6 +179,21 @@ export async function speakCompanionNaturally(
   }
   let blob: Blob;
   if (settings.ttsProvider === 'local') {
+    if (settings.localTtsModel === 'kyutai/tts-1.6b-en_fr') {
+      try {
+        await speakWithKyutai(clean, settings.localVoiceId, onStart);
+        return;
+      } catch {
+        await speakCompanionNaturally(
+          clean,
+          { ...settings, localTtsModel: 'pocket-tts-french-24l', localVoiceId: 'estelle' },
+          browserRate,
+          browserPitch,
+          onStart,
+        );
+        return;
+      }
+    }
     if (isDesktop()) {
       const result = await invoke<{ audioBase64: string; mime?: string }>('voice_request', {
         payload: {

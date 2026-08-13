@@ -87,6 +87,17 @@ export function CompanionVoiceSettings({
             ? 'marin'
             : current.voiceId,
     }));
+  const chooseLocalMode = (mode: string) =>
+    setValue((current) => ({
+      ...current,
+      localTtsModel: mode,
+      localVoiceId:
+        mode === 'pocket-tts-french-24l'
+          ? 'estelle'
+          : mode === 'kyutai/tts-1.6b-en_fr'
+            ? 'cml-tts/fr/1406_1028_000009-0003_enhanced.wav'
+            : 'ff_siwis',
+    }));
 
   async function save() {
     setSaving(true);
@@ -171,7 +182,15 @@ export function CompanionVoiceSettings({
           )}
           {value.ttsProvider === 'local' && (
             <>
-              <TextField label="Modèle Kokoro" value={value.localTtsModel} onChange={(e) => set('localTtsModel', e.target.value)} />
+              <SelectField
+                label="Mode adapté à la machine"
+                value={value.localTtsModel}
+                onChange={(event) => chooseLocalMode(event.target.value)}
+              >
+                <option value="pocket-tts-french-24l">Léger — Pocket TTS, processeur</option>
+                <option value="speaches-ai/Kokoro-82M-v1.0-ONNX">Standard — Kokoro, processeur</option>
+                <option value="kyutai/tts-1.6b-en_fr">Haute performance — Kyutai Unmute, GPU</option>
+              </SelectField>
               <SelectField
                 label="Voix française"
                 value={value.localVoiceId}
@@ -181,10 +200,21 @@ export function CompanionVoiceSettings({
                   POCKET_FRENCH_VOICES.map((voice) => (
                     <option key={voice.value} value={voice.value}>{voice.label}</option>
                   ))
+                ) : value.localTtsModel === 'kyutai/tts-1.6b-en_fr' ? (
+                  <option value="cml-tts/fr/1406_1028_000009-0003_enhanced.wav">
+                    Kyutai française haute qualité
+                  </option>
                 ) : (
                   <option value="ff_siwis">Siwis — française Kokoro</option>
                 )}
               </SelectField>
+              {value.localTtsModel === 'kyutai/tts-1.6b-en_fr' && (
+                <Note tone="info">
+                  Mode temps réel pour Linux ou WSL avec un GPU CUDA disposant d’au moins 16 Go de
+                  mémoire vidéo. Si le service Unmute local est absent, Dowze revient automatiquement
+                  sur Pocket TTS afin que le compagnon continue de parler.
+                </Note>
+              )}
             </>
           )}
         </div>
